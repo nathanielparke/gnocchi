@@ -154,6 +154,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     // ToDo: Deal with multiple Alts
     val stringVariantDS = sparkSession.read.textFile(genotypesPath).filter(row => !row.startsWith("##"))
 
+    stringVariantDS.show()
+
     val variantDF = sparkSession.read.format("csv")
       .option("header", "true")
       .option("inferSchema", "true")
