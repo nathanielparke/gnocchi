@@ -20,6 +20,8 @@ import org.apache.spark.sql.types.{ ArrayType, DoubleType }
 import org.bdgenomics.adam.cli.Vcf2ADAM
 import org.bdgenomics.formats.avro.{ Contig, Variant }
 import org.bdgenomics.utils.misc.Logging
+import org.bdgenomics.adam.rdd.ADAMContext._
+import htsjdk.samtools.ValidationStringency
 
 import scala.io.Source.fromFile
 
@@ -56,39 +58,44 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   //    adamDestination
   //  }
 
-  //  def loadGenotypes(genotypesPath: String,
-  //                    ploidy: Int,
-  //                    mind: Option[Double],
-  //                    maf: Option[Double],
-  //                    geno: Option[Double]): DataFrame = {
+//    def loadGenotypesAsTextWithADAM(genotypesPath: String,
+//                                    ploidy: Int,
+//                                    mind: Option[Double],
+//                                    maf: Option[Double],
+//                                    geno: Option[Double]): DataFrame = {
+//
+//      val validationStringency = ValidationStringency.valueOf("STRICT")
+//      val variantContextRDD = sc.loadVcf(genotypesPath, validationStringency)
+//
+
+
+      // import sparkSession.implicits._
+//
+//      val genotypes = sparkSession.read.format("parquet").load(genotypesPath)
+//
+//      val genotypeDF = toGenotypeStateDataFrame(genotypes, ploidy)
+//
+//      val genoStatesWithNames = genotypeDF.select(
+//        $"contigName" as "chromosome",
+//        $"start" as "position",
+//        genotypeDF("end"),
+//        genotypeDF("ref"),
+//        genotypeDF("alt"),
+//        genotypeDF("sampleId"),
+//        genotypeDF("genotypeState"),
+//        genotypeDF("missingGenotypes"),
+//        genotypeDF("phaseSetId"))
+
+  //    val sampleFilteredDF = filterSamples(genoStatesWithNames, mind)
   //
-  //    import sparkSession.implicits._
-  //
-  //    val genotypes = sparkSession.read.format("parquet").load(genotypesPath)
-  //
-  //    val genotypeDF = toGenotypeStateDataFrame(genotypes, ploidy)
-  //
-  //    val genoStatesWithNames = genotypeDF.select(
-  //      concat($"contigName", lit("_"), $"end", lit("_"), $"alt") as "contigName",
-  //      genotypeDF("start"),
-  //      genotypeDF("end"),
-  //      genotypeDF("ref"),
-  //      genotypeDF("alt"),
-  //      genotypeDF("sampleId"),
-  //      genotypeDF("genotypeState"),
-  //      genotypeDF("missingGenotypes"),
-  //      genotypeDF("phaseSetId"))
-  //
-  ////    val sampleFilteredDF = filterSamples(genoStatesWithNames, mind)
-  ////
-  ////    val genoFilteredDF = filterVariants(sampleFilteredDF, geno, maf)
-  //
-  ////    genoFilteredDF
-  //
-  //    //    val finalGenotypeStatesRdd = genoFilteredDF.filter($"missingGenotypes" != 2)
-  //
-  //    //    finalGenotypeStatesRdd
-  //  }
+  //    val genoFilteredDF = filterVariants(sampleFilteredDF, geno, maf)
+
+  //    genoFilteredDF
+
+      //    val finalGenotypeStatesRdd = genoFilteredDF.filter($"missingGenotypes" != 2)
+
+      //    finalGenotypeStatesRdd
+//    }
 
   //  private def toGenotypeStateDataFrame(gtFrame: DataFrame, ploidy: Int): DataFrame = {
   //    // generate expression
@@ -149,7 +156,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     mafFiltered
   }
 
-  def loadGenotypes(genotypesPath: String): Dataset[CalledVariant] = {
+  def loadGenotypesAsText(genotypesPath: String): Dataset[CalledVariant] = {
 
     // ToDo: Deal with multiple Alts
     val stringVariantDS = sparkSession.read.textFile(genotypesPath).filter(row => !row.startsWith("##"))

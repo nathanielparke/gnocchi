@@ -36,14 +36,14 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   //1	      752721	rs3131971	A	  G	  60	  PASS	  .	    GT	    0/0	    0/0	    0/0	    0/1	    1/0
   sparkTest("sc.loadGenotypes should produce a dataset of CalledVariant objects") {
     val session = new GnocchiSession(sc)
-    val genotypes = session.loadGenotypes("/Users/Nathaniel/bdg/gnocchi/testData/5snps10samples.vcf")
+    val genotypes = session.loadGenotypesAsText("/Users/Nathaniel/bdg/gnocchi/testData/5snps10samples.vcf")
     assert(genotypes.isInstanceOf[Dataset[CalledVariant]], "LoadGenotypes should produce a" +
       " Dataset[CalledVariant]")
   }
 
   sparkTest("sc.loadGenotypes should map fields correctly") {
     val session = new GnocchiSession(sc)
-    val genotypes = session.loadGenotypes(genoPath)
+    val genotypes = session.loadGenotypesAsText(genoPath)
     val firstCalledVariant = genotypes.orderBy("position").head
 
     assert(firstCalledVariant.uniqueID.equals("rs3131971"))
