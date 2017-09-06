@@ -3,19 +3,19 @@ package net.fnothaft.gnocchi.sql
 import java.io.Serializable
 
 import net.fnothaft.gnocchi.models.GnocchiModelMetaData
-import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
-import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
+//import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
+//import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
 import net.fnothaft.gnocchi.models.variant.QualityControlVariantModel
-import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
-import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel }
+//import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
+//import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel }
 import net.fnothaft.gnocchi.primitives.genotype.{ Genotype, GenotypeState }
 import net.fnothaft.gnocchi.primitives.phenotype.{ BetterPhenotype, Phenotype }
-import net.fnothaft.gnocchi.primitives.variants.{ CalledVariant }
+import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{ Column, DataFrame, Dataset, SparkSession }
-import org.apache.spark.sql.functions.{ concat, lit, when, array, typedLit, udf, col, sum }
+import org.apache.spark.sql.functions.{ array, col, concat, lit, sum, typedLit, udf, when }
 import org.apache.spark.sql.types.{ ArrayType, DoubleType }
 import org.bdgenomics.adam.cli.Vcf2ADAM
 import org.bdgenomics.formats.avro.{ Contig, Variant }
@@ -58,33 +58,32 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   //    adamDestination
   //  }
 
-//    def loadGenotypesAsTextWithADAM(genotypesPath: String,
-//                                    ploidy: Int,
-//                                    mind: Option[Double],
-//                                    maf: Option[Double],
-//                                    geno: Option[Double]): DataFrame = {
-//
-//      val validationStringency = ValidationStringency.valueOf("STRICT")
-//      val variantContextRDD = sc.loadVcf(genotypesPath, validationStringency)
-//
+  //    def loadGenotypesAsTextWithADAM(genotypesPath: String,
+  //                                    ploidy: Int,
+  //                                    mind: Option[Double],
+  //                                    maf: Option[Double],
+  //                                    geno: Option[Double]): DataFrame = {
+  //
+  //      val validationStringency = ValidationStringency.valueOf("STRICT")
+  //      val variantContextRDD = sc.loadVcf(genotypesPath, validationStringency)
+  //
 
-
-      // import sparkSession.implicits._
-//
-//      val genotypes = sparkSession.read.format("parquet").load(genotypesPath)
-//
-//      val genotypeDF = toGenotypeStateDataFrame(genotypes, ploidy)
-//
-//      val genoStatesWithNames = genotypeDF.select(
-//        $"contigName" as "chromosome",
-//        $"start" as "position",
-//        genotypeDF("end"),
-//        genotypeDF("ref"),
-//        genotypeDF("alt"),
-//        genotypeDF("sampleId"),
-//        genotypeDF("genotypeState"),
-//        genotypeDF("missingGenotypes"),
-//        genotypeDF("phaseSetId"))
+  // import sparkSession.implicits._
+  //
+  //      val genotypes = sparkSession.read.format("parquet").load(genotypesPath)
+  //
+  //      val genotypeDF = toGenotypeStateDataFrame(genotypes, ploidy)
+  //
+  //      val genoStatesWithNames = genotypeDF.select(
+  //        $"contigName" as "chromosome",
+  //        $"start" as "position",
+  //        genotypeDF("end"),
+  //        genotypeDF("ref"),
+  //        genotypeDF("alt"),
+  //        genotypeDF("sampleId"),
+  //        genotypeDF("genotypeState"),
+  //        genotypeDF("missingGenotypes"),
+  //        genotypeDF("phaseSetId"))
 
   //    val sampleFilteredDF = filterSamples(genoStatesWithNames, mind)
   //
@@ -92,10 +91,10 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
   //    genoFilteredDF
 
-      //    val finalGenotypeStatesRdd = genoFilteredDF.filter($"missingGenotypes" != 2)
+  //    val finalGenotypeStatesRdd = genoFilteredDF.filter($"missingGenotypes" != 2)
 
-      //    finalGenotypeStatesRdd
-//    }
+  //    finalGenotypeStatesRdd
+  //    }
 
   //  private def toGenotypeStateDataFrame(gtFrame: DataFrame, ploidy: Int): DataFrame = {
   //    // generate expression
@@ -489,4 +488,9 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   //    }
   //    model
   //  }
+}
+
+object AuxEncoders {
+  //  implicit def addLogEncoder: org.apache.spark.sql.Encoder[Association[AdditiveLogisticVariantModel]] = org.apache.spark.sql.Encoders.kryo[Association[AdditiveLogisticVariantModel]]
+  //  implicit def addLinEncoder: org.apache.spark.sql.Encoder[Association[AdditiveLinearVariantModel]] = org.apache.spark.sql.Encoders.kryo[Association[AdditiveLinearVariantModel]]
 }
