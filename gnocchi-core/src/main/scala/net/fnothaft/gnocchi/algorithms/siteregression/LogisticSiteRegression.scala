@@ -69,7 +69,7 @@ trait LogisticSiteRegression extends SiteRegression {
     val xiVectors = cleanedSampleVector.map(x => DenseVector(1.0 +: x._2.toArray)).toArray
     val xixiT = xiVectors.map(x => x * x.t)
 
-    val phenotypesLength = phenotypes.size
+    val phenotypesLength = phenotypes.head._2.covariates.length + 1
     val numObservations = genotypes.samples.length
 
     var iter = 0
