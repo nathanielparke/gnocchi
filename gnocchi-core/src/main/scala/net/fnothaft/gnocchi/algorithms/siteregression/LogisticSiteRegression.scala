@@ -211,11 +211,11 @@ trait LogisticSiteRegression extends SiteRegression {
 //  //  }
 //}
 
-object AdditiveLogisticRegression extends AdditiveLogisticRegressionRefactor {
+object AdditiveLogisticRegression extends AdditiveLogisticRegression {
   val regressionName = "additiveLogisticRegression"
 }
 
-trait AdditiveLogisticRegressionRefactor extends LogisticSiteRegression with Additive {
+trait AdditiveLogisticRegression extends LogisticSiteRegression with Additive {
   //  protected def constructVM(variant: CalledVariant,
   //                            phenotype: BetterPhenotype,
   //                            association: LogisticAssociation): AdditiveLogisticVariantModel {
@@ -223,11 +223,11 @@ trait AdditiveLogisticRegressionRefactor extends LogisticSiteRegression with Add
   //  }
 }
 
-object DominantLogisticRegression extends DominantLogisticRegressionRefactor {
+object DominantLogisticRegression extends DominantLogisticRegression {
   val regressionName = "dominantLogisticRegression"
 }
 
-trait DominantLogisticRegressionRefactor extends LogisticSiteRegression with Dominant {
+trait DominantLogisticRegression extends LogisticSiteRegression with Dominant {
   //  protected def constructVM(variant: CalledVariant,
   //                            phenotype: BetterPhenotype,
   //                            association: LogisticAssociation): DominantLogisticVariantModel {

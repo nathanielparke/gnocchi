@@ -7,4 +7,4 @@ case class LinearAssociation(ssDeviations: Double,
                              residualDegreesOfFreedom: Int,
                              pValue: Double,
                              weights: List[Double],
-                             numSamples: Int)
+                             numSamples: Int) extends Association

@@ -96,22 +96,23 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        element corresponding to the primary phenotype being
    *                        regressed on, and the remainder corresponding to the covariates.
    */
-  def update[CT](newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): GM = {
+  def update[CT](newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+    // ToDo: Implement!
 
-    val updatedVariantModels = updateVariantModels(newObservations)
-
-    val updatedComparisonVariantModels = updateComparisonVariantModels(newObservations)
-
-    val newFlaggedVariantModels = compareModels(updatedVariantModels, updatedComparisonVariantModels)
-
-    // TODO: Get rid of this! Having an action here will cause staging inefficiencies.
-    val numAdditionalSamples = newObservations.take(1).head.asInstanceOf[(Variant, Array[(Double, Array[Double])])]
-      ._2.length
-
-    val updatedMetaData = updateMetaData(numAdditionalSamples, newFlaggedVariantModels)
-
-    constructGnocchiModel(updatedMetaData, updatedVariantModels,
-      updatedComparisonVariantModels)
+    //    val updatedVariantModels = updateVariantModels(newObservations)
+    //
+    //    val updatedComparisonVariantModels = updateComparisonVariantModels(newObservations)
+    //
+    //    val newFlaggedVariantModels = compareModels(updatedVariantModels, updatedComparisonVariantModels)
+    //
+    //    // TODO: Get rid of this! Having an action here will cause staging inefficiencies.
+    //    val numAdditionalSamples = newObservations.take(1).head.asInstanceOf[(Variant, Array[(Double, Array[Double])])]
+    //      ._2.length
+    //
+    //    val updatedMetaData = updateMetaData(numAdditionalSamples, newFlaggedVariantModels)
+    //
+    //    constructGnocchiModel(updatedMetaData, updatedVariantModels,
+    //      updatedComparisonVariantModels)
   }
 
   /**
@@ -121,18 +122,19 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        data to be used to updated the model for each variant
    * @return Returns an RDD of incrementally updated VariantModels
    */
-  def updateVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): RDD[VM] = {
-    // join new data with correct VariantModel
-    val vmAndDataRDD = variantModels.keyBy(_.variant).join(newObservations)
-
-    println("SDFSDF")
-    println(vmAndDataRDD.map(p => p._2._1.weights).collect.toList)
-    // update all variants with new data
-    vmAndDataRDD.map(kvv => {
-      val (variant, (model, data)) = kvv
-      val updatedModel = model.update(data)
-      updatedModel
-    })
+  def updateVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+    // ToDo: Implement!
+    //    // join new data with correct VariantModel
+    //    val vmAndDataRDD = variantModels.keyBy(_.variant).join(newObservations)
+    //
+    //    println("SDFSDF")
+    //    println(vmAndDataRDD.map(p => p._2._1.weights).collect.toList)
+    //    // update all variants with new data
+    //    vmAndDataRDD.map(kvv => {
+    //      val (variant, (model, data)) = kvv
+    //      val updatedModel = model.update(data)
+    //      updatedModel
+    //    })
   }
 
   /**
@@ -142,16 +144,17 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @param newObservations New data to be added to existing data for recompute
    * @return RDD of VariantModels and associated genotype and phenotype data
    */
-  def updateComparisonVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])]): RDD[(VM, Array[(Double, Array[Double])])] = {
-    // Combine the new sample observations with the old observations
-    val joinedComparisonData = mergeObservations(comparisonVariantModels, newObservations)
-
-    // compute the regressions for the comparison VariantModels
-    val updatedComparisonVariantModels = joinedComparisonData.map(kv => {
-      val (varModel, obs) = kv
-      (regress(obs, varModel.variant, varModel.phenotype, varModel.phaseSetId), obs)
-    })
-    updatedComparisonVariantModels
+  def updateComparisonVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])]): Unit = {
+    // ToDo: Implement!
+    //    // Combine the new sample observations with the old observations
+    //    val joinedComparisonData = mergeObservations(comparisonVariantModels, newObservations)
+    //
+    //    // compute the regressions for the comparison VariantModels
+    //    val updatedComparisonVariantModels = joinedComparisonData.map(kv => {
+    //      val (varModel, obs) = kv
+    //      (regress(obs, varModel.variant, varModel.phenotype, varModel.phaseSetId), obs)
+    //    })
+    //    updatedComparisonVariantModels
   }
 
   /**
@@ -166,24 +169,25 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @return Returns a list of flagged variants.
    */
   def compareModels[CT](variantModels: RDD[VM],
-                        comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): List[String] = {
+                        comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+    // ToDo: Implement!
     // pair up the QR factorization and incrementalUpdate versions of the selected variantModels
-    val comparisonModels = comparisonVariantModels.map(elem => {
-      val (varModel, obs) = elem
-      varModel
-    })
-    val incrementalVsComparison = variantModels.keyBy(_.variant)
-      .join(comparisonModels.keyBy(_.variant))
-
-    val comparisons = incrementalVsComparison.map(elem => {
-      val (variant, (variantModel, comparisonVariantModel)) = elem
-      (variantModel.variantId,
-        math.abs(variantModel.pValue - comparisonVariantModel.pValue))
-    })
-    comparisons.filter(elem => {
-      val (variantId, pValueDifference) = elem
-      pValueDifference >= metaData.haplotypeBlockErrorThreshold
-    }).map(p => p._1).collect.toList
+    //    val comparisonModels = comparisonVariantModels.map(elem => {
+    //      val (varModel, obs) = elem
+    //      varModel
+    //    })
+    //    val incrementalVsComparison = variantModels.keyBy(_.variant)
+    //      .join(comparisonModels.keyBy(_.variant))
+    //
+    //    val comparisons = incrementalVsComparison.map(elem => {
+    //      val (variant, (variantModel, comparisonVariantModel)) = elem
+    //      (variantModel.variantId,
+    //        math.abs(variantModel.pValue - comparisonVariantModel.pValue))
+    //    })
+    //    comparisons.filter(elem => {
+    //      val (variantId, pValueDifference) = elem
+    //      pValueDifference >= metaData.haplotypeBlockErrorThreshold
+    //    }).map(p => p._1).collect.toList
   }
 
   /**
@@ -197,18 +201,19 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *         contains both the old data and the data for update.
    */
   def mergeObservations(comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])],
-                        newData: RDD[(Variant, Array[(Double, Array[Double])])]): RDD[(VM, Array[(Double, Array[Double])])] = {
-    val compModels = comparisonVariantModels.map(kv => {
-      val (varModel, obs) = kv
-      (varModel.variant, (varModel, obs))
-    })
-    compModels.join(newData)
-      .map(kvv => {
-        val (variant, (oldData, newData)) = kvv
-        val (varModel, obs) = oldData
-        val observs = (obs.toList ::: newData.toList).toArray
-        (varModel, observs): (VM, Array[(Double, Array[Double])])
-      })
+                        newData: RDD[(Variant, Array[(Double, Array[Double])])]): Unit = {
+    // ToDo: Implement!!
+    //    val compModels = comparisonVariantModels.map(kv => {
+    //      val (varModel, obs) = kv
+    //      (varModel.variant, (varModel, obs))
+    //    })
+    //    compModels.join(newData)
+    //      .map(kvv => {
+    //        val (variant, (oldData, newData)) = kvv
+    //        val (varModel, obs) = oldData
+    //        val observs = (obs.toList ::: newData.toList).toArray
+    //        (varModel, observs): (VM, Array[(Double, Array[Double])])
+    //      })
   }
 
   /**
