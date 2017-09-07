@@ -18,7 +18,7 @@
 package net.fnothaft.gnocchi.models.variant
 
 import net.fnothaft.gnocchi.primitives.association.Association
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.formats.avro.Variant
 import org.apache.spark.SparkContext._
@@ -27,8 +27,12 @@ import scala.collection.immutable.Map
 
 trait VariantModel[VM <: VariantModel[VM]] {
   val variantId: String
-  val modelType: String // e.g. Additive Logistic, Dominant Linear, etc.
+  val modelType: String
   val phenotype: String
+  val chromosome: Int
+  val position: Int
+  val referenceAllele: String
+  val alternateAllele: String
   val association: Association
 
   /**
@@ -42,7 +46,7 @@ trait VariantModel[VM <: VariantModel[VM]] {
    *                     the phenotype being regressed on, and covar1-covarp are that
    *                     sample's values for each covariate.
    */
-  def update(genotypes: CalledVariant, phenotypes: Map[String, BetterPhenotype]): VM
+  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): VM
 
   /**
    * Returns updated weights for the model taking a weighted average of the previous

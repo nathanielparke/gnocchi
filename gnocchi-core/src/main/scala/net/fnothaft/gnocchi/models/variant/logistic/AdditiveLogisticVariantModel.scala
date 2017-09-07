@@ -19,7 +19,7 @@ package net.fnothaft.gnocchi.models.variant.logistic
 
 import net.fnothaft.gnocchi.algorithms.siteregression.AdditiveLogisticRegression
 import net.fnothaft.gnocchi.primitives.association.LogisticAssociation
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.linear.SingularMatrixException
 import org.bdgenomics.formats.avro.Variant
@@ -27,8 +27,12 @@ import org.bdgenomics.formats.avro.Variant
 import scala.collection.immutable.Map
 
 case class AdditiveLogisticVariantModel(variantId: String,
-                                        phenotype: String,
                                         association: LogisticAssociation,
+                                        phenotype: String,
+                                        chromosome: Int,
+                                        position: Int,
+                                        referenceAllele: String,
+                                        alternateAllele: String,
                                         phaseSetId: Int = 0)
     extends LogisticVariantModel[AdditiveLogisticVariantModel]
     with AdditiveLogisticRegression with Serializable {
@@ -47,10 +51,9 @@ case class AdditiveLogisticVariantModel(variantId: String,
    *                     the primary phenotype being regressed on, and covar1-covarp
    *                     are that sample's values for each covariate.
    */
-  def update(genotypes: CalledVariant, phenotypes: Map[String, BetterPhenotype]): AdditiveLogisticVariantModel = {
+  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): AdditiveLogisticVariantModel = {
 
     //TODO: add validation stringency here rather than just creating empty association object
-    //    println((new Array[Double](observations.head._2.length)).toList)
     val batchVariantModel = try {
       constructVariantModel(variantId, applyToSite(phenotypes, genotypes))
     } catch {
@@ -70,11 +73,23 @@ case class AdditiveLogisticVariantModel(variantId: String,
       pValue = updatedPValue,
       numSamples = updatedNumSamples)
 
-    AdditiveLogisticVariantModel(variantId, phenotype, association, phaseSetId)
+    AdditiveLogisticVariantModel(variantId,
+      association,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele, phaseSetId)
   }
 
   def constructVariantModel(variantId: String,
                             association: LogisticAssociation): AdditiveLogisticVariantModel = {
-    AdditiveLogisticVariantModel(variantId, phenotype, association, phaseSetId)
+    AdditiveLogisticVariantModel(variantId,
+      association,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele, phaseSetId)
   }
 }

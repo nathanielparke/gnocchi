@@ -18,9 +18,10 @@
 package net.fnothaft.gnocchi.algorithms.siteregression
 
 import net.fnothaft.gnocchi.models.variant.VariantModel
+import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel, LinearVariantModel }
 //import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
 import net.fnothaft.gnocchi.primitives.association.LinearAssociation
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.distribution.TDistribution
 import org.apache.commons.math3.linear.SingularMatrixException
@@ -33,23 +34,13 @@ import org.bdgenomics.formats.avro.Variant
 import scala.collection.immutable.Map
 import scala.math.log10
 
-trait LinearSiteRegression extends SiteRegression {
-
-  val sparkSession = SparkSession.builder().getOrCreate()
-  import sparkSession.implicits._
+trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[VM] {
 
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, BetterPhenotype]],
-            validationStringency: String = "STRICT"): Dataset[LinearAssociation] = {
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[VM]
 
-    //ToDo: Singular Matrix Exceptions
-    genotypes.map((genos: CalledVariant) => {
-      applyToSite(phenotypes.value, genos)
-      //      constructVM(genos, phenotypes.value.head._2, association)
-    })
-  }
-
-  def applyToSite(phenotypes: Map[String, BetterPhenotype],
+  def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LinearAssociation = {
     // class for ols: org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression
     // see http://commons.apache.org/proper/commons-math/javadocs/api-3.6.1/org/apache/commons/math3/stat/regression/OLSMultipleLinearRegression.html
@@ -127,59 +118,73 @@ trait LinearSiteRegression extends SiteRegression {
     squaredDeviations.sum
   }
 
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LinearAssociation): VM
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LinearAssociation): VM
 }
-
-//object AdditiveLinearRegression extends AdditiveLinearRegression {
-//  val regressionName = "additiveLinearRegression"
-//}
-//
-//trait AdditiveLinearRegression extends LinearSiteRegression[AdditiveLinearVariantModel]
-//    with Additive {
-//  //  protected def constructVM(variant: CalledVariant,
-//  //                            phenotype: BetterPhenotype,
-//  //                            association: LinearAssociation): AdditiveLinearVariantModel {
-//  //    //ToDo: implement this
-//  //  }
-//}
-//
-//object DominantLinearRegression extends DominantLinearRegression {
-//  val regressionName = "dominantLinearRegression"
-//}
-//
-//trait DominantLinearRegression extends LinearSiteRegression[DominantLinearVariantModel]
-//    with Dominant {
-//  //  protected def constructVM(variant: CalledVariant,
-//  //                            phenotype: BetterPhenotype,
-//  //                            association: LinearAssociation): DominantLinearVariantModel {
-//  //    //ToDo: implement this
-//  //  }
-//}
 
 object AdditiveLinearRegression extends AdditiveLinearRegression {
   val regressionName = "additiveLinearRegression"
 }
 
-trait AdditiveLinearRegression extends LinearSiteRegression
-    with Additive {
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LinearAssociation): AdditiveLinearVariantModel {
-  //    //ToDo: implement this
-  //  }
+trait AdditiveLinearRegression extends LinearSiteRegression[AdditiveLinearVariantModel] with Additive {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
+
+  def apply(genotypes: Dataset[CalledVariant],
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[AdditiveLinearVariantModel] = {
+
+    //ToDo: Singular Matrix Exceptions
+    genotypes.map((genos: CalledVariant) => {
+      val association = applyToSite(phenotypes.value, genos)
+      constructVM(genos, phenotypes.value.head._2, association)
+    })
+  }
+
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LinearAssociation): AdditiveLinearVariantModel = {
+    AdditiveLinearVariantModel(variant.uniqueID,
+      association,
+      phenotype.phenoName,
+      variant.chromosome,
+      variant.position,
+      variant.referenceAllele,
+      variant.alternateAllele,
+      phaseSetId = 0)
+  }
 }
 
 object DominantLinearRegression extends DominantLinearRegression {
   val regressionName = "dominantLinearRegression"
 }
 
-trait DominantLinearRegression extends LinearSiteRegression
-    with Dominant {
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LinearAssociation): DominantLinearVariantModel {
-  //    //ToDo: implement this
-  //  }
+trait DominantLinearRegression extends LinearSiteRegression[DominantLinearVariantModel] with Dominant {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
+
+  def apply(genotypes: Dataset[CalledVariant],
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[DominantLinearVariantModel] = {
+
+    //ToDo: Singular Matrix Exceptions
+    genotypes.map((genos: CalledVariant) => {
+      val association = applyToSite(phenotypes.value, genos)
+      constructVM(genos, phenotypes.value.head._2, association)
+    })
+  }
+
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LinearAssociation): DominantLinearVariantModel = {
+    DominantLinearVariantModel(variant.uniqueID,
+      association,
+      phenotype.phenoName,
+      variant.chromosome,
+      variant.position,
+      variant.referenceAllele,
+      variant.alternateAllele,
+      phaseSetId = 0)
+  }
 }

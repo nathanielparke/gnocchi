@@ -20,8 +20,9 @@ package net.fnothaft.gnocchi.algorithms.siteregression
 import breeze.linalg._
 import breeze.numerics.{ log10, _ }
 import net.fnothaft.gnocchi.models.variant.VariantModel
+import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel, LogisticVariantModel }
 import net.fnothaft.gnocchi.primitives.association.{ LinearAssociation, LogisticAssociation }
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 import org.apache.commons.math3.linear
@@ -34,23 +35,14 @@ import org.bdgenomics.formats.avro.Variant
 
 import scala.collection.immutable.Map
 
-trait LogisticSiteRegression extends SiteRegression {
-
-  val sparkSession = SparkSession.builder().getOrCreate()
-  import sparkSession.implicits._
+trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegression[VM] {
 
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, BetterPhenotype]],
-            validationStringency: String = "STRICT"): Dataset[LogisticAssociation] = {
-
-    genotypes.map((genos: CalledVariant) => {
-      applyToSite(phenotypes.value, genos)
-      //      constructVM(genos, phenotypes.value.head._2, association)
-    })
-  }
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[VM]
 
   @throws(classOf[SingularMatrixException])
-  def applyToSite(phenotypes: Map[String, BetterPhenotype],
+  def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LogisticAssociation = {
 
     val samplesGenotypes = genotypes.samples.map(x => (x.sampleID, List(x.toDouble)))
@@ -127,7 +119,7 @@ trait LogisticSiteRegression extends SiteRegression {
       val genoStandardError = standardErrors(1)
 
       // calculate Wald statistic for each parameter in the regression model
-      val zScores: DenseVector[Double] = DenseVector(beta) :/ standardErrors
+      val zScores: DenseVector[Double] = DenseVector(beta) /:/ standardErrors
       val waldStats = zScores :* zScores
 
       // calculate cumulative probs
@@ -182,55 +174,71 @@ trait LogisticSiteRegression extends SiteRegression {
     maxExp + Math.log(sums)
   }
 
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LogisticAssociation): VM
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LogisticAssociation): VM
 }
-
-//object AdditiveLogisticRegression extends AdditiveLogisticRegressionRefactor {
-//  val regressionName = "additiveLogisticRegression"
-//}
-//
-//trait AdditiveLogisticRegressionRefactor extends LogisticSiteRegression[AdditiveLogisticVariantModel] with Additive {
-//  //  protected def constructVM(variant: CalledVariant,
-//  //                            phenotype: BetterPhenotype,
-//  //                            association: LogisticAssociation): AdditiveLogisticVariantModel {
-//  //    //ToDo: implement this
-//  //  }
-//}
-//
-//object DominantLogisticRegression extends DominantLogisticRegressionRefactor {
-//  val regressionName = "dominantLogisticRegression"
-//}
-//
-//trait DominantLogisticRegressionRefactor extends LogisticSiteRegression[DominantLogisticVariantModel] with Dominant {
-//  //  protected def constructVM(variant: CalledVariant,
-//  //                            phenotype: BetterPhenotype,
-//  //                            association: LogisticAssociation): DominantLogisticVariantModel {
-//  //    //ToDo: implement this
-//  //  }
-//}
 
 object AdditiveLogisticRegression extends AdditiveLogisticRegression {
   val regressionName = "additiveLogisticRegression"
 }
 
-trait AdditiveLogisticRegression extends LogisticSiteRegression with Additive {
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LogisticAssociation): AdditiveLogisticVariantModel {
-  //    //ToDo: implement this
-  //  }
+trait AdditiveLogisticRegression extends LogisticSiteRegression[AdditiveLogisticVariantModel] with Additive {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
+
+  def apply(genotypes: Dataset[CalledVariant],
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[AdditiveLogisticVariantModel] = {
+
+    genotypes.map((genos: CalledVariant) => {
+      val association = applyToSite(phenotypes.value, genos)
+      constructVM(genos, phenotypes.value.head._2, association)
+    })
+  }
+
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LogisticAssociation): AdditiveLogisticVariantModel = {
+    AdditiveLogisticVariantModel(variant.uniqueID,
+      association,
+      phenotype.phenoName,
+      variant.chromosome,
+      variant.position,
+      variant.referenceAllele,
+      variant.alternateAllele,
+      phaseSetId = 0)
+  }
 }
 
 object DominantLogisticRegression extends DominantLogisticRegression {
   val regressionName = "dominantLogisticRegression"
 }
 
-trait DominantLogisticRegression extends LogisticSiteRegression with Dominant {
-  //  protected def constructVM(variant: CalledVariant,
-  //                            phenotype: BetterPhenotype,
-  //                            association: LogisticAssociation): DominantLogisticVariantModel {
-  //    //ToDo: implement this
-  //  }
+trait DominantLogisticRegression extends LogisticSiteRegression[DominantLogisticVariantModel] with Dominant {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
+
+  def apply(genotypes: Dataset[CalledVariant],
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[DominantLogisticVariantModel] = {
+
+    genotypes.map((genos: CalledVariant) => {
+      val association = applyToSite(phenotypes.value, genos)
+      constructVM(genos, phenotypes.value.head._2, association)
+    })
+  }
+
+  protected def constructVM(variant: CalledVariant,
+                            phenotype: Phenotype,
+                            association: LogisticAssociation): DominantLogisticVariantModel = {
+    DominantLogisticVariantModel(variant.uniqueID,
+      association,
+      phenotype.phenoName,
+      variant.chromosome,
+      variant.position,
+      variant.referenceAllele,
+      variant.alternateAllele,
+      phaseSetId = 0)
+  }
 }

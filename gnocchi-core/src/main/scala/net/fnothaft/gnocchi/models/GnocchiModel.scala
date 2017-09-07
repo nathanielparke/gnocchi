@@ -17,16 +17,18 @@
  */
 package net.fnothaft.gnocchi.models
 
-import java.io.{ File, FileOutputStream, ObjectOutputStream, PrintWriter }
+import java.io.{File, FileOutputStream, ObjectOutputStream, PrintWriter}
 
-import net.fnothaft.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
+import net.fnothaft.gnocchi.models.variant.{QualityControlVariantModel, VariantModel}
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
+import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.formats.avro.Variant
 import org.apache.spark.SparkContext._
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Dataset, SparkSession}
+
 import scala.pickling.Defaults._
 import scala.pickling.json._
-
 import scala.reflect.ClassTag
 
 case class GnocchiModelMetaData(numSamples: Int,
@@ -64,14 +66,14 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
   /**
    * The RDD of variant-specific models contained in the model
    */
-  val variantModels: RDD[VM]
+  val variantModels: Dataset[VM]
 
   /**
    * The RDD of variant-specific models and accompanying data that
    * is to be used to check for departure of incrementally updated
    * models from complete recompute models
    */
-  val comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])]
+  val comparisonVariantModels: Dataset[QualityControlVariantModel[VM]]
 
   /**
    * Updates a GnocchiModel with new batch of data by updating all the
@@ -96,7 +98,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        element corresponding to the primary phenotype being
    *                        regressed on, and the remainder corresponding to the covariates.
    */
-  def update[CT](newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+  def update(newSamples: Dataset[CalledVariant],
+             newPhenotypes: Map[String, Phenotype]): Unit = {
     // ToDo: Implement!
 
     //    val updatedVariantModels = updateVariantModels(newObservations)
@@ -118,11 +121,12 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
   /**
    * Incrementally updates variant models using new batch of data
    *
-   * @param newObservations RDD of variants and thier associated genotype and phenotype
+   * @param newObservations RDD of variants and their associated genotype and phenotype
    *                        data to be used to updated the model for each variant
    * @return Returns an RDD of incrementally updated VariantModels
    */
-  def updateVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+  def updateVariantModels(newSamples: Dataset[CalledVariant],
+                          newPhenotypes: Map[String, Phenotype])(implicit ct: ClassTag[VM]): Unit = {
     // ToDo: Implement!
     //    // join new data with correct VariantModel
     //    val vmAndDataRDD = variantModels.keyBy(_.variant).join(newObservations)
@@ -144,7 +148,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @param newObservations New data to be added to existing data for recompute
    * @return RDD of VariantModels and associated genotype and phenotype data
    */
-  def updateComparisonVariantModels(newObservations: RDD[(Variant, Array[(Double, Array[Double])])]): Unit = {
+  def updateQualityControlVariantModels(newSamples: Dataset[CalledVariant],
+                                        newPhenotypes: Map[String, Phenotype]): Unit = {
     // ToDo: Implement!
     //    // Combine the new sample observations with the old observations
     //    val joinedComparisonData = mergeObservations(comparisonVariantModels, newObservations)
@@ -168,8 +173,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                                associated data
    * @return Returns a list of flagged variants.
    */
-  def compareModels[CT](variantModels: RDD[VM],
-                        comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])])(implicit ct: ClassTag[VM]): Unit = {
+  def compareModels[CT](variantModels: Dataset[VM],
+                        comparisonVariantModels: Dataset[QualityControlVariantModel[VM]])(implicit ct: ClassTag[VM]): Unit = {
     // ToDo: Implement!
     // pair up the QR factorization and incrementalUpdate versions of the selected variantModels
     //    val comparisonModels = comparisonVariantModels.map(elem => {
@@ -245,8 +250,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *         constructGnocchiModel
    */
   def constructGnocchiModel(metaData: GnocchiModelMetaData,
-                            variantModels: RDD[VM],
-                            comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])]): GM
+                            variantModels: Dataset[VM],
+                            comparisonVariantModels: Dataset[QualityControlVariantModel[VM]]): GM
 
   /**
    * Saves Gnocchi model by saving GnocchiModelMetaData as Java object,

@@ -17,19 +17,9 @@
  */
 package net.fnothaft.gnocchi.primitives.phenotype
 
-/* Note: for the below classes, the array stored in value actually has all of the phenotypes, with the first being the on that is
-  being regressed and the rest are the values of the covariates. The string that is stored in phenotype is actually a line that contains
-  the names of all the phenotypes, separated by spaces (again, the first is the phenotype being regressed and the rest are covariates)
-*/
-
 case class Phenotype(sampleId: String,
+                     phenoName: String,
                      phenotype: String,
-                     value: Array[Double]) extends Product {
-  def toDouble: Array[Double] = value
-}
-
-case class BetterPhenotype(sampleId: String,
-                           phenotype: String,
-                           covariates: List[Double]) extends Product {
+                     covariates: List[Double]) extends Product {
   def toDouble: List[Double] = covariates
 }

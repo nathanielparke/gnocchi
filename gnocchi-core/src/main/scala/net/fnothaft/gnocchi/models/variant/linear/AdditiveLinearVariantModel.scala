@@ -19,7 +19,7 @@ package net.fnothaft.gnocchi.models.variant.linear
 
 import net.fnothaft.gnocchi.algorithms.siteregression.AdditiveLinearRegression
 import net.fnothaft.gnocchi.primitives.association.LinearAssociation
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.formats.avro.Variant
 
@@ -28,6 +28,10 @@ import scala.collection.immutable.Map
 case class AdditiveLinearVariantModel(variantId: String,
                                       association: LinearAssociation,
                                       phenotype: String,
+                                      chromosome: Int,
+                                      position: Int,
+                                      referenceAllele: String,
+                                      alternateAllele: String,
                                       phaseSetId: Int = 0)
     extends LinearVariantModel[AdditiveLinearVariantModel]
     with AdditiveLinearRegression with Serializable {
@@ -47,7 +51,7 @@ case class AdditiveLinearVariantModel(variantId: String,
    *                     the primary phenotype being regressed on, and covar1-covarp
    *                     are that sample's values for each covariate.
    */
-  def update(genotypes: CalledVariant, phenotypes: Map[String, BetterPhenotype]): AdditiveLinearVariantModel = {
+  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): AdditiveLinearVariantModel = {
     val batchVariantModel = constructVariantModel(variantId, applyToSite(phenotypes, genotypes))
     mergeWith(batchVariantModel)
   }
@@ -75,6 +79,10 @@ case class AdditiveLinearVariantModel(variantId: String,
     AdditiveLinearVariantModel(variantID,
       updatedAssociation,
       phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
       phaseSetId)
   }
 
@@ -83,6 +91,10 @@ case class AdditiveLinearVariantModel(variantId: String,
     AdditiveLinearVariantModel(variantID,
       association,
       phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
       phaseSetId)
   }
 }

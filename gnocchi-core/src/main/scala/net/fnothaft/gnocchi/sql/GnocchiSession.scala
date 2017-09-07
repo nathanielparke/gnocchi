@@ -8,8 +8,8 @@ import net.fnothaft.gnocchi.models.GnocchiModelMetaData
 import net.fnothaft.gnocchi.models.variant.QualityControlVariantModel
 //import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
 //import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel }
-import net.fnothaft.gnocchi.primitives.genotype.{ Genotype, GenotypeState }
-import net.fnothaft.gnocchi.primitives.phenotype.{ BetterPhenotype, Phenotype }
+import net.fnothaft.gnocchi.primitives.genotype.GenotypeState
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -214,7 +214,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
                      phenoName: String,
                      delimiter: String,
                      covarPath: Option[String] = None,
-                     covarNames: Option[List[String]] = None): Map[String, BetterPhenotype] = {
+                     covarNames: Option[List[String]] = None): Map[String, Phenotype] = {
 
     logInfo("Loading phenotypes from %s.".format(phenotypesPath))
 
@@ -267,7 +267,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       phenotypesDF.withColumn("covariates", lit(null).cast(ArrayType(DoubleType)))
     }
 
-    phenoCovarDF.as[BetterPhenotype].collect().map(x => (x.sampleId, x)).toMap
+    phenoCovarDF.withColumn("phenoName", lit(phenoName)).as[Phenotype].collect().map(x => (x.sampleId, x)).toMap
   }
 
   //  /**

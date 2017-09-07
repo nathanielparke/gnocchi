@@ -19,7 +19,8 @@ package net.fnothaft.gnocchi.algorithms.siteregression
 
 import org.apache.commons.math3.linear.SingularMatrixException
 import net.fnothaft.gnocchi.models.variant.VariantModel
-import net.fnothaft.gnocchi.primitives.phenotype.{ BetterPhenotype, Phenotype }
+import net.fnothaft.gnocchi.primitives.association.Association
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.genotype.GenotypeState
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.sql.{ Dataset, SparkSession }
@@ -30,9 +31,16 @@ import org.bdgenomics.utils.misc.Logging
 
 import scala.collection.immutable.Map
 
-trait SiteRegression extends Serializable with Logging {
+trait SiteRegression[VM <: VariantModel[VM]] extends Serializable with Logging {
 
   val regressionName: String
+
+  def apply(genotypes: Dataset[CalledVariant],
+            phenotypes: Broadcast[Map[String, Phenotype]],
+            validationStringency: String = "STRICT"): Dataset[VM]
+
+  def applyToSite(phenotypes: Map[String, Phenotype],
+                  genotypes: CalledVariant): Association
 
   /**
    * Known implementations: [[Additive]], [[Dominant]]

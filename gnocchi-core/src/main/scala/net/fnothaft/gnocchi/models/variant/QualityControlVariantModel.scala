@@ -17,6 +17,9 @@
  */
 package net.fnothaft.gnocchi.models.variant
 
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
+import net.fnothaft.gnocchi.primitives.variants.CalledVariant
+
 case class QualityControlVariantModel[VM <: VariantModel[VM]](variantModel: VM,
-                                                              observations: Array[(Double, Array[Double])])
-    extends Serializable
+                                                              variant: CalledVariant,
+                                                              phenotype: Map[String, Phenotype]) extends Serializable

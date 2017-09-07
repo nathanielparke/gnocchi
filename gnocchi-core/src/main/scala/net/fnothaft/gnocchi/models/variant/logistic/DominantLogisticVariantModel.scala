@@ -20,7 +20,7 @@ package net.fnothaft.gnocchi.models.variant.logistic
 
 import net.fnothaft.gnocchi.algorithms.siteregression.DominantLogisticRegression
 import net.fnothaft.gnocchi.primitives.association.LogisticAssociation
-import net.fnothaft.gnocchi.primitives.phenotype.BetterPhenotype
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.linear.SingularMatrixException
 import org.bdgenomics.formats.avro.Variant
@@ -28,8 +28,12 @@ import org.bdgenomics.formats.avro.Variant
 import scala.collection.immutable.Map
 
 case class DominantLogisticVariantModel(variantId: String,
-                                        phenotype: String,
                                         association: LogisticAssociation,
+                                        phenotype: String,
+                                        chromosome: Int,
+                                        position: Int,
+                                        referenceAllele: String,
+                                        alternateAllele: String,
                                         phaseSetId: Int = 0)
     extends LogisticVariantModel[DominantLogisticVariantModel]
     with DominantLogisticRegression with Serializable {
@@ -48,7 +52,7 @@ case class DominantLogisticVariantModel(variantId: String,
    *                     the primary phenotype being regressed on, and covar1-covarp
    *                     are that sample's values for each covariate.
    */
-  def update(genotypes: CalledVariant, phenotypes: Map[String, BetterPhenotype]): DominantLogisticVariantModel = {
+  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): DominantLogisticVariantModel = {
 
     //TODO: add validation stringency here rather than just creating empty association object
     val batchVariantModel = try {
@@ -72,8 +76,12 @@ case class DominantLogisticVariantModel(variantId: String,
       numSamples = updatedNumSamples)
 
     DominantLogisticVariantModel(variantId,
-      phenotype,
       association,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
       phaseSetId)
   }
 
@@ -81,8 +89,12 @@ case class DominantLogisticVariantModel(variantId: String,
                             association: LogisticAssociation): DominantLogisticVariantModel = {
 
     DominantLogisticVariantModel(variantId,
-      phenotype,
       association,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
       phaseSetId)
   }
 }
