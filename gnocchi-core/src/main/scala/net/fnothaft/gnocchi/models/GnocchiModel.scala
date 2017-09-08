@@ -17,15 +17,15 @@
  */
 package net.fnothaft.gnocchi.models
 
-import java.io.{File, FileOutputStream, ObjectOutputStream, PrintWriter}
+import java.io.{ File, FileOutputStream, ObjectOutputStream, PrintWriter }
 
-import net.fnothaft.gnocchi.models.variant.{QualityControlVariantModel, VariantModel}
+import net.fnothaft.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.formats.avro.Variant
 import org.apache.spark.SparkContext._
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{ Dataset, SparkSession }
 
 import scala.pickling.Defaults._
 import scala.pickling.json._
@@ -102,6 +102,9 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
              newPhenotypes: Map[String, Phenotype]): Unit = {
     // ToDo: Implement!
 
+    val newVMs = buildVariantModels(newSamples, newPhenotypes)
+    val mergedVMs = mergeVariantModels(newVMs)
+
     //    val updatedVariantModels = updateVariantModels(newObservations)
     //
     //    val updatedComparisonVariantModels = updateComparisonVariantModels(newObservations)
@@ -125,9 +128,11 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        data to be used to updated the model for each variant
    * @return Returns an RDD of incrementally updated VariantModels
    */
-  def updateVariantModels(newSamples: Dataset[CalledVariant],
-                          newPhenotypes: Map[String, Phenotype])(implicit ct: ClassTag[VM]): Unit = {
+  def mergeVariantModels(newVariantModels: Dataset[VM]): Unit = {
     // ToDo: Implement!
+
+    val merged = variantModels.join(newVariantModels, "variantId")
+
     //    // join new data with correct VariantModel
     //    val vmAndDataRDD = variantModels.keyBy(_.variant).join(newObservations)
     //
@@ -148,8 +153,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @param newObservations New data to be added to existing data for recompute
    * @return RDD of VariantModels and associated genotype and phenotype data
    */
-  def updateQualityControlVariantModels(newSamples: Dataset[CalledVariant],
-                                        newPhenotypes: Map[String, Phenotype]): Unit = {
+  def mergeQualityControlVariantModels(newQCVariants: Dataset[QualityControlVariantModel[VM]]): Unit = {
     // ToDo: Implement!
     //    // Combine the new sample observations with the old observations
     //    val joinedComparisonData = mergeObservations(comparisonVariantModels, newObservations)
@@ -205,8 +209,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @return same RDD as comparisonVariantModels, except the data stored with the VariantModels
    *         contains both the old data and the data for update.
    */
-  def mergeObservations(comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])],
-                        newData: RDD[(Variant, Array[(Double, Array[Double])])]): Unit = {
+  def mergeGnocchiModels(comparisonVariantModels: RDD[(VM, Array[(Double, Array[Double])])],
+                         newData: RDD[(Variant, Array[(Double, Array[Double])])]): Unit = {
     // ToDo: Implement!!
     //    val compModels = comparisonVariantModels.map(kv => {
     //      val (varModel, obs) = kv
@@ -270,10 +274,8 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @return Returns the VariantModel (of correct subtype, based on subtype
    *         of the GnocchiModel) which results from the regression
    */
-  def regress(observations: Array[(Double, Array[Double])],
-              variant: Variant,
-              phenotype: String,
-              phaseSetId: Int): VM
+  def buildVariantModels(genotypes: Dataset[CalledVariant],
+                         phenotypes: Map[String, Phenotype]): Dataset[VM]
 
 }
 

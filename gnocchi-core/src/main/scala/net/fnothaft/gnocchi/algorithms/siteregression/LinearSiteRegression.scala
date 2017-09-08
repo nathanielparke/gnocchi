@@ -98,7 +98,8 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
       val pvalue = 2 * tDist.cumulativeProbability(-math.abs(t))
       val logPValue = log10(pvalue)
 
-      LinearAssociation(ssDeviations,
+      LinearAssociation(genotypes.uniqueID,
+        ssDeviations,
         ssResiduals,
         genoSE,
         t,

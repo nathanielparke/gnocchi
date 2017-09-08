@@ -66,7 +66,7 @@ case class DominantLinearVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): DominantLinearVariantModel = {
 
-    val updatedAssociation = LinearAssociation(
+    val updatedAssociation = LinearAssociation(variantId = variantID,
       ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
       geneticParameterStandardError = updatedGeneticParameterStandardError,

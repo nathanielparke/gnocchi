@@ -69,7 +69,7 @@ case class DominantLogisticVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): DominantLogisticVariantModel = {
 
-    val association = LogisticAssociation(
+    val association = LogisticAssociation(variantId = variantId,
       weights = updatedWeights,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
       pValue = updatedPValue,

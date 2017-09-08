@@ -66,7 +66,7 @@ case class AdditiveLinearVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): AdditiveLinearVariantModel = {
 
-    val updatedAssociation = LinearAssociation(
+    val updatedAssociation = LinearAssociation(variantId = variantID,
       ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
       geneticParameterStandardError = updatedGeneticParameterStandardError,

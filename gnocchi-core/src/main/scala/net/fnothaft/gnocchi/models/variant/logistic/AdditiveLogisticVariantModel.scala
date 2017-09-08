@@ -68,7 +68,8 @@ case class AdditiveLogisticVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): AdditiveLogisticVariantModel = {
 
-    val association = LogisticAssociation(weights = updatedWeights,
+    val association = LogisticAssociation(variantId = variantId,
+      weights = updatedWeights,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
       pValue = updatedPValue,
       numSamples = updatedNumSamples)
