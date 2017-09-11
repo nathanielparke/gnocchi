@@ -26,7 +26,7 @@ import org.apache.spark.SparkContext._
 import scala.collection.immutable.Map
 
 trait VariantModel[VM <: VariantModel[VM]] {
-  val variantId: String
+  val uniqueID: String
   val modelType: String
   val phenotype: String
   val chromosome: Int

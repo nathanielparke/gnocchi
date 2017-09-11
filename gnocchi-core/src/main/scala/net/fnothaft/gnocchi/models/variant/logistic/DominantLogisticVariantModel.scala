@@ -27,7 +27,7 @@ import org.bdgenomics.formats.avro.Variant
 
 import scala.collection.immutable.Map
 
-case class DominantLogisticVariantModel(variantId: String,
+case class DominantLogisticVariantModel(uniqueID: String,
                                         association: LogisticAssociation,
                                         phenotype: String,
                                         chromosome: Int,
@@ -56,7 +56,7 @@ case class DominantLogisticVariantModel(variantId: String,
 
     //TODO: add validation stringency here rather than just creating empty association object
     val batchVariantModel = try {
-      constructVariantModel(variantId, applyToSite(phenotypes, genotypes))
+      constructVariantModel(uniqueID, applyToSite(phenotypes, genotypes))
     } catch {
       case error: SingularMatrixException => throw new SingularMatrixException()
     }
@@ -69,8 +69,7 @@ case class DominantLogisticVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): DominantLogisticVariantModel = {
 
-    val association = LogisticAssociation(variantId = variantId,
-      weights = updatedWeights,
+    val association = LogisticAssociation(weights = updatedWeights,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
       pValue = updatedPValue,
       numSamples = updatedNumSamples)

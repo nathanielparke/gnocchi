@@ -1,7 +1,6 @@
 package net.fnothaft.gnocchi.primitives.association
 
-case class LinearAssociation(variantId: String,
-                             ssDeviations: Double,
+case class LinearAssociation(ssDeviations: Double,
                              ssResiduals: Double,
                              geneticParameterStandardError: Double,
                              tStatistic: Double,

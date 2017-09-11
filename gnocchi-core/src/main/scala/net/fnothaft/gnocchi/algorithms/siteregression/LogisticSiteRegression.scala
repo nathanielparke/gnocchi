@@ -132,7 +132,7 @@ trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegress
 
       val logWaldTests = waldTests.map(t => log10(t))
 
-      LogisticAssociation(genotypes.uniqueID,
+      LogisticAssociation(
         beta.toList,
         genoStandardError,
         waldTests(1),

@@ -18,3 +18,8 @@ val sampleFiltered2 = sc.filterSamples(geno2, mind = 0.1, ploidy = 2)
 val fullFiltered2 = sc.filterVariants(sampleFiltered2, geno = 0.1, maf = 0.1)
 
 val broadPheno2 = sc.broadcast(pheno2)
+
+import net.fnothaft.gnocchi.algorithms.siteregression.AdditiveLinearRegression
+
+val assoc_1 = AdditiveLinearRegression(geno1, broadPheno1)
+val assoc_2 = AdditiveLinearRegression(geno2, broadPheno2)

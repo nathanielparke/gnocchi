@@ -5,5 +5,4 @@ trait Association {
   val geneticParameterStandardError: Double
   val pValue: Double
   val numSamples: Int
-  val variantId: String
 }

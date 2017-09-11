@@ -25,7 +25,7 @@ import org.bdgenomics.formats.avro.Variant
 
 import scala.collection.immutable.Map
 
-case class DominantLinearVariantModel(variantId: String,
+case class DominantLinearVariantModel(uniqueID: String,
                                       association: LinearAssociation,
                                       phenotype: String,
                                       chromosome: Int,
@@ -52,7 +52,7 @@ case class DominantLinearVariantModel(variantId: String,
    *                     are that sample's values for each covariate.
    */
   def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): DominantLinearVariantModel = {
-    val batchVariantModel = constructVariantModel(variantId, applyToSite(phenotypes, genotypes))
+    val batchVariantModel = constructVariantModel(uniqueID, applyToSite(phenotypes, genotypes))
     mergeWith(batchVariantModel)
   }
 
@@ -66,8 +66,7 @@ case class DominantLinearVariantModel(variantId: String,
                             updatedWeights: List[Double],
                             updatedNumSamples: Int): DominantLinearVariantModel = {
 
-    val updatedAssociation = LinearAssociation(variantId = variantID,
-      ssDeviations = updatedSsDeviations,
+    val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
       tStatistic = updatedtStatistic,

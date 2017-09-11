@@ -26,7 +26,7 @@ trait LinearVariantModel[VM <: LinearVariantModel[VM]] extends VariantModel[VM] 
     val updatedResidualDegreesOfFreedom = updateResidualDegreesOfFreedom(variantModel.association.numSamples)
     val updatedtStatistic = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
     val updatedPValue = calculatePValue(updatedtStatistic, updatedResidualDegreesOfFreedom)
-    constructVariantModel(this.variantId,
+    constructVariantModel(this.uniqueID,
       updatedSsDeviations,
       updatedSsResiduals,
       updatedGeneticParameterStandardError,

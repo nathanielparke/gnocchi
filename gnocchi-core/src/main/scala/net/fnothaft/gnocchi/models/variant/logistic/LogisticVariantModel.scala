@@ -39,7 +39,7 @@ trait LogisticVariantModel[VM <: LogisticVariantModel[VM]] extends VariantModel[
     val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
     val updatedWaldStatistic = calculateWaldStatistic(updatedGeneticParameterStandardError, updatedWeights)
     val updatedPValue = calculatePvalue(updatedWaldStatistic)
-    constructVariantModel(this.variantId,
+    constructVariantModel(this.uniqueID,
       updatedGeneticParameterStandardError,
       updatedPValue,
       updatedWeights,
