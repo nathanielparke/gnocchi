@@ -48,6 +48,11 @@ case class GnocchiModelMetaData(numSamples: Int,
   }
 }
 
+object GnocchiModel extends GnocchiModel {
+
+  def apply(): GnocchiModel
+}
+
 /**
  * A trait that wraps an RDD of variant-specific models that are incrementally
  * updated, an RDD of variant-specific models that are recomputed over entire

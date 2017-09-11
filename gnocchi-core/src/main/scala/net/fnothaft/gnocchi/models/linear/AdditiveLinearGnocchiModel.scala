@@ -35,21 +35,16 @@ import scala.pickling.json._
 
 case class AdditiveLinearGnocchiModel(metaData: GnocchiModelMetaData,
                                       variantModels: Dataset[AdditiveLinearVariantModel],
-                                      QCVariantModels: Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]],
+                                      comparisonVariants: Dataset[CalledVariant],
                                       QCPhenotypes: Map[String, Phenotype])
     extends GnocchiModel[AdditiveLinearVariantModel, AdditiveLinearGnocchiModel] {
 
-  def this(metaData: GnocchiModelMetaData,
-           variantModels: Dataset[AdditiveLinearVariantModel],
-           comparisonVariants: Dataset[CalledVariant],
-           comparisonPhenotypes: Map[String, Phenotype]): AdditiveLinearGnocchiModel = {
-    val QCVariantModel = variantModels.joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
-      .withColumnRenamed("_1", "variantModel")
-      .withColumnRenamed("_2", "variant")
-      .as[QualityControlVariantModel[AdditiveLinearVariantModel]]
+  val QCVariantModels = variantModels
+    .joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
+    .withColumnRenamed("_1", "variantModel")
+    .withColumnRenamed("_2", "variant")
+    .as[QualityControlVariantModel[AdditiveLinearVariantModel]]
 
-    this(metaData, variantModels, QCVariantModel, comparisonPhenotypes)
-  }
 
   def mergeGnocchiModel(newSamples: Dataset[CalledVariant],
                         newPhenotypes: Broadcast[Map[String, Phenotype]]): GnocchiModel[AdditiveLinearVariantModel, AdditiveLinearGnocchiModel] = {
@@ -65,7 +60,7 @@ case class AdditiveLinearGnocchiModel(metaData: GnocchiModelMetaData,
   def updateQCVariantModels(): Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]]
 
   def mergeVariantModels(newVariantModels: Dataset[AdditiveLinearVariantModel]): Dataset[AdditiveLinearVariantModel] = {
-    variantModels.joinWith(newVariantModels, variantModels("variantId") === newVariantModels("variantId")).map(x => x._1.mergeWith(x._2))
+    variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))
   }
 
   def createQCVariantModels(variants: Dataset[CalledVariant],
