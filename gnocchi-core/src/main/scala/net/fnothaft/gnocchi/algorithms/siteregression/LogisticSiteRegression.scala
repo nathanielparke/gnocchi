@@ -19,7 +19,9 @@ package net.fnothaft.gnocchi.algorithms.siteregression
 
 import breeze.linalg._
 import breeze.numerics.{ log10, _ }
-import net.fnothaft.gnocchi.models.variant.VariantModel
+import net.fnothaft.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData }
+import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
+import net.fnothaft.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel, LogisticVariantModel }
 import net.fnothaft.gnocchi.primitives.association.{ LinearAssociation, LogisticAssociation }
 import net.fnothaft.gnocchi.primitives.phenotype.Phenotype

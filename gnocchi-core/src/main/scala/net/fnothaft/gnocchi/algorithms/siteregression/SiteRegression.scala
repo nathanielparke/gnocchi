@@ -35,9 +35,9 @@ trait SiteRegression[VM <: VariantModel[VM]] extends Serializable with Logging {
 
   val regressionName: String
 
-  def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
-            validationStringency: String = "STRICT"): Dataset[VM]
+  //  def apply(genotypes: Dataset[CalledVariant],
+  //            phenotypes: Broadcast[Map[String, Phenotype]],
+  //            validationStringency: String = "STRICT"): Dataset[VM]
 
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): Association

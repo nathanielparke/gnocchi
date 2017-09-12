@@ -17,27 +17,27 @@
  */
 package net.fnothaft.gnocchi.models
 
-import java.io.{File, FileOutputStream, ObjectOutputStream, PrintWriter}
+import java.io.{ File, FileOutputStream, ObjectOutputStream, PrintWriter }
 
-import net.fnothaft.gnocchi.models.variant.{QualityControlVariantModel, VariantModel}
+import net.fnothaft.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.formats.avro.Variant
 import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{ Dataset, SparkSession }
 
 import scala.pickling.Defaults._
 import scala.pickling.json._
 import scala.reflect.ClassTag
 
-case class GnocchiModelMetaData(numSamples: Int,
-                                haplotypeBlockErrorThreshold: Double,
-                                modelType: String,
-                                variables: String,
-                                flaggedVariantModels: List[String],
-                                phenotype: String) {
+case class GnocchiModelMetaData(modelType: String,
+                                phenotype: String,
+                                covariates: String,
+                                numSamples: Int,
+                                haplotypeBlockErrorThreshold: Double = 0.1,
+                                flaggedVariantModels: Option[List[String]] = None) {
 
   def save(saveTo: String): Unit = {
     val metadataPkl = this.pickle.value
@@ -48,10 +48,10 @@ case class GnocchiModelMetaData(numSamples: Int,
   }
 }
 
-object GnocchiModel extends GnocchiModel {
-
-  def apply(): GnocchiModel
-}
+//object GnocchiModel extends GnocchiModel {
+//
+//  def apply(): GnocchiModel
+//}
 
 /**
  * A trait that wraps an RDD of variant-specific models that are incrementally
@@ -106,8 +106,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        element corresponding to the primary phenotype being
    *                        regressed on, and the remainder corresponding to the covariates.
    */
-  def mergeGnocchiModel(newSamples: Dataset[CalledVariant],
-                        newPhenotypes: Broadcast[Map[String, Phenotype]]): GnocchiModel[VM, GM]
+  def mergeGnocchiModel(otherModel: GnocchiModel[VM, GM]): GnocchiModel[VM, GM]
 
   /**
    * Incrementally updates variant models using new batch of data
@@ -118,47 +117,47 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    */
   def mergeVariantModels(newVariantModels: Dataset[VM]): Dataset[VM]
 
-  /**
-   * Returns VariantModels created from full recompute over all data for each variant
-   * as well as array containing all phenotype and genotype data for that variant.
-   *
-   * @param newObservations New data to be added to existing data for recompute
-   * @return RDD of VariantModels and associated genotype and phenotype data
-   */
-  def mergeQualityControlVariantModels(newQCVariants: Dataset[QualityControlVariantModel[VM]]): Dataset[QualityControlVariantModel[VM]]
-
-  /**
-   * Compares incrementally updated and full-recompute models store in the GnocchiModel in
-   * order to flag variants for which the pValue differs more than
-   * haplotypeBlockErrorThreshold between the incrementally-updated
-   * and full-recompute models.
-   *
-   * @param variantModels RDD of variant models
-   * @param comparisonVariantModels RDD of full-recompute variant models and their
-   *                                associated data
-   * @return Returns a list of flagged variants.
-   */
-  def compareModels(variantModels: Dataset[VM],
-                    comparisonVariantModels: Dataset[QualityControlVariantModel[VM]]): Unit = {
-    // ToDo: Implement!
-    // pair up the QR factorization and incrementalUpdate versions of the selected variantModels
-    //    val comparisonModels = comparisonVariantModels.map(elem => {
-    //      val (varModel, obs) = elem
-    //      varModel
-    //    })
-    //    val incrementalVsComparison = variantModels.keyBy(_.variant)
-    //      .join(comparisonModels.keyBy(_.variant))
-    //
-    //    val comparisons = incrementalVsComparison.map(elem => {
-    //      val (variant, (variantModel, comparisonVariantModel)) = elem
-    //      (variantModel.variantId,
-    //        math.abs(variantModel.pValue - comparisonVariantModel.pValue))
-    //    })
-    //    comparisons.filter(elem => {
-    //      val (variantId, pValueDifference) = elem
-    //      pValueDifference >= metaData.haplotypeBlockErrorThreshold
-    //    }).map(p => p._1).collect.toList
-  }
+  //  /**
+  //   * Returns VariantModels created from full recompute over all data for each variant
+  //   * as well as array containing all phenotype and genotype data for that variant.
+  //   *
+  //   * @param newObservations New data to be added to existing data for recompute
+  //   * @return RDD of VariantModels and associated genotype and phenotype data
+  //   */
+  //  def mergeQualityControlVariantModels(newQCVariants: Dataset[QualityControlVariantModel[VM]]): Dataset[QualityControlVariantModel[VM]]
+  //
+  //  /**
+  //   * Compares incrementally updated and full-recompute models store in the GnocchiModel in
+  //   * order to flag variants for which the pValue differs more than
+  //   * haplotypeBlockErrorThreshold between the incrementally-updated
+  //   * and full-recompute models.
+  //   *
+  //   * @param variantModels RDD of variant models
+  //   * @param comparisonVariantModels RDD of full-recompute variant models and their
+  //   *                                associated data
+  //   * @return Returns a list of flagged variants.
+  //   */
+  //  def compareModels(variantModels: Dataset[VM],
+  //                    comparisonVariantModels: Dataset[QualityControlVariantModel[VM]]): Unit = {
+  //    // ToDo: Implement!
+  //    // pair up the QR factorization and incrementalUpdate versions of the selected variantModels
+  //    //    val comparisonModels = comparisonVariantModels.map(elem => {
+  //    //      val (varModel, obs) = elem
+  //    //      varModel
+  //    //    })
+  //    //    val incrementalVsComparison = variantModels.keyBy(_.variant)
+  //    //      .join(comparisonModels.keyBy(_.variant))
+  //    //
+  //    //    val comparisons = incrementalVsComparison.map(elem => {
+  //    //      val (variant, (variantModel, comparisonVariantModel)) = elem
+  //    //      (variantModel.variantId,
+  //    //        math.abs(variantModel.pValue - comparisonVariantModel.pValue))
+  //    //    })
+  //    //    comparisons.filter(elem => {
+  //    //      val (variantId, pValueDifference) = elem
+  //    //      pValueDifference >= metaData.haplotypeBlockErrorThreshold
+  //    //    }).map(p => p._1).collect.toList
+  //  }
 
   /**
    * Returns new GnocchiModelMetaData object with all fields copied except
@@ -171,24 +170,25 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
                      newFlaggedVariantModels: Option[List[String]] = None): GnocchiModelMetaData = {
     val numSamples = this.metaData.numSamples + numAdditionalSamples
 
-    GnocchiModelMetaData(numSamples,
-      this.metaData.haplotypeBlockErrorThreshold,
+    GnocchiModelMetaData(
       this.metaData.modelType,
-      this.metaData.variables,
-      if (newFlaggedVariantModels.isDefined) newFlaggedVariantModels.get else this.metaData.flaggedVariantModels,
-      this.metaData.phenotype)
+      this.metaData.phenotype,
+      this.metaData.covariates,
+      numSamples,
+      this.metaData.haplotypeBlockErrorThreshold,
+      if (newFlaggedVariantModels.isDefined) newFlaggedVariantModels else this.metaData.flaggedVariantModels)
   }
-
-  def updateQCVariantModels(): Dataset[QualityControlVariantModel[VM]]
+  //
+  //  def updateQCVariantModels(): Dataset[QualityControlVariantModel[VM]]
 
   /**
    * Saves Gnocchi model by saving GnocchiModelMetaData as Java object,
    * variantModels as parquet, and comparisonVariantModels as parquet.
    */
-  def save(saveTo: String): Unit
-
-  def createQCVariantModels(variants: Dataset[CalledVariant],
-                            phenotypes: Map[String, Phenotype]): Dataset[QualityControlVariantModel[VM]]
-
+  def save(saveTo: String): Unit = {
+    variantModels.write.parquet(saveTo + "/variantModels")
+    QCVariantModels.write.parquet(saveTo + "/qcModels")
+    metaData.save(saveTo + "/metaData")
+  }
 }
 

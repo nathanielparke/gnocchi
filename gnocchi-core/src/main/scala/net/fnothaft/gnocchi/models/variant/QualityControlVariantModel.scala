@@ -21,12 +21,12 @@ import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 
 case class QualityControlVariantModel[VM <: VariantModel[VM]](variantModel: VM,
-                                                              variant: CalledVariant) extends Serializable {
-  /**
-   *
-   * @return the drift of the model 
-   */
-  def drift: Double = {
-
-  }
+                                                              variant: CalledVariant) extends Product with Serializable {
+  //  /**
+  //   *
+  //   * @return the drift of the model
+  //   */
+  //  def drift: Double = {
+  //
+  //  }
 }

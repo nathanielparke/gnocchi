@@ -2,7 +2,9 @@ package net.fnothaft.gnocchi.sql
 
 import java.io.Serializable
 
-import net.fnothaft.gnocchi.models.GnocchiModelMetaData
+import net.fnothaft.gnocchi.models.variant.VariantModel
+import net.fnothaft.gnocchi.models.variant.linear.AdditiveLinearVariantModel
+import net.fnothaft.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData }
 //import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
 //import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
 import net.fnothaft.gnocchi.models.variant.QualityControlVariantModel

@@ -17,7 +17,9 @@
  */
 package net.fnothaft.gnocchi.algorithms.siteregression
 
-import net.fnothaft.gnocchi.models.variant.VariantModel
+import net.fnothaft.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData }
+import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
+import net.fnothaft.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel, LinearVariantModel }
 //import net.fnothaft.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
 import net.fnothaft.gnocchi.primitives.association.LinearAssociation
