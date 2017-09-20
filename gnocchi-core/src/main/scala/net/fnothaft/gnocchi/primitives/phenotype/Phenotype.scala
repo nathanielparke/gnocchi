@@ -21,5 +21,7 @@ case class Phenotype(sampleId: String,
                      phenoName: String,
                      phenotype: String,
                      covariates: List[Double]) extends Product {
+
+  // this seems wrong... Where is the primary phenotype going?
   def toDouble: List[Double] = covariates
 }

@@ -74,9 +74,12 @@ case class DominantLogisticGnocchiModel(metaData: GnocchiModelMetaData,
                                         QCPhenotypes: Map[String, Phenotype])
     extends GnocchiModel[DominantLogisticVariantModel, DominantLogisticGnocchiModel] {
 
-  def mergeGnocchiModel(otherModel: GnocchiModel[DominantLogisticVariantModel, DominantLogisticGnocchiModel]): GnocchiModel[DominantLogisticVariantModel, DominantLogisticGnocchiModel] = {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
 
-  }
+  //  def mergeGnocchiModel(otherModel: GnocchiModel[DominantLogisticVariantModel, DominantLogisticGnocchiModel]): GnocchiModel[DominantLogisticVariantModel, DominantLogisticGnocchiModel] = {
+  //
+  //  }
 
   def mergeVariantModels(newVariantModels: Dataset[DominantLogisticVariantModel]): Dataset[DominantLogisticVariantModel] = {
     variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))

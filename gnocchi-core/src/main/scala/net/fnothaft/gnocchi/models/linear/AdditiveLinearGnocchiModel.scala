@@ -51,7 +51,12 @@ object AdditiveLinearGnocchiModelFactory {
     val variantModels = AdditiveLinearRegression(genotypes, phenotypes, validationStringency)
 
     // Create QCVariantModels
-    val comparisonVariants = genotypes.sample(false, 0.1)
+    val comparisonVariants = if (QCVariantIDs.isEmpty) {
+      genotypes.sample(withReplacement = false, fraction = 0.1)
+    } else {
+      genotypes.filter(x => QCVariantIDs.get.contains(x.uniqueID))
+    }
+
     val QCVariantModels = variantModels
       .joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
       .withColumnRenamed("_1", "variantModel")
@@ -78,32 +83,56 @@ case class AdditiveLinearGnocchiModel(metaData: GnocchiModelMetaData,
                                       QCPhenotypes: Map[String, Phenotype])
     extends GnocchiModel[AdditiveLinearVariantModel, AdditiveLinearGnocchiModel] {
 
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
+
   def mergeGnocchiModel(otherModel: GnocchiModel[AdditiveLinearVariantModel, AdditiveLinearGnocchiModel]): GnocchiModel[AdditiveLinearVariantModel, AdditiveLinearGnocchiModel] = {
+
+    require(otherModel.metaData.modelType == metaData.modelType,
+      "Models being merged are not the same type. Type equality is required to merge two models correctly.")
 
     val mergedVMs = mergeVariantModels(otherModel.variantModels)
 
-    // ToDo: 1. make sure models are of same type 2. find intersection of QCVariants and use those as the gnocchiModel
+    // ToDo: 1. [DONE] make sure models are of same type 2. [DONE] find intersection of QCVariants and use those as the gnocchiModel
     // ToDo: QCVariants 3. Make sure the phenotype of the models are the same 4. Make sure the covariates of the model
     // ToDo: are the same (currently broken because covariates stored in [[Phenotype]] object are the values not names)
     val updatedMetaData = updateMetaData(otherModel.metaData.numSamples)
 
     // AAHH! How do we ensure that variants being compared are the same?
-    val updatedQCVariantModels = updateQCVariantModels()
+    val mergedQCVariants = mergeQCVariants(otherModel.QCVariantModels)
+    val mergedQCVariantModels = mergedVMs.joinWith(mergedQCVariants, mergedVMs("uniqueID") === mergedQCVariants("uniqueID"), "inner")
+      .withColumnRenamed("_1", "variantModel")
+      .withColumnRenamed("_2", "variant")
+      .as[QualityControlVariantModel[AdditiveLinearVariantModel]]
+    val mergedQCPhenotypes = QCPhenotypes ++ otherModel.QCPhenotypes
 
-    AdditiveLinearGnocchiModel(updatedMetaData, mergedVMs, updatedQCVariantModels)
+    AdditiveLinearGnocchiModel(updatedMetaData, mergedVMs, mergedQCVariantModels, mergedQCPhenotypes)
   }
 
   def mergeVariantModels(newVariantModels: Dataset[AdditiveLinearVariantModel]): Dataset[AdditiveLinearVariantModel] = {
+
+    // ToDo: Logging here to denote what the results of the merge were. How many variants were retained / thrown out from
+    // ToDo: each model.
     variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))
   }
 
-//  def updateQCVariantModels(newComparisonVariants: Dataset[CalledVariant],
-//                           ): Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]]
+  def mergeQCVariants(newQCVariantModels: Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]]): Dataset[CalledVariant] = {
+    // merge the variants, which should be as easy as concatenating the samples list
+    val variants1 = QCVariantModels.map(_.variant)
+    val variants2 = newQCVariantModels.map(_.variant)
 
-//  def createQCVariantModels(variants: Dataset[CalledVariant],
-//                            phenotypes: Map[String, Phenotype]): Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]] = {
-//    // Sample some variants
-//    // Run the regression on the sites to give back the variant models for each of the
-//    //
-//  }
+    variants1.joinWith(variants2, variants1("uniqueID") === variants2("uniqueID"))
+      .as[(CalledVariant, CalledVariant)]
+      .map(x =>
+        CalledVariant(x._1.chromosome,
+          x._1.position,
+          x._1.uniqueID,
+          x._1.referenceAllele,
+          x._1.alternateAllele,
+          x._1.qualityScore,
+          x._1.filter,
+          x._1.info,
+          x._1.format,
+          x._1.samples ++ x._2.samples))
+  }
 }

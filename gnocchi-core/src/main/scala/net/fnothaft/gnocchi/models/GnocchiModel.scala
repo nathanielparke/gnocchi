@@ -106,7 +106,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        element corresponding to the primary phenotype being
    *                        regressed on, and the remainder corresponding to the covariates.
    */
-  def mergeGnocchiModel(otherModel: GnocchiModel[VM, GM]): GnocchiModel[VM, GM]
+  //  def mergeGnocchiModel(otherModel: GnocchiModel[VM, GM]): GnocchiModel[VM, GM]
 
   /**
    * Incrementally updates variant models using new batch of data

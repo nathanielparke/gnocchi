@@ -61,7 +61,6 @@ object DominantLinearGnocchiModelFactory {
       genotypes.count().toInt,
       flaggedVariantModels = Option(QCVariantModels.select("variant.uniqueID").as[String].collect().toList))
 
-
     DominantLinearGnocchiModel(metaData = metadata,
       variantModels = variantModels,
       QCVariantModels = QCVariantModels,
@@ -75,9 +74,12 @@ case class DominantLinearGnocchiModel(metaData: GnocchiModelMetaData,
                                       QCPhenotypes: Map[String, Phenotype])
     extends GnocchiModel[DominantLinearVariantModel, DominantLinearGnocchiModel] {
 
-  def mergeGnocchiModel(otherModel: GnocchiModel[DominantLinearVariantModel, DominantLinearGnocchiModel]): GnocchiModel[DominantLinearVariantModel, DominantLinearGnocchiModel] = {
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
 
-  }
+  //  def mergeGnocchiModel(otherModel: GnocchiModel[DominantLinearVariantModel, DominantLinearGnocchiModel]): GnocchiModel[DominantLinearVariantModel, DominantLinearGnocchiModel] = {
+  //
+  //  }
 
   def mergeVariantModels(newVariantModels: Dataset[DominantLinearVariantModel]): Dataset[DominantLinearVariantModel] = {
     variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))
