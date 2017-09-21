@@ -43,6 +43,7 @@ object AdditiveLinearGnocchiModelFactory {
 
   def apply(genotypes: Dataset[CalledVariant],
             phenotypes: Broadcast[Map[String, Phenotype]],
+            phenotypeNames: Option[List[String]],
             QCVariantIDs: Option[Set[String]] = None,
             QCVariantSamplingRate: Double = 0.1,
             validationStringency: String = "STRICT"): AdditiveLinearGnocchiModel = {
@@ -63,10 +64,16 @@ object AdditiveLinearGnocchiModelFactory {
       .withColumnRenamed("_2", "variant")
       .as[QualityControlVariantModel[AdditiveLinearVariantModel]]
 
+    val phenoNames = if (phenotypeNames.isEmpty) {
+      List(phenotypes.value.head._2.phenoName) ++ (1 to phenotypes.value.head._2.covariates.length).map(x => "covar_" + x)
+    } else {
+      phenotypeNames.get
+    }
+
     // Create metadata
     val metadata = GnocchiModelMetaData(regressionName,
-      phenotypes.value.head._2.phenoName,
-      phenotypes.value.head._2.covariates.mkString(" "),
+      phenoNames.head,
+      phenoNames.tail.mkString(","),
       genotypes.count().toInt,
       flaggedVariantModels = Option(QCVariantModels.select("variant.uniqueID").as[String].collect().toList))
 
@@ -98,7 +105,6 @@ case class AdditiveLinearGnocchiModel(metaData: GnocchiModelMetaData,
     // ToDo: are the same (currently broken because covariates stored in [[Phenotype]] object are the values not names)
     val updatedMetaData = updateMetaData(otherModel.metaData.numSamples)
 
-    // AAHH! How do we ensure that variants being compared are the same?
     val mergedQCVariants = mergeQCVariants(otherModel.QCVariantModels)
     val mergedQCVariantModels = mergedVMs.joinWith(mergedQCVariants, mergedVMs("uniqueID") === mergedQCVariants("uniqueID"), "inner")
       .withColumnRenamed("_1", "variantModel")
@@ -117,7 +123,6 @@ case class AdditiveLinearGnocchiModel(metaData: GnocchiModelMetaData,
   }
 
   def mergeQCVariants(newQCVariantModels: Dataset[QualityControlVariantModel[AdditiveLinearVariantModel]]): Dataset[CalledVariant] = {
-    // merge the variants, which should be as easy as concatenating the samples list
     val variants1 = QCVariantModels.map(_.variant)
     val variants2 = newQCVariantModels.map(_.variant)
 
