@@ -32,6 +32,7 @@ import org.bdgenomics.utils.cli._
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
 import scala.math.exp
+import scala.io.StdIn.readLine
 import org.bdgenomics.adam.cli.Vcf2ADAM
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
@@ -154,15 +155,20 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     // save dataset
     val associationsFile = new Path(args.output)
     val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
-    //    if (fs.exists(associationsFile)) {
-    //      fs.delete(associationsFile, true)
-    //    }
+    if (fs.exists(associationsFile)) {
+      val input = readLine(s"Specified output file ${args.output} already exists. Overwrite? (y/n)> ")
+      if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
+        fs.delete(associationsFile)
+      }
+    }
+
+    val assoc = associations.map(x => (x.uniqueID, x.association.pValue)).withColumnRenamed("_1", "uniqueID").withColumnRenamed("_2", "pValue").sort($"pValue".asc).coalesce(5)
 
     // enables saving as parquet or human readable text files
     if (args.saveAsText) {
-      associations.sort($"Association.pValue".asc).write.format("com.databricks.spark.csv").option("header", "true").save(args.output)
+      assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(args.output)
     } else {
-      associations.toDF.write.parquet(args.output)
+      assoc.toDF.write.parquet(args.output)
     }
   }
 }
