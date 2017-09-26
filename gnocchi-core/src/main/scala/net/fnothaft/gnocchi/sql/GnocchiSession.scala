@@ -1,10 +1,10 @@
 package net.fnothaft.gnocchi.sql
 
-import java.io.Serializable
+import java.io.{ FileInputStream, Serializable }
 
 import net.fnothaft.gnocchi.models.variant.VariantModel
 import net.fnothaft.gnocchi.models.variant.linear.AdditiveLinearVariantModel
-import net.fnothaft.gnocchi.models.{GnocchiModel, GnocchiModelMetaData}
+import net.fnothaft.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData }
 import org.bdgenomics.formats.avro.GenotypeAllele
 //import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
 //import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
@@ -238,59 +238,102 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
                      phenoName: String,
                      delimiter: String,
                      covarPath: Option[String] = None,
-                     covarNames: Option[List[String]] = None): Map[String, Phenotype] = {
+                     covarNames: Option[List[String]] = None,
+                     sparkRead: Boolean = true): Map[String, Phenotype] = {
 
     logInfo("Loading phenotypes from %s.".format(phenotypesPath))
 
-    // ToDo: keeps these operations on one machine, because phenotypes are small.
-    val prelimPhenotypesDF = sparkSession.read.format("csv")
-      .option("header", "true")
-      .option("inferSchema", "true")
-      .option("delimiter", delimiter)
-      .load(phenotypesPath)
-
-    val phenoHeader = prelimPhenotypesDF.schema.fields.map(_.name)
-
-    require(phenoHeader.contains(phenoName),
-      s"The primary phenotype, '$phenoName' does not exist in the specified file, '$phenotypesPath'")
-    require(phenoHeader.contains(primaryID),
-      s"The primary sample ID, '$primaryID' does not exist in the specified file, '$phenotypesPath'")
-
-    val phenotypesDF = prelimPhenotypesDF
-      .select(primaryID, phenoName)
-      .toDF("sampleId", "phenotype")
-
-    val covariateDF = if (covarPath.isDefined) {
-      val prelimCovarDF = sparkSession.read.format("csv")
+    if (sparkRead) {
+      // ToDo: keeps these operations on one machine, because phenotypes are small.
+      val prelimPhenotypesDF = sparkSession.read.format("csv")
         .option("header", "true")
         .option("inferSchema", "true")
         .option("delimiter", delimiter)
-        .load(covarPath.get)
+        .load(phenotypesPath)
 
-      val covarHeader = prelimCovarDF.schema.fields.map(_.name)
+      val phenoHeader = prelimPhenotypesDF.schema.fields.map(_.name)
 
-      require(covarNames.get.forall(covarHeader.contains(_)),
-        s"One of the covariates, '%s' does not exist in the specified file, '%s'".format(covarNames.get.toString(), covarPath.get))
-      require(covarHeader.contains(primaryID),
-        s"The primary sample ID, '$primaryID' does not exist in the specified file, '%s'".format(covarPath.get))
-      require(!covarNames.get.contains(phenoName),
-        s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'".format(covarNames.get.toString()))
+      require(phenoHeader.contains(phenoName),
+        s"The primary phenotype, '$phenoName' does not exist in the specified file, '$phenotypesPath'")
+      require(phenoHeader.contains(primaryID),
+        s"The primary sample ID, '$primaryID' does not exist in the specified file, '$phenotypesPath'")
 
-      Option(prelimCovarDF
-        .select(primaryID, covarNames.get: _*)
-        .toDF("sampleId" :: covarNames.get: _*))
+      val phenotypesDF = prelimPhenotypesDF
+        .select(primaryID, phenoName)
+        .toDF("sampleId", "phenotype")
+
+      val covariateDF = if (covarPath.isDefined) {
+        val prelimCovarDF = sparkSession.read.format("csv")
+          .option("header", "true")
+          .option("inferSchema", "true")
+          .option("delimiter", delimiter)
+          .load(covarPath.get)
+
+        val covarHeader = prelimCovarDF.schema.fields.map(_.name)
+
+        require(covarNames.get.forall(covarHeader.contains(_)),
+          s"One of the covariates, '%s' does not exist in the specified file, '%s'".format(covarNames.get.toString(), covarPath.get))
+        require(covarHeader.contains(primaryID),
+          s"The primary sample ID, '$primaryID' does not exist in the specified file, '%s'".format(covarPath.get))
+        require(!covarNames.get.contains(phenoName),
+          s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'".format(covarNames.get.toString()))
+
+        Option(prelimCovarDF
+          .select(primaryID, covarNames.get: _*)
+          .toDF("sampleId" :: covarNames.get: _*))
+      } else {
+        None
+      }
+
+      val phenoCovarDF = if (covariateDF.isDefined) {
+        val joinedDF = phenotypesDF.join(covariateDF.get, Seq("sampleId"))
+        joinedDF.withColumn("covariates", array(covarNames.get.head, covarNames.get.tail: _*))
+          .select("sampleId", "phenotype", "covariates")
+      } else {
+        phenotypesDF.withColumn("covariates", lit(null).cast(ArrayType(DoubleType)))
+      }
+
+      phenoCovarDF.withColumn("phenoName", lit(phenoName)).as[Phenotype].collect().map(x => (x.sampleId, x)).toMap
     } else {
-      None
-    }
+      val phenoFile = fromFile(phenotypesPath)
+      val lineIter = phenoFile.getLines
 
-    val phenoCovarDF = if (covariateDF.isDefined) {
-      val joinedDF = phenotypesDF.join(covariateDF.get, Seq("sampleId"))
-      joinedDF.withColumn("covariates", array(covarNames.get.head, covarNames.get.tail: _*))
-        .select("sampleId", "phenotype", "covariates")
-    } else {
-      phenotypesDF.withColumn("covariates", lit(null).cast(ArrayType(DoubleType)))
-    }
+      val phenoHeader = lineIter.next.split(delimiter)
+      println(phenoHeader.toList)
 
-    phenoCovarDF.withColumn("phenoName", lit(phenoName)).as[Phenotype].collect().map(x => (x.sampleId, x)).toMap
+      require(phenoHeader.contains(phenoName),
+        s"The primary phenotype, '$phenoName' does not exist in the specified file, '$phenotypesPath'")
+      require(phenoHeader.contains(primaryID),
+        s"The primary sample ID, '$primaryID' does not exist in the specified file, '$phenotypesPath'")
+
+      val colMap = Map(phenoHeader.zipWithIndex: _*)
+      val phenoMap = lineIter.map(_.split(delimiter)).map(line => (line(colMap(primaryID)), line(colMap(phenoName)))).toMap
+      phenoFile.close
+
+      val covarFile = covarPath.map(fromFile)
+      val covarMap = covarFile.map(_.getLines).map(lineIter => {
+        val covarHeader = lineIter.next.split(delimiter)
+
+        require(covarNames.get.forall(covarHeader.contains(_)),
+          s"One of the covariates, '%s' does not exist in the specified file, '%s'".format(covarNames.get.toString(), covarPath.get))
+        require(covarHeader.contains(primaryID),
+          s"The primary sample ID, '$primaryID' does not exist in the specified file, '%s'".format(covarPath.get))
+        require(!covarNames.get.contains(phenoName),
+          s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'".format(covarNames.get.toString()))
+
+        val colMap = Map(covarHeader.zipWithIndex: _*)
+        val covarIndexes = covarNames.map(_.map(colMap(_))).get
+        lineIter.map(_.split(delimiter)).map(line => (line(colMap(primaryID)), covarIndexes.map(line(_).toDouble))).toMap
+      }).getOrElse(Map().withDefault(List[Double]())).asInstanceOf[Map[String, List[Double]]]
+      covarFile.foreach(_.close)
+
+      phenoMap.map(pair => {
+        val (sampleId, pheno) = pair
+        val covarList = covarMap.get(sampleId)
+        require(covarList.nonEmpty,
+          s"Covariate file does not contain the sample ID '$sampleId' specified in the phenotype file, '%s'".format(covarPath.get))
+        sampleId -> Phenotype(sampleId, phenoName, pheno, covarList.get)
+      })
+    }
   }
 }
