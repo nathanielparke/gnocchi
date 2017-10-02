@@ -449,6 +449,7 @@
 
   <profiles>
     <profile>
+      <id>python</id>
       <modules>
         <module>gnocchi-core</module>
         <module>gnocchi-apis</module>
@@ -536,7 +537,6 @@
                 <param>gnocchi-core/src/main/scala</param>
                 <param>gnocchi-cli/src/main/scala</param>
                 <param>gnocchi-apis/src/main/scala</param>
-                <param>gnocchi-python/src/main/scala</param>
               </sourceDirectories>
             </configuration>
           </plugin>
