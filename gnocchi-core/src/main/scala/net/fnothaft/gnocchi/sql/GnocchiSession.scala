@@ -4,7 +4,7 @@ import java.io.Serializable
 
 import net.fnothaft.gnocchi.models.variant.VariantModel
 import net.fnothaft.gnocchi.models.variant.linear.AdditiveLinearVariantModel
-import net.fnothaft.gnocchi.models.{GnocchiModel, GnocchiModelMetaData}
+import net.fnothaft.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData }
 import org.bdgenomics.formats.avro.GenotypeAllele
 //import net.fnothaft.gnocchi.models.linear.{ AdditiveLinearGnocchiModel, DominantLinearGnocchiModel }
 //import net.fnothaft.gnocchi.models.logistic.{ AdditiveLogisticGnocchiModel, DominantLogisticGnocchiModel }
