@@ -19,6 +19,9 @@
   <modules>
     <module>gnocchi-core</module>
     <module>gnocchi-cli</module>
+    <module>gnocchi-apis</module>
+    <module>gnocchi-python</module>
+    <module>gnocchi-assembly</module>
   </modules>
   <licenses>
     <license>
@@ -268,6 +271,16 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+      </plugin>
     </plugins>
   </build>
   <dependencyManagement>
@@ -280,6 +293,16 @@
       <dependency>
         <groupId>net.fnothaft</groupId>
         <artifactId>gnocchi-core_2.10</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.fnothaft</groupId>
+        <artifactId>gnocchi-cli_2.10</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.fnothaft</groupId>
+        <artifactId>gnocchi-apis_2.10</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -422,7 +445,18 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+  
   <profiles>
+    <profile>
+      <id>python</id>
+      <modules>
+        <module>gnocchi-core</module>
+        <module>gnocchi-apis</module>
+        <module>gnocchi-python</module>
+        <module>gnocchi-cli</module>
+        <module>gnocchi-assembly</module>
+      </modules>
+    </profile>
     <!-- Only sign artifacts when we are performing a release, not snapshots -->
     <profile>
       <id>sonatype-oss-release</id>
@@ -440,6 +474,11 @@
                 </goals>
               </execution>
             </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>2.6</version>
           </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -502,6 +541,7 @@
               <sourceDirectories>
                 <param>gnocchi-core/src/main/scala</param>
                 <param>gnocchi-cli/src/main/scala</param>
+                <param>gnocchi-apis/src/main/scala</param>
               </sourceDirectories>
             </configuration>
           </plugin>
