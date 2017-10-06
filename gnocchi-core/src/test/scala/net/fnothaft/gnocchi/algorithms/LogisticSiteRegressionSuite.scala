@@ -72,4 +72,20 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
 
     assert(nearby(KnownPValue, assoc.pValue, 0.01), s"P-Value incorrect, expected: $KnownPValue, actual ${assoc.pValue}")
   }
+
+  // LogisticSiteRegression Correctness tests
+
+  ignore("LogisticSiteRegression.applyToSite should break gracefully on a singular matrix") {
+
+  }
+
+  // LogisticSiteRegression.applyToSite input validation tests
+
+  ignore("LogisticSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
+
+  }
+
+  ignore("LogisticSiteRegression.applyToSite should not break with missing covariates.") {
+
+  }
 }
