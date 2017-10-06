@@ -299,7 +299,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       val lineIter = phenoFile.getLines
 
       val phenoHeader = lineIter.next.split(delimiter)
-      println(phenoHeader.toList)
 
       require(phenoHeader.contains(phenoName),
         s"The primary phenotype, '$phenoName' does not exist in the specified file, '$phenotypesPath'")
@@ -310,9 +309,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       val phenoMap = lineIter.map(_.split(delimiter)).map(line => (line(colMap(primaryID)), line(colMap(phenoName)))).toMap
       phenoFile.close
 
+      require(covarPath.nonEmpty ^ covarNames.nonEmpty, "Must specify both covarPath and covarNames, or neither")
+
       val covarFile = covarPath.map(fromFile)
-      val covarMap = covarFile.map(_.getLines).map(lineIter => {
-        val covarHeader = lineIter.next.split(delimiter)
+      val covarMap = covarFile.map(_.getLines).map(covarLineIter => {
+        val covarHeader = covarLineIter.next.split(delimiter)
 
         require(covarNames.get.forall(covarHeader.contains(_)),
           s"One of the covariates, '%s' does not exist in the specified file, '%s'".format(covarNames.get.toString(), covarPath.get))
@@ -322,8 +323,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
           s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'".format(covarNames.get.toString()))
 
         val colMap = Map(covarHeader.zipWithIndex: _*)
-        val covarIndexes = covarNames.map(_.map(colMap(_))).get
-        lineIter.map(_.split(delimiter)).map(line => (line(colMap(primaryID)), covarIndexes.map(line(_).toDouble))).toMap
+        val covarIndexes = covarNames.get.map(colMap(_))
+        covarLineIter.map(_.split(delimiter)).map(line => (line(colMap(primaryID)), covarIndexes.map(line(_).toDouble))).toMap
       }).getOrElse(Map().withDefault(List[Double]())).asInstanceOf[Map[String, List[Double]]]
       covarFile.foreach(_.close)
 
