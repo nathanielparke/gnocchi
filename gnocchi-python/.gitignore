@@ -1,2 +1,4 @@
 *.pyc
 .cache
+
+bdgenomics.gnocchi.egg-info/*
