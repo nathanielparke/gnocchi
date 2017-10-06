@@ -67,5 +67,9 @@ trait GnocchiFunSuite extends SparkFunSuite {
 
     CalledVariant(chrom, pos, uid, ref, alt, qs, fil, inf, form, sam)
   }
+
+  def nearby(expected: Double, actual: Double, threshold: Double): Boolean = {
+    actual <= expected + threshold && actual >= expected - threshold
+  }
 }
 

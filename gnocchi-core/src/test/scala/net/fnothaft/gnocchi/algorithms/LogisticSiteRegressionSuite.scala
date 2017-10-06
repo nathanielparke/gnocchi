@@ -17,51 +17,59 @@
  */
 package net.fnothaft.gnocchi.algorithms
 
+import net.fnothaft.gnocchi.sql.GnocchiSession._
 import net.fnothaft.gnocchi.GnocchiFunSuite
+import net.fnothaft.gnocchi.algorithms.siteregression.AdditiveLogisticRegression
+import net.fnothaft.gnocchi.models.logistic.AdditiveLogisticGnocchiModel
+import net.fnothaft.gnocchi.primitives.genotype.GenotypeState
+import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
+import net.fnothaft.gnocchi.primitives.variants.CalledVariant
+import org.apache.spark.sql.{ Dataset, SparkSession }
 
 class LogisticSiteRegressionSuite extends GnocchiFunSuite {
-  //
-  //  sparkTest("Test logisticRegression on binary data") {
-  //    // read in the data from binary.csv
-  //    // data comes from: http://www.ats.ucla.edu/stat/sas/dae/binary.sas7bdat
-  //    // results can be found here: http://www.ats.ucla.edu/stat/sas/dae/logit.htm
-  //    val pathToFile = ClassLoader.getSystemClassLoader.getResource("binary.csv").getFile
-  //    val csv = sc.textFile(pathToFile)
-  //    val data = csv.map(line => line.split(",").map(elem => elem.toDouble)) //get rows
-  //
-  //    // transform it into the right format
-  //    val observations = data.map(row => {
-  //      val geno: Double = row(0)
-  //      val covars: Array[Double] = row.slice(1, 3)
-  //      val phenos: Array[Double] = Array(row(3)) ++ covars
-  //      (geno, phenos)
-  //    }).collect()
-  //    val altAllele = "No allele"
-  //    val phenotype = "acceptance"
-  //    val locus = ReferenceRegion("Name", 1, 2)
-  //    val scOption = Option(sc)
-  //    val variant = new Variant
-  //    //    val contig = new Contig()
-  //    //    contig.setContigName(locus.referenceName)
-  //    variant.setContigName(locus.referenceName)
-  //    variant.setStart(locus.start)
-  //    variant.setEnd(locus.end)
-  //    variant.setAlternateAllele(altAllele)
-  //    val phaseSetId = 0
-  //
-  //    // feed it into logisitic regression and compare the Wald Chi Squared tests
-  //    val regressionResult = AdditiveLogisticRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-  //
-  //    // Assert that the weights are correct within a threshold.
-  //    val estWeights: Array[Double] = regressionResult.statistics("weights").asInstanceOf[Array[Double]] :+ regressionResult.statistics("intercept").asInstanceOf[Double]
-  //    val compWeights = Array(-3.4495484, .0022939, .77701357, -0.5600314)
-  //    for (i <- 0 until 3) {
-  //      assert(estWeights(i) <= (compWeights(i) + 1), s"Weight $i incorrect")
-  //      assert(estWeights(i) >= (compWeights(i) - 1), s"Weight $i incorrect")
-  //    }
-  //    //Assert that the Wald chi squared value is in the right threshold. Answer should be 0.0385
-  //    val pval: Array[Double] = regressionResult.statistics("'P Values' aka Wald Tests").asInstanceOf[DenseVector[Double]].toArray
-  //    assert(pval(1) <= 0.0385 + 0.01, "'P Values' aka Wald Tests = " + pval)
-  //    assert(pval(1) >= 0.0385 - 0.01, "'P Values' aka Wald Tests = " + pval)
-  //  }
+  val WeightThreshold: Double = 1
+
+  sparkTest("Test logisticRegression on binary data") {
+    val sparkSession = SparkSession.builder().getOrCreate()
+    import sparkSession.implicits._
+    // read in the data from binary.csv
+    // data comes from: http://www.ats.ucla.edu/stat/sas/dae/binary.sas7bdat
+    // results can be found here: http://www.ats.ucla.edu/stat/sas/dae/logit.htm
+    val pathToFile = ClassLoader.getSystemClassLoader.getResource("binary.csv").getFile
+    val csv = sc.textFile(pathToFile)
+    val data = csv.map(line => line.split(",")) //get rows
+
+    // transform it into the right format
+    val observations = data.map(row => {
+      val geno = row(0)
+      val covars = row.slice(1, 3).toList
+      val pheno = row(3)
+      (geno, (pheno, covars))
+    }).collect()
+
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+    val cvds = sc.parallelize(List(cv)).toDS
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1._1.toDouble, item._1._2.map(_.toDouble))))
+      .toMap
+
+    val assoc = AdditiveLogisticRegression.applyToSite(phenoMap, cv)
+
+    val estimatedWeights = assoc.weights.toArray
+    val KnownWeights = Array(-3.4495484, .0022939, .77701357, -0.5600314)
+    val KnownPValue = 0.0385
+
+    val weightItems = estimatedWeights.zip(KnownWeights).zipWithIndex
+    weightItems.foreach(item => {
+      val ((act, exp), idx) = item
+      assert(nearby(exp, act, WeightThreshold), s"Weight $idx incorrect, expected: $exp, actual $act")
+    })
+
+    assert(nearby(KnownPValue, assoc.pValue, 0.01), s"P-Value incorrect, expected: $KnownPValue, actual ${assoc.pValue}")
+  }
 }
