@@ -98,14 +98,12 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
 
   private def prepareDesignMatrix(phenotypes: Map[String, Phenotype],
                                   genotypes: CalledVariant): List[(List[Double], Double)] = {
+    val filteredGenotypes = genotypes.samples.filter(!_.value.contains("."))
 
-    // class for ols: org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression
-    // see http://commons.apache.org/proper/commons-math/javadocs/api-3.6.1/org/apache/commons/math3/stat/regression/OLSMultipleLinearRegression.html
-    val samplesGenotypes = genotypes.samples.filter(x => !x.value.contains(".")).map(x => (x.sampleID, List(clipOrKeepState(x.toDouble))))
-    val samplesCovariates = phenotypes.map(x => (x._1, x._2.covariates)).toMap
-    val cleanedSampleVector = samplesGenotypes.map(x => (x._1, (x._2 ++ samplesCovariates(x._1)).toList)).toMap
-
-    cleanedSampleVector.toList.map(x => (x._2, phenotypes(x._1).phenotype.toDouble))
+    filteredGenotypes.map(gs => {
+      val pheno = phenotypes(gs.sampleID)
+      (gs.toDouble +: pheno.covariates, pheno.phenotype)
+    })
   }
 
   protected def sumOfSquaredDeviations(genotypes: CalledVariant): Double = {
