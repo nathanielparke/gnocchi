@@ -18,15 +18,14 @@
 package net.fnothaft.gnocchi.algorithms.siteregression
 
 import breeze.linalg._
-import breeze.numerics.{ log10, _ }
+import breeze.numerics._
 import net.fnothaft.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel, LogisticVariantModel }
 import net.fnothaft.gnocchi.primitives.association.LogisticAssociation
 import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.apache.spark.sql.{Dataset, SparkSession}
 
 import scala.collection.immutable.Map
 
@@ -86,7 +85,7 @@ trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegress
     // (Xi is a single sample's row) Xi.T * Xi * pi * (1 - pi) is a nXn matrix, that we sum across all i
     val hessian = p.toArray.zipWithIndex.map { case (pi, i) => -X(i, ::).t * X(i, ::) * pi * (1.0 - pi) }.reduce(_ + _)
 
-    // subtract predicted probability from actual response and multiply each row by the error for that sample. Acheived
+    // subtract predicted probability from actual response and multiply each row by the error for that sample. Achieved
     // by getting error (Y-p) and copying it columnwise N times (N = number of columns in X) and using *:* to pointwise
     // multiply the resulting matrix with X
     val sampleScore = { X *:* tile(Y - p, 1, X.cols) }
