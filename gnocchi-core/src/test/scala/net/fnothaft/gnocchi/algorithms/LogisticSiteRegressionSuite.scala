@@ -84,7 +84,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
 
   ignore("LogisticSiteRegression.applyToSite should create a LabeledPoint array from design matrix output and corresponding phenotypes.") {}
 
-  // LinearSiteRegression.prepareDesignMatrix tests
+  // LogisticSiteRegression.prepareDesignMatrix tests
 
   ignore("LogisticSiteRegression.prepareDesignMatrix should produce a map with missing values filtered out.") {
 
@@ -104,4 +104,9 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
 
   ignore("") {}
 
+  // LogisticSiteRegression.findBeta tests
+
+  ignore("LogisticSiteRegression.findBeta "){
+
+  }
 }

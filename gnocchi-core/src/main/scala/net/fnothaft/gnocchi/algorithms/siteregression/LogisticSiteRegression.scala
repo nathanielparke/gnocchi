@@ -70,6 +70,21 @@ trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegress
       numObservations)
   }
 
+  /**
+   * Tail recursive training function that finds the optimal weights vector given the input training data.
+   *
+   * @note DO NOT place any statements after the final recursive call to itself, or it will break tail recursive speed
+   *       up provided by the scala compiler.
+   *
+   * @param X [[breeze.linalg.DenseMatrix]] design matrix of [[Double]] that contains training data
+   * @param Y [[breeze.linalg.DenseVector]] of labels that contain labels for parameter X
+   * @param beta Weights vector
+   * @param iter current iteration, used for recursive tracking
+   * @param maxIter maximum number of iterations to be used for recursive depth limiting
+   * @param tolerance smallest allowable step size before function
+   * @return tuple where first item are weight values, beta, as [[Array]]
+   *         and second is Hessian matrix as [[DenseMatrix]]
+   */
   def findBeta(X: DenseMatrix[Double],
                Y: DenseVector[Double],
                beta: DenseVector[Double],
@@ -102,6 +117,16 @@ trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegress
     findBeta(X, Y, updatedBeta, iter = iter + 1, maxIter = maxIter, tolerance = tolerance)
   }
 
+  /**
+   * Data preparation function that converts the gnocchi models into breeze linear algebra primitives BLAS/LAPACK
+   * optimizations.
+   *
+   * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
+   *                  (covariates)
+   * @param genotypes [[CalledVariant]] object to convert into a breeze design matrix
+   * @return tuple where first element is the [[DenseMatrix]] design matrix and second element
+   *         is [[DenseVector]] of labels
+   */
   def prepareDesignMatrix(phenotypes: Map[String, Phenotype],
                           genotypes: CalledVariant): (DenseMatrix[Double], DenseVector[Double]) = {
 
