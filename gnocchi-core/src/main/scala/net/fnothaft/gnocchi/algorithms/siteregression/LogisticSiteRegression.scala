@@ -25,8 +25,9 @@ import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{ Dataset, SparkSession }
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Map
 
 trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegression[VM] {
@@ -85,12 +86,13 @@ trait LogisticSiteRegression[VM <: LogisticVariantModel[VM]] extends SiteRegress
    * @return tuple where first item are weight values, beta, as [[Array]]
    *         and second is Hessian matrix as [[DenseMatrix]]
    */
-  def findBeta(X: DenseMatrix[Double],
-               Y: DenseVector[Double],
-               beta: DenseVector[Double],
-               iter: Int = 0,
-               maxIter: Int = 1000,
-               tolerance: Double = 1e-6): (Array[Double], DenseMatrix[Double]) = {
+  @tailrec
+  final def findBeta(X: DenseMatrix[Double],
+                     Y: DenseVector[Double],
+                     beta: DenseVector[Double],
+                     iter: Int = 0,
+                     maxIter: Int = 1000,
+                     tolerance: Double = 1e-6): (Array[Double], DenseMatrix[Double]) = {
 
     val logitArray = X * beta
 
