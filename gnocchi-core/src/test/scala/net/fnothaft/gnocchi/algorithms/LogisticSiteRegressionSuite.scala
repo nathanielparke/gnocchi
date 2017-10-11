@@ -178,7 +178,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
     assert(data(::, 1) == genos, "LogisticSiteRegression.prepareDesignMatrix places genos in the wrong place")
   }
 
-  sparkTest("LogisticSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
+  sparkTest("LogisticSiteRegression.prepareDesignMatrix should place the covariates in columns 1 through n in the design matrix") {
     val gs = createSampleGenotypeStates(num = 10, maf = 0.25, geno = 0.1, ploidy = 2)
     val cv = createSampleCalledVariant(samples = Option(gs))
     val phenos = createSamplePhenotype(calledVariant = Option(cv), numCovariate = 3)
@@ -210,7 +210,19 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
 
   }
 
-  ignore("LogisticSiteRegression.findBeta should throw a singlular matrix exception when hessian is noninvertible.") {
+  sparkTest("LogisticSiteRegression.findBeta should throw a singular matrix exception when hessian is noninvertible.") {
+    val gs = createSampleGenotypeStates(num = 10, maf = 0.0, geno = 0.0, ploidy = 2)
+    val cv = createSampleCalledVariant(samples = Option(gs))
+    val phenos = createSamplePhenotype(calledVariant = Option(cv))
 
+    val (data, label) = AdditiveLogisticRegression.prepareDesignMatrix(phenos, cv)
+    val beta = DenseVector.zeros[Double](data.cols)
+
+    try {
+      AdditiveLogisticRegression.findBeta(data, label, beta)
+      fail("LogisticSiteRegression.findBeta does not break on singular hessian.")
+    } catch {
+      case e: breeze.linalg.MatrixSingularException =>
+    }
   }
 }
