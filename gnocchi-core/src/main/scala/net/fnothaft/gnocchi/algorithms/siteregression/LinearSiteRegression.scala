@@ -23,6 +23,7 @@ import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
 import net.fnothaft.gnocchi.primitives.variants.CalledVariant
 import breeze.linalg._
 import breeze.numerics._
+import breeze.stats._
 import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
@@ -50,12 +51,12 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
       val result = matX \ vecY
 
       val residuals = vecY - (matX * result)
-      val ssResiduals = norm(residuals)
+      val ssResiduals = residuals.t * residuals
 
       // calculate sum of squared deviations
       val genos = matX(::, 0)
-      val genoMean = sum(genos) / matX.rows
-      val ssDeviations = sum(pow((genos - genoMean), 2))
+      val deviations = genos - mean(genos)
+      val ssDeviations = deviations.t * deviations
 
       // compute the regression parameters standard errors
       val betaVariance = diag(inv(matX.t * matX))
@@ -88,16 +89,15 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
         result.data.toList,
         genotypes.numValidSamples)
     } catch {
-      case _: MatrixSingularException => {
+      case _: MatrixSingularException =>
         // TODO: Rethrow for now, I don't remember what this was originally for...
         throw new MatrixSingularException()
-      }
     }
   }
 
   private def prepareDesignMatrix(genotypes: CalledVariant,
                                   phenotypes: Map[String, Phenotype]): Array[(Array[Double], Double)] = {
-    val filteredGenotypes = genotypes.samples.filter(!_.value.contains("."))
+    val filteredGenotypes = genotypes.samples.filter(_.value != ".")
 
     filteredGenotypes.map(gs => {
       val pheno = phenotypes(gs.sampleID)
