@@ -39,7 +39,10 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LinearAssociation = {
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes).unzip
-    val matX = new DenseMatrix(x.length, x(0).length, x.flatten)
+    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
+    // val matX = new DenseMatrix(x(0).length, x.length, x.flatten).t
+    val matX = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
+    // val matX = new DenseMatrix(x :_*)
     val vecY = new DenseVector(y)
 
     try {
@@ -98,7 +101,7 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
 
     filteredGenotypes.map(gs => {
       val pheno = phenotypes(gs.sampleID)
-      (clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
+      (1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
     }).toArray
   }
 
