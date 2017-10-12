@@ -4,12 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.bdgenomics.gnocchi</groupId>
-    <artifactId>gnocchi-parent_${scala.version.prefix}</artifactId>
+    <artifactId>gnocchi-parent_2.11</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>gnocchi-cli_${scala.version.prefix}</artifactId>
+  <artifactId>gnocchi-cli_2.11</artifactId>
   <packaging>jar</packaging>
   <name>gnocchi-cli: Command line interface for managing and querying variant store</name>
 
@@ -43,7 +43,7 @@
   <dependencies>
     <dependency>
       <groupId>org.bdgenomics.gnocchi</groupId>
-      <artifactId>gnocchi-core_${scala.version.prefix}</artifactId>
+      <artifactId>gnocchi-core_2.11</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
