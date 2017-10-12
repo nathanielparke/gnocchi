@@ -19,7 +19,9 @@ package org.bdgenomics.gnocchi.algorithms
 
 import org.bdgenomics.gnocchi.GnocchiFunSuite
 import org.bdgenomics.gnocchi.algorithms.siteregression.AdditiveLinearRegression
-import org.bdgenomics.gnocchi.GnocchiFunSuite
+import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
+import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
+import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
 class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
@@ -80,120 +82,161 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     Each of the members of the quartet should have roughly the same R^2 value, although the shapes of the graph are different shapes.
     Target R^2 values verified values produced here https://rstudio-pubs-static.s3.amazonaws.com/52381_36ec82827e4b476fb968d9143aec7c4f.html.
   */
-  ignore("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6665 for Anscombe I.") {
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6665 for Anscombe I.") {
+    //load Anscombe1 into an observations variable
 
-    //      //load Anscombe1 into an observations variable
-    //      val observations = new Array[(Double, Array[Double])](11)
-    //      observations(0) = (10.0, Array[Double](8.04))
-    //      observations(1) = (8.0, Array[Double](6.95))
-    //      observations(2) = (13.0, Array[Double](7.58))
-    //      observations(3) = (9.0, Array[Double](8.81))
-    //      observations(4) = (11.0, Array[Double](8.33))
-    //      observations(5) = (14.0, Array[Double](9.96))
-    //      observations(6) = (6.0, Array[Double](7.24))
-    //      observations(7) = (4.0, Array[Double](4.26))
-    //      observations(8) = (12.0, Array[Double](10.84))
-    //      observations(9) = (7.0, Array[Double](4.82))
-    //      observations(10) = (5.0, Array[Double](5.68))
-    //
-    //      //use additiveLinearRegression to regress on Ascombe1
-    //      val regressionResult = AdditiveLinearRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-    //
-    //      //Assert that the rsquared is in the right threshold.
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] <= 0.6670)
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] >= 0.6660)
-    //
-    //      // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002169629)
-    //      val expectedLogPVal = -2.66361455
-    //      assert(regressionResult.logPValue <= expectedLogPVal + 0.005)
-    //      assert(regressionResult.logPValue >= expectedLogPVal - 0.005)
+    val observations = new Array[(Double, Double)](11)
+    observations(0) = (10.0, 8.04)
+    observations(1) = (8.0, 6.95)
+    observations(2) = (13.0, 7.58)
+    observations(3) = (9.0, 8.81)
+    observations(4) = (11.0, 8.33)
+    observations(5) = (14.0, 9.96)
+    observations(6) = (6.0, 7.24)
+    observations(7) = (4.0, 4.26)
+    observations(8) = (12.0, 10.84)
+    observations(9) = (7.0, 4.82)
+    observations(10) = (5.0, 5.68)
+
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
+      .toMap
+
+    //use additiveLinearRegression to regress on Ascombe1
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    // Assert that the rsquared is in the right threshold.
+    // R^2 = 1 - (SS_res / SS_tot)
+    val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
+    val expectedRSquared = 0.6665
+    assert(nearby(rSquared, expectedRSquared, 0.005))
+
+    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002169629)
+    val expectedPVal = 0.002169629
+    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
   }
 
-  ignore("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6662 for Anscombe II.") {
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6662 for Anscombe II.") {
+    //load AnscombeII into an observations variable
+    val observations = new Array[(Double, Double)](11)
+    observations(0) = (10.0, 9.14)
+    observations(1) = (8.0, 8.14)
+    observations(2) = (13.0, 8.74)
+    observations(3) = (9.0, 8.77)
+    observations(4) = (11.0, 9.26)
+    observations(5) = (14.0, 8.10)
+    observations(6) = (6.0, 6.13)
+    observations(7) = (4.0, 3.10)
+    observations(8) = (12.0, 9.13)
+    observations(9) = (7.0, 7.26)
+    observations(10) = (5.0, 4.74)
 
-    //      //load AnscombeII into an observations variable
-    //      val observations = new Array[(Double, Array[Double])](11)
-    //      observations(0) = (10.0, Array[Double](9.14))
-    //      observations(1) = (8.0, Array[Double](8.14))
-    //      observations(2) = (13.0, Array[Double](8.74))
-    //      observations(3) = (9.0, Array[Double](8.77))
-    //      observations(4) = (11.0, Array[Double](9.26))
-    //      observations(5) = (14.0, Array[Double](8.10))
-    //      observations(6) = (6.0, Array[Double](6.13))
-    //      observations(7) = (4.0, Array[Double](3.10))
-    //      observations(8) = (12.0, Array[Double](9.13))
-    //      observations(9) = (7.0, Array[Double](7.26))
-    //      observations(10) = (5.0, Array[Double](4.74))
-    //
-    //      //use additiveLinearRegression to regress on Ascombe1
-    //      val regressionResult = AdditiveLinearRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-    //
-    //      //Assert that the rsquared is in the right threshold.
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] <= 0.6670)
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] >= 0.6660)
-    //
-    //      // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002178816)
-    //      val expectedLogPVal = -2.6617794
-    //      assert(regressionResult.logPValue <= expectedLogPVal + 0.005)
-    //      assert(regressionResult.logPValue >= expectedLogPVal - 0.005)
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
+      .toMap
+
+    //use additiveLinearRegression to regress on AscombeII
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    // Assert that the rsquared is in the right threshold.
+    // R^2 = 1 - (SS_res / SS_tot)
+    val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
+    val expectedRSquared = 0.6665
+    assert(nearby(rSquared, expectedRSquared, 0.005))
+
+    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002178816)
+    val expectedPVal = 0.002178816
+    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
   }
 
-  ignore("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6663 for Anscombe III.") {
-    //
-    //      //load AnscombeIII into an observations variable
-    //      val observations = new Array[(Double, Array[Double])](11)
-    //      observations(0) = (10.0, Array[Double](7.46))
-    //      observations(1) = (8.0, Array[Double](6.77))
-    //      observations(2) = (13.0, Array[Double](12.74))
-    //      observations(3) = (9.0, Array[Double](7.11))
-    //      observations(4) = (11.0, Array[Double](7.81))
-    //      observations(5) = (14.0, Array[Double](8.84))
-    //      observations(6) = (6.0, Array[Double](6.08))
-    //      observations(7) = (4.0, Array[Double](5.39))
-    //      observations(8) = (12.0, Array[Double](8.15))
-    //      observations(9) = (7.0, Array[Double](6.42))
-    //      observations(10) = (5.0, Array[Double](5.73))
-    //
-    //      //use additiveLinearRegression to regress on Ascombe1
-    //      val regressionResult = AdditiveLinearRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-    //
-    //      //Assert that the rsquared is in the right threshold.
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] <= 0.6670)
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] >= 0.6660)
-    //
-    //      // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002176305)
-    //      val expectedLogPVal = -2.66228018
-    //      assert(regressionResult.logPValue <= expectedLogPVal + 0.005)
-    //      assert(regressionResult.logPValue >= expectedLogPVal - 0.005)
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6663 for Anscombe III.") {
+    //load AnscombeIII into an observations variable
+    val observations = new Array[(Double, Double)](11)
+    observations(0) = (10.0, 7.46)
+    observations(1) = (8.0, 6.77)
+    observations(2) = (13.0, 12.74)
+    observations(3) = (9.0, 7.11)
+    observations(4) = (11.0, 7.81)
+    observations(5) = (14.0, 8.84)
+    observations(6) = (6.0, 6.08)
+    observations(7) = (4.0, 5.39)
+    observations(8) = (12.0, 8.15)
+    observations(9) = (7.0, 6.42)
+    observations(10) = (5.0, 5.73)
+
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
+      .toMap
+
+    //use additiveLinearRegression to regress on AscombeIII
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    // Assert that the rsquared is in the right threshold.
+    // R^2 = 1 - (SS_res / SS_tot)
+    val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
+    val expectedRSquared = 0.6665
+    assert(nearby(rSquared, expectedRSquared, 0.005))
+
+    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002176305)
+    val expectedPVal = 0.002176305
+    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
   }
 
-  ignore("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6667 for Anscombe IV.") {
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6667 for Anscombe IV.") {
+    //load AnscombeIV into an observations variable
+    val observations = new Array[(Double, Double)](11)
+    observations(0) = (8.0, 6.58)
+    observations(1) = (8.0, 5.76)
+    observations(2) = (8.0, 7.71)
+    observations(3) = (8.0, 8.84)
+    observations(4) = (8.0, 8.47)
+    observations(5) = (8.0, 7.04)
+    observations(6) = (8.0, 5.25)
+    observations(7) = (19.0, 12.50)
+    observations(8) = (8.0, 5.56)
+    observations(9) = (8.0, 7.91)
+    observations(10) = (8.0, 6.89)
 
-    //      //load AnscombeIV into an observations variable
-    //      val observations = new Array[(Double, Array[Double])](11)
-    //      observations(0) = (8.0, Array[Double](6.58))
-    //      observations(1) = (8.0, Array[Double](5.76))
-    //      observations(2) = (8.0, Array[Double](7.71))
-    //      observations(3) = (8.0, Array[Double](8.84))
-    //      observations(4) = (8.0, Array[Double](8.47))
-    //      observations(5) = (8.0, Array[Double](7.04))
-    //      observations(6) = (8.0, Array[Double](5.25))
-    //      observations(7) = (19.0, Array[Double](12.50))
-    //      observations(8) = (8.0, Array[Double](5.56))
-    //      observations(9) = (8.0, Array[Double](7.91))
-    //      observations(10) = (8.0, Array[Double](6.89))
-    //
-    //      //use additiveLinearRegression to regress on Ascombe1
-    //      val regressionResult = AdditiveLinearRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-    //
-    //      //Assert that the rsquared is in the right threshold.
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] <= 0.6670)
-    //      assert(regressionResult.statistics("rSquared").asInstanceOf[Double] >= 0.6660)
-    //
-    //      // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002164602)
-    //      val expectedLogPVal = -2.664621875
-    //      assert(regressionResult.logPValue <= expectedLogPVal + 0.005)
-    //      assert(regressionResult.logPValue >= expectedLogPVal - 0.005)
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
+      .toMap
+
+    //use additiveLinearRegression to regress on AscombeIV
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    // Assert that the rsquared is in the right threshold.
+    // R^2 = 1 - (SS_res / SS_tot)
+    val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
+    val expectedRSquared = 0.6665
+    assert(nearby(rSquared, expectedRSquared, 0.005))
+
+    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002164602)
+    val expectedPVal = 0.002164602
+    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
   }
 
   ignore("LinearSiteRegression.applyToSite should work correctly for PIQ data.") {

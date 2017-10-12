@@ -21,9 +21,10 @@ import org.bdgenomics.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.apache.commons.math3.distribution.TDistribution
-import org.apache.commons.math3.linear.SingularMatrixException
-import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression
+import breeze.linalg._
+import breeze.numerics._
+import breeze.stats._
+import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 
@@ -38,47 +39,45 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
 
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LinearAssociation = {
-
-    val XandY = prepareDesignMatrix(phenotypes, genotypes)
-    val x = XandY.map(_._1.toArray).toArray
-    val y = XandY.map(_._2).toArray
-
-    val phenotypesLength = phenotypes.head._2.covariates.length + 1
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes).unzip
+    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
+    // val matX = new DenseMatrix(x(0).length, x.length, x.flatten).t
+    val matX = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
+    // val matX = new DenseMatrix(x :_*)
+    val vecY = new DenseVector(y)
 
     try {
-      // create linear model
-      val ols = new OLSMultipleLinearRegression()
+      // TODO: Determine if QR factorization is faster
+      val result = matX \ vecY
 
-      // input sample data
-      ols.newSampleData(y, x)
-
-      // calculate coefficients
-      val beta = ols.estimateRegressionParameters()
-
-      // calculate sum of squared residuals
-      val ssResiduals = ols.calculateResidualSumOfSquares()
+      val residuals = vecY - (matX * result)
+      val ssResiduals = residuals.t * residuals
 
       // calculate sum of squared deviations
-      val ssDeviations = sumOfSquaredDeviations(genotypes)
+      val genos = matX(::, 0)
+      val deviations = genos - mean(genos)
+      val ssDeviations = deviations.t * deviations
 
       // compute the regression parameters standard errors
-      val standardErrors = ols.estimateRegressionParametersStandardErrors()
+      val betaVariance = diag(inv(matX.t * matX))
+      val sigma = residuals.t * residuals / (matX.rows - matX.cols)
+      val standardErrors = sqrt(sigma * betaVariance)
 
       // get standard error for genotype parameter (for p value calculation)
       val genoSE = standardErrors(1)
 
       // test statistic t for jth parameter is equal to bj/SEbj, the parameter estimate divided by its standard error
-      val t = beta(1) / genoSE
+      val t = result(1) / genoSE
 
       /* calculate p-value and report:
         Under null hypothesis (i.e. the j'th element of weight vector is 0) the relevant distribution is
         a t-distribution with N-p-1 degrees of freedom. (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
         https://en.wikipedia.org/wiki/T-statistic
       */
-      val residualDegreesOfFreedom = genotypes.numValidSamples - phenotypesLength - 1
-      val tDist = new TDistribution(residualDegreesOfFreedom)
-      val pvalue = 2 * tDist.cumulativeProbability(-math.abs(t))
-      val logPValue = log10(pvalue)
+      val residualDegreesOfFreedom = matX.rows - matX.cols - 1
+      val tDist = StudentsT(residualDegreesOfFreedom)
+      val pValue = 2 * tDist.cdf(-math.abs(t))
+      val logPValue = log10(pValue)
 
       LinearAssociation(
         ssDeviations,
@@ -86,33 +85,24 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
         genoSE,
         t,
         residualDegreesOfFreedom,
-        pvalue,
-        beta.toList,
+        pValue,
+        result.data.toList,
         genotypes.numValidSamples)
     } catch {
-      case _: breeze.linalg.MatrixSingularException => {
-        throw new SingularMatrixException()
-      }
+      case _: MatrixSingularException =>
+        // TODO: Rethrow for now, I don't remember what this was originally for...
+        throw new MatrixSingularException()
     }
   }
 
-  private def prepareDesignMatrix(phenotypes: Map[String, Phenotype],
-                                  genotypes: CalledVariant): List[(List[Double], Double)] = {
+  private def prepareDesignMatrix(genotypes: CalledVariant,
+                                  phenotypes: Map[String, Phenotype]): Array[(Array[Double], Double)] = {
+    val filteredGenotypes = genotypes.samples.filter(_.value != ".")
 
-    // class for ols: org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression
-    // see http://commons.apache.org/proper/commons-math/javadocs/api-3.6.1/org/apache/commons/math3/stat/regression/OLSMultipleLinearRegression.html
-    val samplesGenotypes = genotypes.samples.filter(x => !x.value.contains(".")).map(x => (x.sampleID, List(clipOrKeepState(x.toDouble))))
-    val samplesCovariates = phenotypes.map(x => (x._1, x._2.covariates)).toMap
-    val cleanedSampleVector = samplesGenotypes.map(x => (x._1, (x._2 ++ samplesCovariates(x._1)).toList)).toMap
-
-    cleanedSampleVector.toList.map(x => (x._2, phenotypes(x._1).phenotype.toDouble))
-  }
-
-  protected def sumOfSquaredDeviations(genotypes: CalledVariant): Double = {
-    val sum = genotypes.samples.filter(x => !x.value.contains(".")).map(x => clipOrKeepState(x.toDouble)).sum
-    val mean = sum / genotypes.numValidSamples
-    val squaredDeviations = genotypes.samples.map(x => math.pow(x.toDouble - mean, 2))
-    squaredDeviations.sum
+    filteredGenotypes.map(gs => {
+      val pheno = phenotypes(gs.sampleID)
+      (1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
+    }).toArray
   }
 
   protected def constructVM(variant: CalledVariant,

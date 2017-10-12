@@ -92,5 +92,8 @@ trait GnocchiFunSuite extends SparkFunSuite {
     }
     phenos.toMap
   }
-}
 
+  def nearby(expected: Double, actual: Double, threshold: Double): Boolean = {
+    actual <= expected + threshold && actual >= expected - threshold
+  }
+}
