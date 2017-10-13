@@ -21,7 +21,7 @@ import org.bdgenomics.gnocchi.models.variant.VariantModel
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 
-trait LogisticVariantModel[VM <: LogisticVariantModel[VM]] extends VariantModel[VM] {
+trait LogisticVariantModel extends VariantModel[VM] {
   val association: LogisticAssociation
 
   /**
