@@ -29,7 +29,6 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 
 import scala.collection.immutable.Map
-import scala.math.log10
 
 trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[VM] {
 
@@ -39,82 +38,73 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
 
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LinearAssociation = {
-    val (x, y) = prepareDesignMatrix(genotypes, phenotypes).unzip
-    if (x.length == 0) {
-      // TODO: Determine what to do when the design matrix is empty (i.e. no overlap btwn geno and pheno sampleIDs, etc.)
-      return null
-    }
-    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
-    // val matX = new DenseMatrix(x(0).length, x.length, x.flatten).t
-    // val matX = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
-    // val matX = new DenseMatrix(x :_*)
-    val matX = new DenseMatrix(x.length, x(0).length, x.transpose.flatten)
-    val vecY = new DenseVector(y)
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes)
 
-    try {
-      // TODO: Determine if QR factorization is faster
-      val beta = matX \ vecY
+    // TODO: Determine if QR factorization is faster
+    val beta = x \ y
 
-      val residuals = vecY - (matX * beta)
-      val ssResiduals = residuals.t * residuals
+    val residuals = y - (x * beta)
+    val ssResiduals = residuals.t * residuals
 
-      // calculate sum of squared deviations
-      val deviations = vecY - mean(vecY)
-      val ssDeviations = deviations.t * deviations
+    // calculate sum of squared deviations
+    val deviations = y - mean(y)
+    val ssDeviations = deviations.t * deviations
 
-      // compute the regression parameters standard errors
-      val betaVariance = diag(inv(matX.t * matX))
-      val sigma = residuals.t * residuals / (matX.rows - matX.cols)
-      val standardErrors = sqrt(sigma * betaVariance)
+    // compute the regression parameters standard errors
+    val betaVariance = diag(inv(x.t * x))
+    val sigma = residuals.t * residuals / (x.rows - x.cols)
+    val standardErrors = sqrt(sigma * betaVariance)
 
-      // get standard error for genotype parameter (for p value calculation)
-      val genoSE = standardErrors(1)
+    // get standard error for genotype parameter (for p value calculation)
+    val genoSE = standardErrors(1)
 
-      // test statistic t for jth parameter is equal to bj/SEbj, the parameter estimate divided by its standard error
-      val t = beta(1) / genoSE
+    // test statistic t for jth parameter is equal to bj/SEbj, the parameter estimate divided by its standard error
+    val t = beta(1) / genoSE
 
-      /* calculate p-value and report:
-        Under null hypothesis (i.e. the j'th element of weight vector is 0) the relevant distribution is
-        a t-distribution with N-p degrees of freedom.
-        (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
-        https://en.wikipedia.org/wiki/T-statistic
-      */
-      val residualDegreesOfFreedom = matX.rows - matX.cols
-      val tDist = StudentsT(residualDegreesOfFreedom)
-      val pValue = 2 * tDist.cdf(-math.abs(t))
-      val logPValue = log10(pValue)
+    /* calculate p-value and report:
+      Under null hypothesis (i.e. the j'th element of weight vector is 0) the relevant distribution is
+      a t-distribution with N-p degrees of freedom.
+      (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
+      https://en.wikipedia.org/wiki/T-statistic
+    */
+    val residualDegreesOfFreedom = x.rows - x.cols
+    val tDist = StudentsT(residualDegreesOfFreedom)
+    val pValue = 2 * tDist.cdf(-math.abs(t))
 
-      LinearAssociation(
-        ssDeviations,
-        ssResiduals,
-        genoSE,
-        t,
-        residualDegreesOfFreedom,
-        pValue,
-        beta.data.toList,
-        genotypes.numValidSamples)
-    } catch {
-      // If we get a singular matrix exception, return a null association, since none could be made for this sample
-      // TODO: Determine if we should use Option[LinearAssociation], or even generate a NullAssociation object
-      case _: MatrixSingularException => null
-    }
+    LinearAssociation(
+      ssDeviations,
+      ssResiduals,
+      genoSE,
+      t,
+      residualDegreesOfFreedom,
+      pValue,
+      beta.data.toList,
+      genotypes.numValidSamples)
   }
 
   private[algorithms] def prepareDesignMatrix(genotypes: CalledVariant,
-                                              phenotypes: Map[String, Phenotype]): Array[(Array[Double], Double)] = {
+                                              phenotypes: Map[String, Phenotype]): (DenseMatrix[Double], DenseVector[Double]) = {
     val filteredGenotypes = genotypes.samples.filter(_.value != ".")
 
-    //    filteredGenotypes.map(gs => {
-    //      val pheno = phenotypes(gs.sampleID)
-    //      (1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
-    //    }).toArray
-    filteredGenotypes.flatMap({
+    val (primitiveX, primitiveY) = filteredGenotypes.flatMap({
       case gs if phenotypes.contains(gs.sampleID) => {
         val pheno = phenotypes(gs.sampleID)
         Some(1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
       }
       case _ => None
-    }).toArray
+    }).toArray.unzip
+
+    if (primitiveX.length == 0) {
+      // TODO: Determine what to do when the design matrix is empty (i.e. no overlap btwn geno and pheno sampleIDs, etc.)
+      throw new IllegalArgumentException("No overlap between phenotype and genotype state sample IDs.")
+    }
+
+    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
+    // val x = new DenseMatrix(x(0).length, x.length, x.flatten).t
+    // val x = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
+    // val x = new DenseMatrix(x :_*)
+
+    (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
   }
 
   protected def constructVM(variant: CalledVariant,

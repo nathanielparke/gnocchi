@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.gnocchi.algorithms
 
+import breeze.linalg.MatrixSingularException
 import org.bdgenomics.gnocchi.GnocchiFunSuite
 import org.bdgenomics.gnocchi.algorithms.siteregression.{ AdditiveLinearRegression, DominantLinearRegression }
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
@@ -305,20 +306,23 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(regressionResult.pValue === 0.000855632 +- 0.00005)
   }
 
+  // LinearSiteRegression.sumOfSquaredDeviations tests
+
   ignore("LinearSiteRegression.applyToSite should correctly calculate the relevant statistics.") {
 
   }
 
   // LinearSiteRegression.applyToSite input validation tests
 
-  sparkTest("LinearSiteRegression.applyToSite should break gracefully on a singular matrix") {
+  sparkTest("LinearSiteRegression.applyToSite should break on a singular matrix") {
     val genotypeStates = List(GenotypeState("sample1", "0"))
     val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
     val phenoMap = Map("sample1" -> Phenotype("sample1", "pheno1", 1))
-    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
 
-    assert(regressionResult === null)
+    intercept[MatrixSingularException] {
+      val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+    }
   }
 
   sparkTest("LinearSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
@@ -326,9 +330,10 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
     val phenoMap = Map("sample2" -> Phenotype("sample2", "pheno1", 1))
-    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
 
-    assert(regressionResult === null)
+    intercept[IllegalArgumentException] {
+      val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+    }
   }
 
   ignore("LinearSiteRegression.applyToSite should not break with missing covariates.") {
@@ -363,15 +368,15 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
       .toMap
 
-    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap)
 
     // Verify length of X and Y matrices
-    assert(x.length === 5)
+    assert(x.rows === 5)
     assert(y.length === 5)
 
     // Verify contents of matrices, function should filter out both genotypes and phenotypes
-    assert(x.map(_(1)) === genotypes.filter(_ != ".").map(_.toDouble))
-    assert(y === phenotypes.slice(0, 5).flatten)
+    assert(x(::, 1).toArray === genotypes.filter(_ != ".").map(_.toDouble))
+    assert(y.toArray === phenotypes.slice(0, 5).flatten)
   }
 
   sparkTest("LinearSiteRegression.prepareDesignMatrix should create a label vector filled with phenotype values.") {
@@ -392,13 +397,13 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
       .toMap
 
-    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap)
 
     // Verify length of Y label vector
     assert(y.length === 5)
 
     // Verify contents of Y label vector
-    assert(y === phenotypes.flatten)
+    assert(y.toArray === phenotypes.flatten)
   }
 
   sparkTest("LinearSiteRegression.prepareDesignMatrix should place the genotype value in the first column of the design matrix.") {
@@ -419,13 +424,13 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
       .toMap
 
-    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap)
 
     // Verify length of X data matrix
-    assert(x.length === 5)
+    assert(x.rows === 5)
 
     // Verify contents of X first non-intercept column
-    assert(x.map(_(1)) === genotypes)
+    assert(x(::, 1).toArray === genotypes)
   }
 
   sparkTest("LinearSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
@@ -446,13 +451,13 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
       .toMap
 
-    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap)
 
     // Verify length of X data matrix
-    assert(x.length === 5)
+    assert(x.rows === 5)
 
     // Verify contents of X last columns
-    assert(x.map(_.slice(2, 4)) === phenotypes.map(_.slice(1, 3)))
+    assert(x(::, 2 until 4).toArray.grouped(5).toArray.transpose === phenotypes.map(_.slice(1, 3)))
   }
 
   // AdditiveLinearRegression tests
