@@ -47,8 +47,8 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     Each of the members of the quartet should have roughly the same R^2 value, although the shapes of the graph are different shapes.
     Target R^2 values verified values produced here https://rstudio-pubs-static.s3.amazonaws.com/52381_36ec82827e4b476fb968d9143aec7c4f.html.
   */
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6665 for Anscombe I.") {
-    //load Anscombe1 into an observations variable
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe I.") {
+    // load AnscombeI into an observations variable
 
     val observations = new Array[(Double, Double)](11)
     observations(0) = (10.0, 8.04)
@@ -73,7 +73,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
       .toMap
 
-    //use additiveLinearRegression to regress on Ascombe1
+    // use additiveLinearRegression to regress on AscombeI
     val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
 
     // Assert that the rsquared is in the right threshold.
@@ -85,8 +85,8 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(regressionResult.pValue === 0.002169629 +- 0.00005)
   }
 
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6662 for Anscombe II.") {
-    //load AnscombeII into an observations variable
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe II.") {
+    // load AnscombeII into an observations variable
     val observations = new Array[(Double, Double)](11)
     observations(0) = (10.0, 9.14)
     observations(1) = (8.0, 8.14)
@@ -110,7 +110,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
       .toMap
 
-    //use additiveLinearRegression to regress on AscombeII
+    // use additiveLinearRegression to regress on AscombeII
     val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
 
     // Assert that the rsquared is in the right threshold.
@@ -122,8 +122,8 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(regressionResult.pValue === 0.002178816 +- 0.00005)
   }
 
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6663 for Anscombe III.") {
-    //load AnscombeIII into an observations variable
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe III.") {
+    // load AnscombeIII into an observations variable
     val observations = new Array[(Double, Double)](11)
     observations(0) = (10.0, 7.46)
     observations(1) = (8.0, 6.77)
@@ -147,7 +147,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
       .toMap
 
-    //use additiveLinearRegression to regress on AscombeIII
+    // use additiveLinearRegression to regress on AscombeIII
     val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
 
     // Assert that the rsquared is in the right threshold.
@@ -159,7 +159,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(regressionResult.pValue === 0.002176305 +- 0.00005)
   }
 
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6667 for Anscombe IV.") {
+  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe IV.") {
     //load AnscombeIV into an observations variable
     val observations = new Array[(Double, Double)](11)
     observations(0) = (8.0, 6.58)
@@ -303,6 +303,10 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
     // Assert that the p-value for Brain is correct (expectedPVal ~= 0.000855632)
     assert(regressionResult.pValue === 0.000855632 +- 0.00005)
+  }
+
+  ignore("LinearSiteRegression.applyToSite should correctly calculate the relevant statistics.") {
+
   }
 
   // LinearSiteRegression.applyToSite input validation tests
@@ -451,19 +455,13 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(x.map(_.slice(2, 4)) === phenotypes.map(_.slice(1, 3)))
   }
 
-  // LinearSiteRegression.sumOfSquaredDeviations tests
-
-  ignore("LinearSiteRegression.sumOfSquaredDeviations should correctly calculate the sum of squared deviation from the mean.") {
-
-  }
-
   // AdditiveLinearRegression tests
 
   ignore("AdditiveLinearRegression.constructVM should call the clip or keep state from the `Additive` trait.") {
 
   }
 
-  ignore("AdditiveLinearRegression should have regressionName set to `additiveLinearRegression`") {
+  sparkTest("AdditiveLinearRegression should have regressionName set to `additiveLinearRegression`") {
     assert(AdditiveLinearRegression.regressionName === "additiveLinearRegression")
   }
 
@@ -473,7 +471,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
   }
 
-  ignore("DominantLinearRegression should have regressionName set to `dominantLinearRegression`") {
+  sparkTest("DominantLinearRegression should have regressionName set to `dominantLinearRegression`") {
     assert(DominantLinearRegression.regressionName === "dominantLinearRegression")
   }
 }
