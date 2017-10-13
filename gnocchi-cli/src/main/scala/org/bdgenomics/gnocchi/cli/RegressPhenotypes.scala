@@ -19,7 +19,6 @@ package org.bdgenomics.gnocchi.cli
 
 import org.bdgenomics.gnocchi.algorithms.siteregression._
 import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext

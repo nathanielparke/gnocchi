@@ -15,22 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.bdgenomics.gnocchi.models.variant.linear
+package org.bdgenomics.gnocchi.models.variant
 
-import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.apache.commons.math3.distribution.TDistribution
+import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
+import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
 import scala.collection.immutable.Map
 
-trait LinearVariantModel[VM <: LinearVariantModel[VM]] extends VariantModel[VM] {
-  val association: LinearAssociation
-  type VM
+case class LinearVariantModel(uniqueID: String,
+                              association: LinearAssociation,
+                              phenotype: String,
+                              chromosome: Int,
+                              position: Int,
+                              referenceAllele: String,
+                              alternateAllele: String,
+                              allelicAssumption: String,
+                              phaseSetId: Int = 0) extends VariantModel[LinearVariantModel] with LinearSiteRegression {
 
-  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): VM = {
-    val batchVariantModel = constructVariantModel(uniqueID, VM.applyToSite(phenotypes, genotypes))
+  val modelType: String = "Linear Variant Model"
+  val regressionName = "Linear Regression"
+
+  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): LinearVariantModel = {
+    val batchVariantModel = constructVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
+    mergeWith(batchVariantModel)
   }
 
   /**
@@ -41,7 +51,7 @@ trait LinearVariantModel[VM <: LinearVariantModel[VM]] extends VariantModel[VM] 
    *
    * @return Returns updated LinearVariantModel of correct subtype
    */
-  def mergeWith(variantModel: VM): VM = {
+  def mergeWith(variantModel: LinearVariantModel): LinearVariantModel = {
     val updatedNumSamples = updateNumSamples(variantModel.association.numSamples)
     val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
     val updatedSsDeviations = updateSsDeviations(variantModel.association.ssDeviations)
@@ -179,6 +189,39 @@ trait LinearVariantModel[VM <: LinearVariantModel[VM]] extends VariantModel[VM] 
                             updatedResidualDegreesOfFreedom: Int,
                             updatedPValue: Double,
                             updatedWeights: List[Double],
-                            updatedNumSamples: Int): VM
+                            updatedNumSamples: Int): LinearVariantModel = {
+
+    val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
+      ssResiduals = updatedSsResiduals,
+      geneticParameterStandardError = updatedGeneticParameterStandardError,
+      tStatistic = updatedtStatistic,
+      residualDegreesOfFreedom = updatedResidualDegreesOfFreedom,
+      pValue = updatedPValue,
+      weights = updatedWeights,
+      numSamples = updatedNumSamples)
+
+    LinearVariantModel(variantID,
+      updatedAssociation,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
+      allelicAssumption,
+      phaseSetId)
+  }
+
+  def constructVariantModel(variantID: String,
+                            association: LinearAssociation): LinearVariantModel = {
+    LinearVariantModel(variantID,
+      association,
+      phenotype,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
+      allelicAssumption,
+      phaseSetId)
+  }
 
 }

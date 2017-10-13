@@ -37,7 +37,7 @@ case class LogisticVariantModel(uniqueID: String,
                                 phaseSetId: Int = 0) extends VariantModel[LogisticVariantModel] with LogisticSiteRegression {
 
   val modelType = "Logistic Variant Model"
-  val regressionName = "Additive Logistic Regression"
+  val regressionName = "Logistic Regression"
 
   /**
    * Returns updated LogisticVariantModel of correct subtype
