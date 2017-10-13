@@ -19,20 +19,21 @@ package org.bdgenomics.gnocchi.algorithms.siteregression
 
 import breeze.linalg._
 import breeze.numerics._
-import org.bdgenomics.gnocchi.models.variant.logistic.{ AdditiveLogisticVariantModel, DominantLogisticVariantModel, LogisticVariantModel }
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Map
 
-object LogisticRegression extends SiteRegression[LogisticVariantModel] {
+trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, LogisticAssociation] {
 
-  val regressionName = "LogisticRegression"
+  val sparkSession = SparkSession.builder().getOrCreate()
+  import sparkSession.implicits._
 
   def apply(genotypes: Dataset[CalledVariant],
             phenotypes: Broadcast[Map[String, Phenotype]],
@@ -40,12 +41,12 @@ object LogisticRegression extends SiteRegression[LogisticVariantModel] {
             validationStringency: String = "STRICT"): Dataset[LogisticVariantModel] = {
     genotypes.flatMap((genos: CalledVariant) => {
       try {
-        val association = applyToSite(phenotypes.value, genos)
+        val association = applyToSite(phenotypes.value, genos, allelicAssumption)
         Some(constructVM(genos, phenotypes.value.head._2, association, allelicAssumption))
       } catch {
         case e: breeze.linalg.MatrixSingularException => {
           logError(e.toString)
-          None: Option[AdditiveLogisticVariantModel]
+          None: Option[LogisticVariantModel]
         }
       }
     })
@@ -152,8 +153,8 @@ object LogisticRegression extends SiteRegression[LogisticVariantModel] {
     val validGenos = genotypes.samples.filter(genotypeState => !genotypeState.value.contains("."))
 
     val samplesGenotypes = allelicAssumption.toUpperCase match {
-      case "ADDITIVE" => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.additive)))
-      case "DOMINANT" => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.dominant)))
+      case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.additive)))
+      case "DOMINANT"  => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.dominant)))
       case "RECESSIVE" => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.recessive)))
     }
 
@@ -166,90 +167,22 @@ object LogisticRegression extends SiteRegression[LogisticVariantModel] {
     (X, Y)
   }
 
-  protected def constructVM(variant: CalledVariant,
-                            phenotype: Phenotype,
-                            association: LogisticAssociation,
-                            allelicAssumption: String): LogisticVariantModel
+  def constructVM(variant: CalledVariant,
+                  phenotype: Phenotype,
+                  association: LogisticAssociation,
+                  allelicAssumption: String): LogisticVariantModel = {
+    LogisticVariantModel(variant.uniqueID,
+      association,
+      phenotype.phenoName,
+      variant.chromosome,
+      variant.position,
+      variant.referenceAllele,
+      variant.alternateAllele,
+      allelicAssumption,
+      phaseSetId = 0)
+  }
 }
 
-//object AdditiveLogisticRegression extends AdditiveLogisticRegression {
-//  val regressionName = "additiveLogisticRegression"
-//}
-//
-//trait AdditiveLogisticRegression extends LogisticSiteRegression[AdditiveLogisticVariantModel] with Additive {
-//  val sparkSession = SparkSession.builder().getOrCreate()
-//  import sparkSession.implicits._
-//
-//  def apply(genotypes: Dataset[CalledVariant],
-//            phenotypes: Broadcast[Map[String, Phenotype]],
-//            validationStringency: String = "STRICT"): Dataset[AdditiveLogisticVariantModel] = {
-//
-//    // Note: we would like to use a map below, but need some way to deal with singular matrix exceptions being thrown
-//    // by applyToSite. flatMap unpacks the Some/None objects into the correct product case classes.
-//    genotypes.flatMap((genos: CalledVariant) => {
-//      try {
-//        val association = applyToSite(phenotypes.value, genos)
-//        Some(constructVM(genos, phenotypes.value.head._2, association))
-//      } catch {
-//        case e: breeze.linalg.MatrixSingularException => {
-//          logError(e.toString)
-//          None: Option[AdditiveLogisticVariantModel]
-//        }
-//      }
-//    })
-//  }
-//
-//  protected def constructVM(variant: CalledVariant,
-//                            phenotype: Phenotype,
-//                            association: LogisticAssociation): AdditiveLogisticVariantModel = {
-//    AdditiveLogisticVariantModel(variant.uniqueID,
-//      association,
-//      phenotype.phenoName,
-//      variant.chromosome,
-//      variant.position,
-//      variant.referenceAllele,
-//      variant.alternateAllele,
-//      phaseSetId = 0)
-//  }
-//}
-//
-//object DominantLogisticRegression extends DominantLogisticRegression {
-//  val regressionName = "dominantLogisticRegression"
-//}
-//
-//trait DominantLogisticRegression extends LogisticSiteRegression[DominantLogisticVariantModel] with Dominant {
-//  val sparkSession = SparkSession.builder().getOrCreate()
-//  import sparkSession.implicits._
-//
-//  def apply(genotypes: Dataset[CalledVariant],
-//            phenotypes: Broadcast[Map[String, Phenotype]],
-//            validationStringency: String = "STRICT"): Dataset[DominantLogisticVariantModel] = {
-//
-//    // Note: we would like to use a map below, but need some way to deal with singular matrix exceptions being thrown
-//    // by applyToSite. flatMap unpacks the Some/None objects into the correct product case classes.
-//    genotypes.flatMap((genos: CalledVariant) => {
-//      try {
-//        val association = applyToSite(phenotypes.value, genos)
-//        Some(constructVM(genos, phenotypes.value.head._2, association))
-//      } catch {
-//        case e: breeze.linalg.MatrixSingularException => {
-//          logError(e.toString)
-//          None: Option[DominantLogisticVariantModel]
-//        }
-//      }
-//    })
-//  }
-//
-//  protected def constructVM(variant: CalledVariant,
-//                            phenotype: Phenotype,
-//                            association: LogisticAssociation): DominantLogisticVariantModel = {
-//    DominantLogisticVariantModel(variant.uniqueID,
-//      association,
-//      phenotype.phenoName,
-//      variant.chromosome,
-//      variant.position,
-//      variant.referenceAllele,
-//      variant.alternateAllele,
-//      phaseSetId = 0)
-//  }
-//}
+object LogisticSiteRegression extends LogisticSiteRegression {
+  val regressionName = "LogisticSiteRegression"
+}

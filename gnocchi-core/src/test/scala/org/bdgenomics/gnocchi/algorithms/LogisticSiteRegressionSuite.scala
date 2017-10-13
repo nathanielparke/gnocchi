@@ -20,7 +20,6 @@ package org.bdgenomics.gnocchi.algorithms
 import breeze.linalg
 import breeze.linalg.{ DenseMatrix, DenseVector, MatrixSingularException }
 import org.bdgenomics.gnocchi.algorithms.siteregression.{ AdditiveLogisticRegression, DominantLogisticRegression }
-import org.bdgenomics.gnocchi.models.variant.logistic.AdditiveLogisticVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
 import org.apache.spark.sql.SparkSession
 import org.bdgenomics.gnocchi.GnocchiFunSuite
