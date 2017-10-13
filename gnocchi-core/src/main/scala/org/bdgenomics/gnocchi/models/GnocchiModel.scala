@@ -110,6 +110,9 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @return Returns an RDD of incrementally updated VariantModels
    */
   def mergeVariantModels(newVariantModels: Dataset[VM]): Dataset[VM]
+  // = {
+  //    variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))
+  //  }
 
   //  /**
   //   * Returns VariantModels created from full recompute over all data for each variant
