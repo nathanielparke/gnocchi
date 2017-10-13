@@ -1,8 +1,8 @@
-package org.bdgenomics.gnocchi.models.variant.linear
+package org.bdgenomics.gnocchi.models.variant.logistic
 
 import org.bdgenomics.gnocchi.GnocchiFunSuite
 
-class DominantLinearVariantModelSuite extends GnocchiFunSuite {
+class DominantLogisticVariantModelSuite extends GnocchiFunSuite {
   test("Unit test of DLVM.update")
 
   test("Unit test of DLVM.constructVariantModel [long constructor]")
