@@ -18,10 +18,11 @@
 package org.bdgenomics.gnocchi.algorithms
 
 import org.bdgenomics.gnocchi.GnocchiFunSuite
-import org.bdgenomics.gnocchi.algorithms.siteregression.AdditiveLinearRegression
+import org.bdgenomics.gnocchi.algorithms.siteregression.{ AdditiveLinearRegression, DominantLinearRegression }
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.scalactic.Tolerance._
 
 class LinearSiteRegressionSuite extends GnocchiFunSuite {
   // LinearSiteRegression.applyToSite correctness tests
@@ -78,12 +79,10 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     // Assert that the rsquared is in the right threshold.
     // R^2 = 1 - (SS_res / SS_tot)
     val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
-    val expectedRSquared = 0.6665
-    assert(nearby(rSquared, expectedRSquared, 0.005))
+    assert(rSquared === 0.6665 +- 0.005)
 
     // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002169629)
-    val expectedPVal = 0.002169629
-    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
+    assert(regressionResult.pValue === 0.002169629 +- 0.00005)
   }
 
   sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6662 for Anscombe II.") {
@@ -117,12 +116,10 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     // Assert that the rsquared is in the right threshold.
     // R^2 = 1 - (SS_res / SS_tot)
     val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
-    val expectedRSquared = 0.6665
-    assert(nearby(rSquared, expectedRSquared, 0.005))
+    assert(rSquared === 0.6665 +- 0.005)
 
     // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002178816)
-    val expectedPVal = 0.002178816
-    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
+    assert(regressionResult.pValue === 0.002178816 +- 0.00005)
   }
 
   sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6663 for Anscombe III.") {
@@ -156,12 +153,10 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     // Assert that the rsquared is in the right threshold.
     // R^2 = 1 - (SS_res / SS_tot)
     val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
-    val expectedRSquared = 0.6665
-    assert(nearby(rSquared, expectedRSquared, 0.005))
+    assert(rSquared === 0.6665 +- 0.005)
 
     // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002176305)
-    val expectedPVal = 0.002176305
-    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
+    assert(regressionResult.pValue === 0.002176305 +- 0.00005)
   }
 
   sparkTest("LinearSiteRegression.applyToSite should calculate rsquared within .001 of expected results 0.6667 for Anscombe IV.") {
@@ -195,15 +190,13 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     // Assert that the rsquared is in the right threshold.
     // R^2 = 1 - (SS_res / SS_tot)
     val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
-    val expectedRSquared = 0.6665
-    assert(nearby(rSquared, expectedRSquared, 0.005))
+    assert(rSquared === 0.6665 +- 0.005)
 
     // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002164602)
-    val expectedPVal = 0.002164602
-    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
+    assert(regressionResult.pValue === 0.002164602 +- 0.00005)
   }
 
-  ignore("LinearSiteRegression.applyToSite should work correctly for PIQ data.") {
+  sparkTest("LinearSiteRegression.applyToSite should work correctly for PIQ data.") {
     /* Tests for multiple regression and covariate correction:
     Data comes from here: https://onlinecourses.science.psu.edu/stat501/node/284
     PIQ is treated as the phenotype of interest and Brain is treated as genotype. Height and Weight are treated as covariates.
@@ -306,49 +299,35 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     // Assert that the rsquared is in the right threshold.
     // R^2 = 1 - (SS_res / SS_tot)
     val rSquared = 1 - regressionResult.ssResiduals / regressionResult.ssDeviations
-    val expectedRSquared = 0.2954
-    assert(nearby(rSquared, expectedRSquared, 0.005))
+    assert(rSquared === 0.2954 +- 0.005)
 
     // Assert that the p-value for Brain is correct (expectedPVal ~= 0.000855632)
-    val expectedPVal = 0.000855632
-    assert(nearby(regressionResult.pValue, expectedPVal, 0.00005))
+    assert(regressionResult.pValue === 0.000855632 +- 0.00005)
   }
 
   // LinearSiteRegression.applyToSite input validation tests
 
-  ignore("LinearSiteRegression.applyToSite should break gracefully on a singular matrix") {
+  sparkTest("LinearSiteRegression.applyToSite should break gracefully on a singular matrix") {
+    val genotypeStates = List(GenotypeState("sample1", "0"))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
+    val phenoMap = Map("sample1" -> Phenotype("sample1", "pheno1", 1))
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    assert(regressionResult === null)
   }
 
-  ignore("LinearSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
+  sparkTest("LinearSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
+    val genotypeStates = List(GenotypeState("sample1", "0"))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
+    val phenoMap = Map("sample2" -> Phenotype("sample2", "pheno1", 1))
+    val regressionResult = AdditiveLinearRegression.applyToSite(phenoMap, cv)
+
+    assert(regressionResult === null)
   }
 
   ignore("LinearSiteRegression.applyToSite should not break with missing covariates.") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should create a new `OLSMultipleLinearRegression`") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should call `OLSMultipleLinearRegression.newSampleData`") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should call `OLSMultipleLinearRegression.estimateRegressionParameters`") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should call `OLSMultipleLinearRegression.calculateResidualSumOfSquares`") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should call `OLSMultipleLinearRegression.estimateRegressionParametersStandardErrors`") {
-
-  }
-
-  ignore("LinearSiteRegression.applyToSite should create an apache math commons `TDistribution`") {
 
   }
 
@@ -356,30 +335,120 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
   }
 
-  ignore("LinearSiteRegression.applyToSite should return a `LinearAssociation`") {
-
-  }
-
   // LinearSiteRegression.prepareDesignMatrix tests
+  sparkTest("LinearSiteRegression.prepareDesignMatrix should produce a matrix with missing values filtered out.") {
+    val observations = new Array[(String, Array[Double])](10)
+    observations(0) = ("1", Array[Double](1))
+    observations(1) = ("2", Array[Double](2))
+    observations(2) = ("3", Array[Double](3))
+    observations(3) = ("4", Array[Double](4))
+    observations(4) = ("5", Array[Double](5))
+    observations(5) = (".", Array[Double](6))
+    observations(6) = (".", Array[Double](7))
+    observations(7) = (".", Array[Double](8))
+    observations(8) = (".", Array[Double](9))
+    observations(9) = (".", Array[Double](10))
 
-  ignore("LinearSiteRegression.prepareDesignMatrix should produce a matrix with missing values filtered out.") {
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+      .toMap
+
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+
+    // Verify length of X and Y matrices
+    assert(x.length === 5)
+    assert(y.length === 5)
+
+    // Verify contents of matrices, function should filter out both genotypes and phenotypes
+    assert(x.map(_(1)) === genotypes.filter(_ != ".").map(_.toDouble))
+    assert(y === phenotypes.slice(0, 5).flatten)
   }
 
-  ignore("LinearSiteRegression.prepareDesignMatrix should create a label vector filled with phenotype values.") {
+  sparkTest("LinearSiteRegression.prepareDesignMatrix should create a label vector filled with phenotype values.") {
+    val observations = new Array[(Double, Array[Double])](5)
+    observations(0) = (10, Array[Double](1))
+    observations(1) = (20, Array[Double](2))
+    observations(2) = (30, Array[Double](3))
+    observations(3) = (40, Array[Double](4))
+    observations(4) = (50, Array[Double](5))
 
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+      .toMap
+
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+
+    // Verify length of Y label vector
+    assert(y.length === 5)
+
+    // Verify contents of Y label vector
+    assert(y === phenotypes.flatten)
   }
 
-  ignore("LinearSiteRegression.prepareDesignMatrix should place the genotype value in the first column of the design matrix.") {
+  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the genotype value in the first column of the design matrix.") {
+    val observations = new Array[(Double, Array[Double])](5)
+    observations(0) = (10, Array[Double](1, 6, 11))
+    observations(1) = (20, Array[Double](2, 7, 12))
+    observations(2) = (30, Array[Double](3, 8, 13))
+    observations(3) = (40, Array[Double](4, 9, 14))
+    observations(4) = (50, Array[Double](5, 10, 15))
 
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+      .toMap
+
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+
+    // Verify length of X data matrix
+    assert(x.length === 5)
+
+    // Verify contents of X first non-intercept column
+    assert(x.map(_(1)) === genotypes)
   }
 
-  ignore("LinearSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
+  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
+    val observations = new Array[(Double, Array[Double])](5)
+    observations(0) = (10, Array[Double](1, 6, 11))
+    observations(1) = (20, Array[Double](2, 7, 12))
+    observations(2) = (30, Array[Double](3, 8, 13))
+    observations(3) = (40, Array[Double](4, 9, 14))
+    observations(4) = (50, Array[Double](5, 10, 15))
 
-  }
+    val (genotypes, phenotypes) = observations.unzip
+    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
+    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
 
-  ignore("LinearSiteRegression.prepareDesignMatrix should produce a `List[(List[Double], Double)]`") {
+    val phenoMap = phenotypes
+      .toList
+      .zipWithIndex
+      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+      .toMap
 
+    val (x, y) = AdditiveLinearRegression.prepareDesignMatrix(cv, phenoMap).unzip
+
+    // Verify length of X data matrix
+    assert(x.length === 5)
+
+    // Verify contents of X last columns
+    assert(x.map(_.slice(2, 4)) === phenotypes.map(_.slice(1, 3)))
   }
 
   // LinearSiteRegression.sumOfSquaredDeviations tests
@@ -390,45 +459,21 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
   // AdditiveLinearRegression tests
 
-  ignore("AdditiveLinearRegression.apply should return `Dataset[AdditiveLinearVariantModels]`.") {
-
-  }
-
-  ignore("AdditiveLinearRegression.apply should take in a `Dataset[CalledVariant]` and `Map[String, Phenotype]`") {
-
-  }
-
-  ignore("AdditiveLinearRegression.constructVM should create an AdditiveLinearVariantModel from a calledVariant and a LinearAssociation.") {
-
-  }
-
   ignore("AdditiveLinearRegression.constructVM should call the clip or keep state from the `Additive` trait.") {
 
   }
 
   ignore("AdditiveLinearRegression should have regressionName set to `additiveLinearRegression`") {
-
+    assert(AdditiveLinearRegression.regressionName === "additiveLinearRegression")
   }
 
   // DominantLinearRegression tests
-
-  ignore("DominantLinearRegression.apply should return `Dataset[DominantLinearVariantModels]`.") {
-
-  }
-
-  ignore("DominantLinearRegression.apply should take in a `Dataset[CalledVariant]` and `Map[String, Phenotype]`") {
-
-  }
-
-  ignore("DominantLinearRegression.constructVM should create an DominantLinearVariantModel from a calledVariant and a LinearAssociation.") {
-
-  }
 
   ignore("DominantLinearRegression.constructVM should call the clip or keep state from the `Dominant` trait.") {
 
   }
 
   ignore("DominantLinearRegression should have regressionName set to `dominantLinearRegression`") {
-
+    assert(DominantLinearRegression.regressionName === "dominantLinearRegression")
   }
 }
