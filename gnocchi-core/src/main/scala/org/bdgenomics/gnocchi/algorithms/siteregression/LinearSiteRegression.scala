@@ -40,22 +40,26 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant): LinearAssociation = {
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes).unzip
+    if (x.length == 0) {
+      // TODO: Determine what to do when the design matrix is empty (i.e. no overlap btwn geno and pheno sampleIDs, etc.)
+      return null
+    }
     // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
     // val matX = new DenseMatrix(x(0).length, x.length, x.flatten).t
-    val matX = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
+    // val matX = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
     // val matX = new DenseMatrix(x :_*)
+    val matX = new DenseMatrix(x.length, x(0).length, x.transpose.flatten)
     val vecY = new DenseVector(y)
 
     try {
       // TODO: Determine if QR factorization is faster
-      val result = matX \ vecY
+      val beta = matX \ vecY
 
-      val residuals = vecY - (matX * result)
+      val residuals = vecY - (matX * beta)
       val ssResiduals = residuals.t * residuals
 
       // calculate sum of squared deviations
-      val genos = matX(::, 0)
-      val deviations = genos - mean(genos)
+      val deviations = vecY - mean(vecY)
       val ssDeviations = deviations.t * deviations
 
       // compute the regression parameters standard errors
@@ -67,14 +71,15 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
       val genoSE = standardErrors(1)
 
       // test statistic t for jth parameter is equal to bj/SEbj, the parameter estimate divided by its standard error
-      val t = result(1) / genoSE
+      val t = beta(1) / genoSE
 
       /* calculate p-value and report:
         Under null hypothesis (i.e. the j'th element of weight vector is 0) the relevant distribution is
-        a t-distribution with N-p-1 degrees of freedom. (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
+        a t-distribution with N-p degrees of freedom.
+        (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
         https://en.wikipedia.org/wiki/T-statistic
       */
-      val residualDegreesOfFreedom = matX.rows - matX.cols - 1
+      val residualDegreesOfFreedom = matX.rows - matX.cols
       val tDist = StudentsT(residualDegreesOfFreedom)
       val pValue = 2 * tDist.cdf(-math.abs(t))
       val logPValue = log10(pValue)
@@ -86,22 +91,29 @@ trait LinearSiteRegression[VM <: LinearVariantModel[VM]] extends SiteRegression[
         t,
         residualDegreesOfFreedom,
         pValue,
-        result.data.toList,
+        beta.data.toList,
         genotypes.numValidSamples)
     } catch {
-      case _: MatrixSingularException =>
-        // TODO: Rethrow for now, I don't remember what this was originally for...
-        throw new MatrixSingularException()
+      // If we get a singular matrix exception, return a null association, since none could be made for this sample
+      // TODO: Determine if we should use Option[LinearAssociation], or even generate a NullAssociation object
+      case _: MatrixSingularException => null
     }
   }
 
-  private def prepareDesignMatrix(genotypes: CalledVariant,
-                                  phenotypes: Map[String, Phenotype]): Array[(Array[Double], Double)] = {
+  private[algorithms] def prepareDesignMatrix(genotypes: CalledVariant,
+                                              phenotypes: Map[String, Phenotype]): Array[(Array[Double], Double)] = {
     val filteredGenotypes = genotypes.samples.filter(_.value != ".")
 
-    filteredGenotypes.map(gs => {
-      val pheno = phenotypes(gs.sampleID)
-      (1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
+    //    filteredGenotypes.map(gs => {
+    //      val pheno = phenotypes(gs.sampleID)
+    //      (1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
+    //    }).toArray
+    filteredGenotypes.flatMap({
+      case gs if phenotypes.contains(gs.sampleID) => {
+        val pheno = phenotypes(gs.sampleID)
+        Some(1.0 +: clipOrKeepState(gs.toDouble) +: pheno.covariates.toArray, pheno.phenotype)
+      }
+      case _ => None
     }).toArray
   }
 
