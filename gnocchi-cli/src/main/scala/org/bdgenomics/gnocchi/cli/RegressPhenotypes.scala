@@ -1,25 +1,24 @@
 /**
- * Licensed to Big Data Genomics (BDG) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The BDG licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to Big Data Genomics (BDG) under one
+  * or more contributor license agreements.  See the NOTICE file
+  * distributed with this work for additional information
+  * regarding copyright ownership.  The BDG licenses this file
+  * to you under the Apache License, Version 2.0 (the
+  * "License"); you may not use this file except in compliance
+  * with the License.  You may obtain a copy of the License at
+  *
+  *     http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package org.bdgenomics.gnocchi.cli
 
 import org.bdgenomics.gnocchi.algorithms.siteregression._
-import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.models.variant.linear.{ AdditiveLinearVariantModel, DominantLinearVariantModel }
+import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, VariantModel }
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -121,20 +120,20 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
     args.associationType match {
       case "ADDITIVE_LINEAR" => {
-        val associations = AdditiveLinearRegression(filteredGeno, broadPhenotype)
-        logResults[AdditiveLinearVariantModel](associations, sc)
+        val associations = LinearSiteRegression(filteredGeno, broadPhenotype, "ADDITIVE")
+        logResults[LinearVariantModel](associations, sc)
       }
       case "DOMINANT_LINEAR" => {
-        val associations = DominantLinearRegression(filteredGeno, broadPhenotype)
-        logResults[DominantLinearVariantModel](associations, sc)
+        val associations = LinearSiteRegression(filteredGeno, broadPhenotype, "DOMINANT")
+        logResults[LinearVariantModel](associations, sc)
       }
       case "ADDITIVE_LOGISTIC" => {
-        val associations = AdditiveLogisticRegression(filteredGeno, broadPhenotype)
-        logResults[AdditiveLogisticVariantModel](associations, sc)
+        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "ADDITIVE")
+        logResults[LogisticVariantModel](associations, sc)
       }
       case "DOMINANT_LOGISTIC" => {
-        val associations = DominantLogisticRegression(filteredGeno, broadPhenotype)
-        logResults[DominantLogisticVariantModel](associations, sc)
+        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "DOMINANT")
+        logResults[LogisticVariantModel](associations, sc)
       }
     }
   }
