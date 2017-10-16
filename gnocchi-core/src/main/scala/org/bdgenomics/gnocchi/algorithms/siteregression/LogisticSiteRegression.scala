@@ -46,7 +46,7 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
       } catch {
         case e: breeze.linalg.MatrixSingularException => {
           logError(e.toString)
-          None: Option[LogisticVariantModel]
+          None
         }
       }
     })
