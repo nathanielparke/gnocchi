@@ -1,8 +1,7 @@
 package org.bdgenomics.gnocchi.models.variant
 
-/**
-  * Created by adithya on 10/16/17.
-  */
-class LogisticVariantModelSuite {
+import org.bdgenomics.gnocchi.GnocchiFunSuite
+
+class LogisticVariantModelSuite extends GnocchiFunSuite {
 
 }
