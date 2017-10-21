@@ -73,7 +73,7 @@ object LinearGnocchiModelFactory {
   }
 }
 
-case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
+case class  LinearGnocchiModel(metaData: GnocchiModelMetaData,
                               variantModels: Dataset[LinearVariantModel],
                               QCVariantModels: Dataset[QualityControlVariantModel[LinearVariantModel]],
                               QCPhenotypes: Map[String, Phenotype])
@@ -84,8 +84,8 @@ case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
 
   def mergeGnocchiModel(otherModel: GnocchiModel[LinearVariantModel, LinearGnocchiModel]): GnocchiModel[LinearVariantModel, LinearGnocchiModel] = {
 
-    require(otherModel.metaData.modelType == metaData.modelType,
-      "Models being merged are not the same type. Type equality is required to merge two models correctly.")
+    //require(otherModel.metaData.modelType == metaData.modelType,
+    //  "Models being merged are not the same type. Type equality is required to merge two models correctly.")
 
     val mergedVMs = mergeVariantModels(otherModel.variantModels)
 
