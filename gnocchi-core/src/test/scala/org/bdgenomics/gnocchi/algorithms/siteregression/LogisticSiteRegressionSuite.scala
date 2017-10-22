@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.apache.spark.sql.SparkSession
 import org.bdgenomics.gnocchi.GnocchiFunSuite
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel

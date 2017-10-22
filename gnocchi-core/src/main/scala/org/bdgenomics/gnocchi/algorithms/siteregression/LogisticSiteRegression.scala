@@ -1,20 +1,20 @@
 /**
-  * Licensed to Big Data Genomics (BDG) under one
-  * or more contributor license agreements.  See the NOTICE file
-  * distributed with this work for additional information
-  * regarding copyright ownership.  The BDG licenses this file
-  * to you under the Apache License, Version 2.0 (the
-  * "License"); you may not use this file except in compliance
-  * with the License.  You may obtain a copy of the License at
-  *
-  *     http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to Big Data Genomics (BDG) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The BDG licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
 import breeze.linalg._
@@ -89,20 +89,20 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
   }
 
   /**
-    * Tail recursive training function that finds the optimal weights vector given the input training data.
-    *
-    * @note DO NOT place any statements after the final recursive call to itself, or it will break tail recursive speed
-    *       up provided by the scala compiler.
-    *
-    * @param X [[breeze.linalg.DenseMatrix]] design matrix of [[Double]] that contains training data
-    * @param Y [[breeze.linalg.DenseVector]] of labels that contain labels for parameter X
-    * @param beta Weights vector
-    * @param iter current iteration, used for recursive tracking
-    * @param maxIter maximum number of iterations to be used for recursive depth limiting
-    * @param tolerance smallest allowable step size before function
-    * @return tuple where first item are weight values, beta, as [[Array]]
-    *         and second is Hessian matrix as [[DenseMatrix]]
-    */
+   * Tail recursive training function that finds the optimal weights vector given the input training data.
+   *
+   * @note DO NOT place any statements after the final recursive call to itself, or it will break tail recursive speed
+   *       up provided by the scala compiler.
+   *
+   * @param X [[breeze.linalg.DenseMatrix]] design matrix of [[Double]] that contains training data
+   * @param Y [[breeze.linalg.DenseVector]] of labels that contain labels for parameter X
+   * @param beta Weights vector
+   * @param iter current iteration, used for recursive tracking
+   * @param maxIter maximum number of iterations to be used for recursive depth limiting
+   * @param tolerance smallest allowable step size before function
+   * @return tuple where first item are weight values, beta, as [[Array]]
+   *         and second is Hessian matrix as [[DenseMatrix]]
+   */
   @tailrec
   final def findBeta(X: DenseMatrix[Double],
                      Y: DenseVector[Double],
@@ -137,15 +137,15 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
   }
 
   /**
-    * Data preparation function that converts the gnocchi models into breeze linear algebra primitives BLAS/LAPACK
-    * optimizations.
-    *
-    * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
-    *                  (covariates)
-    * @param genotypes [[CalledVariant]] object to convert into a breeze design matrix
-    * @return tuple where first element is the [[DenseMatrix]] design matrix and second element
-    *         is [[DenseVector]] of labels
-    */
+   * Data preparation function that converts the gnocchi models into breeze linear algebra primitives BLAS/LAPACK
+   * optimizations.
+   *
+   * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
+   *                  (covariates)
+   * @param genotypes [[CalledVariant]] object to convert into a breeze design matrix
+   * @return tuple where first element is the [[DenseMatrix]] design matrix and second element
+   *         is [[DenseVector]] of labels
+   */
   def prepareDesignMatrix(phenotypes: Map[String, Phenotype],
                           genotypes: CalledVariant,
                           allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
