@@ -39,10 +39,12 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
       numSamples = 10)
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
+
     val newAssoc = LogisticAssociation(geneticParameterStandardError = 0.1,
       pValue = 0.2,
       weights = List(0.3, 0.4),
       numSamples = 1)
+
     val newVariantModel = variantModel.updateVariantModel("rs234567", newAssoc)
 
     // Assert that all values in the LogisticVariantModel object match expected

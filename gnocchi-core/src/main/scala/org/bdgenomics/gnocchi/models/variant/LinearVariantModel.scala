@@ -181,6 +181,21 @@ case class LinearVariantModel(uniqueID: String,
     pvalue
   }
 
+  /**
+   * Updates the current LinearVariantModel by creating a new Association object
+   * on the specified parameters.
+   *
+   * @param variantId Variant Id of the new VariantModel
+   * @param updatedSsDeviations New ssDeviations
+   * @param updatedSsResiduals New ssResiduals
+   * @param updatedGeneticParameterStandardError New geneticParameterStandardError
+   * @param updatedtStatistic New tStatistic
+   * @param updatedResidualDegreesOfFreedom New residualDegreesOfFreedom
+   * @param updatedPValue New pValue
+   * @param updatedWeights New weights
+   * @param updatedNumSamples New numSamples
+   * @return Returns a new LinearVariantModel
+   */
   def updateVariantModel(variantID: String,
                          updatedSsDeviations: Double,
                          updatedSsResiduals: Double,
@@ -211,6 +226,13 @@ case class LinearVariantModel(uniqueID: String,
       phaseSetId)
   }
 
+  /**
+   * Updates the current LinearVariantModel to contain the new Association object.
+   *
+   * @param variantId VariantId of the new VariantModel
+   * @param association New association object
+   * @return Returns a new LinearVariantModel
+   */
   def updateVariantModel(variantID: String,
                          association: LinearAssociation): LinearVariantModel = {
     LinearVariantModel(variantID,
