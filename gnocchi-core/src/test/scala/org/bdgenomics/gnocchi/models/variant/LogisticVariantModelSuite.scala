@@ -6,14 +6,14 @@ import org.scalactic.Tolerance._
 
 class LogisticVariantModelSuite extends GnocchiFunSuite {
 
-  sparkTest("Test updateVariantModel works") {
+  sparkTest("Test constructUpdatedVariantModel works") {
     val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
       numSamples = 10)
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
-    val newVariantModel = variantModel.updateVariantModel("rs234567", 0.1, 0.2, List(0.3, 0.4), 1)
+    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", 0.1, 0.2, List(0.3, 0.4), 1)
 
     // Assert that all values in the LogisticVariantModel object match expected
     // The following values should be updated given the new parameters
@@ -32,7 +32,7 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     assert(newVariantModel.allelicAssumption === "")
   }
 
-  sparkTest("Test updateVariantModel with association parameter works") {
+  sparkTest("Test constructUpdatedVariantModel with association parameter works") {
     val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
@@ -45,7 +45,7 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
       weights = List(0.3, 0.4),
       numSamples = 1)
 
-    val newVariantModel = variantModel.updateVariantModel("rs234567", newAssoc)
+    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", newAssoc)
 
     // Assert that all values in the LogisticVariantModel object match expected
     // The following values should be updated given the new parameters

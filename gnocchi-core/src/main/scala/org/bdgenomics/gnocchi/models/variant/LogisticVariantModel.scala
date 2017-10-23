@@ -53,7 +53,7 @@ case class LogisticVariantModel(uniqueID: String,
     val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
     val updatedWaldStatistic = calculateWaldStatistic(updatedGeneticParameterStandardError, updatedWeights)
     val updatedPValue = calculatePvalue(updatedWaldStatistic)
-    updateVariantModel(this.uniqueID,
+    constructUpdatedVariantModel(this.uniqueID,
       updatedGeneticParameterStandardError,
       updatedPValue,
       updatedWeights,
@@ -106,7 +106,7 @@ case class LogisticVariantModel(uniqueID: String,
 
     //TODO: add validation stringency here rather than just creating empty association object
     val batchVariantModel = try {
-      updateVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
+      constructUpdatedVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
     } catch {
       case error: SingularMatrixException => throw new SingularMatrixException()
     }
@@ -114,8 +114,8 @@ case class LogisticVariantModel(uniqueID: String,
   }
 
   /**
-   * Updates the current LogisticVariantModel by creating a new Association object
-   * on the specified parameters.
+   * Creates an updated LogisticVariantModel from the current model with a new
+   * Association object on the specified parameters.
    *
    * @param variantId Variant Id of the new VariantModel
    * @param updatedGeneticParameterStandardError New geneticParameterStandardError
@@ -124,11 +124,11 @@ case class LogisticVariantModel(uniqueID: String,
    * @param updatedNumSamples New numSamples
    * @return Returns a new LogisticVariantModel
    */
-  def updateVariantModel(variantId: String,
-                         updatedGeneticParameterStandardError: Double,
-                         updatedPValue: Double,
-                         updatedWeights: List[Double],
-                         updatedNumSamples: Int): LogisticVariantModel = {
+  def constructUpdatedVariantModel(variantId: String,
+                                   updatedGeneticParameterStandardError: Double,
+                                   updatedPValue: Double,
+                                   updatedWeights: List[Double],
+                                   updatedNumSamples: Int): LogisticVariantModel = {
 
     val association = LogisticAssociation(weights = updatedWeights,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
@@ -147,14 +147,15 @@ case class LogisticVariantModel(uniqueID: String,
   }
 
   /**
-   * Updates the current LogisticVariantModel to contain the new Association object.
+   * Creates an updated LogisticVariantModel from the current model to contain
+   * the input Association object.
    *
    * @param variantId VariantId of the new VariantModel
    * @param association New association object
    * @return Returns a new LogisticVariantModel
    */
-  def updateVariantModel(variantId: String,
-                         association: LogisticAssociation): LogisticVariantModel = {
+  def constructUpdatedVariantModel(variantId: String,
+                                   association: LogisticAssociation): LogisticVariantModel = {
     LogisticVariantModel(variantId,
       association,
       phenotype,

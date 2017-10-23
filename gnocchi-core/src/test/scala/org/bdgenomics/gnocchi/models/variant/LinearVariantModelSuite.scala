@@ -6,7 +6,7 @@ import org.scalactic.Tolerance._
 
 class LinearVariantModelSuite extends GnocchiFunSuite {
 
-  sparkTest("Test updateVariantModel works") {
+  sparkTest("Test constructUpdatedVariantModel works") {
     val assoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
@@ -18,7 +18,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
 
     val variantModel = LinearVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
 
-    val newVariantModel = variantModel.updateVariantModel("rs234567",
+    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567",
       0.1,
       0.2,
       0.3,
@@ -49,7 +49,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     assert(newVariantModel.allelicAssumption === "")
   }
 
-  sparkTest("Test updateVariantModel with association parameter works") {
+  sparkTest("Test constructUpdatedVariantModel with association parameter works") {
     val assoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
@@ -70,7 +70,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
       weights = List(0.7, 0.8),
       numSamples = 500)
 
-    val newVariantModel = variantModel.updateVariantModel("rs234567", newAssoc)
+    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", newAssoc)
 
     // Assert that all values in the LinearVariantModel object match expected
     // The following values should be updated given the new parameters
