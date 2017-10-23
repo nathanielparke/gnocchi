@@ -61,6 +61,7 @@ class LogisticGnocchiModelSuite extends GnocchiFunSuite {
     // mergeGnocchiModel::mergeQCVariants tested below
   }
 
+  // (TODO) Need to create a singular matrix
   ignore("LogisticGnocchiModel.mergeQCVariants correct combines variant samples") {
     val spark = SparkSession.builder().master("local").getOrCreate()
     import spark.implicits._
@@ -71,7 +72,8 @@ class LogisticGnocchiModelSuite extends GnocchiFunSuite {
     observations(2) = (13, 7)
 
     val genotypeStates = observations.map(_._1).toList.zipWithIndex.map(item => GenotypeState(item._2.toString, item._1.toString))
-    val cv = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStates)
+    val gs = createSampleGenotypeStates(num = 10, maf = 0.35, geno = 0.0, ploidy = 2)
+    val cv = createSampleCalledVariant(samples = Option(gs))
     val cvDataset = mutable.MutableList[CalledVariant](cv).toDS()
 
     val phenoMap = observations.map(_._2)
@@ -80,7 +82,9 @@ class LogisticGnocchiModelSuite extends GnocchiFunSuite {
       .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1)))
       .toMap
 
-    val logisticGnocchiModel = LogisticGnocchiModelFactory.apply(cvDataset, sc.broadcast(phenoMap), Option.apply(List[String]("pheno1")), Option.apply(List[String]("rs123456").toSet))
+    val phenos = sc.broadcast(createSamplePhenotype(calledVariant = Option(cv), numCovariate = 10))
+
+    val logisticGnocchiModel = LogisticGnocchiModelFactory.apply(cvDataset, phenos, Option.apply(List[String]("pheno1")), Option.apply(List[String]("rs123456").toSet))
 
     val observationsSecond = new Array[(Int, Int)](3)
     observationsSecond(0) = (23, 4)
@@ -91,7 +95,7 @@ class LogisticGnocchiModelSuite extends GnocchiFunSuite {
     val cvSecond = CalledVariant(1, 1, "rs123456", "A", "C", "", "", "", "", genotypeStatesSecond)
     val cvDatasetSecond = mutable.MutableList[CalledVariant](cvSecond).toDS()
 
-    val logisticGnocchiModelSecond = LogisticGnocchiModelFactory.apply(cvDatasetSecond, sc.broadcast(phenoMap), Option.apply(List[String]("pheno1")), Option.apply(List[String]("rs123456").toSet))
+    val logisticGnocchiModelSecond = LogisticGnocchiModelFactory.apply(cvDataset, phenos, Option.apply(List[String]("pheno1")), Option.apply(List[String]("rs123456").toSet))
 
     val mergedQCVariants = logisticGnocchiModel.mergeQCVariants(logisticGnocchiModelSecond.QCVariantModels)
     val verifyQCVariants = genotypeStates ++ genotypeStatesSecond
