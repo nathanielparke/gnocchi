@@ -126,6 +126,4 @@ case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
           x._1.format,
           x._1.samples ++ x._2.samples))
   }
-
-  def getQCVariantModels: Dataset[QualityControlVariantModel[LinearVariantModel]] = {QCVariantModels}
 }

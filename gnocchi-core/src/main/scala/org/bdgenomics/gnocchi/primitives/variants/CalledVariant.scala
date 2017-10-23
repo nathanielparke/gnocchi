@@ -42,6 +42,7 @@ case class CalledVariant(chromosome: Int,
    * @return Number of samples that have all valid values (none missing)
    */
   def numValidSamples: Int = {
+    // (TODO) What is this calculation doing?
     samples.count(x => !x.value.contains("."))
   }
 
