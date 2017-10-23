@@ -39,7 +39,7 @@ case class LinearVariantModel(uniqueID: String,
   val regressionName = "Linear Regression"
 
   def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): LinearVariantModel = {
-    val batchVariantModel = constructVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
+    val batchVariantModel = updateVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
     mergeWith(batchVariantModel)
   }
 
@@ -61,7 +61,7 @@ case class LinearVariantModel(uniqueID: String,
     val updatedResidualDegreesOfFreedom = updateResidualDegreesOfFreedom(variantModel.association.numSamples)
     val updatedtStatistic = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
     val updatedPValue = calculatePValue(updatedtStatistic, updatedResidualDegreesOfFreedom)
-    constructVariantModel(this.uniqueID,
+    updateVariantModel(this.uniqueID,
       updatedSsDeviations,
       updatedSsResiduals,
       updatedGeneticParameterStandardError,
@@ -181,15 +181,15 @@ case class LinearVariantModel(uniqueID: String,
     pvalue
   }
 
-  def constructVariantModel(variantID: String,
-                            updatedSsDeviations: Double,
-                            updatedSsResiduals: Double,
-                            updatedGeneticParameterStandardError: Double,
-                            updatedtStatistic: Double,
-                            updatedResidualDegreesOfFreedom: Int,
-                            updatedPValue: Double,
-                            updatedWeights: List[Double],
-                            updatedNumSamples: Int): LinearVariantModel = {
+  def updateVariantModel(variantID: String,
+                         updatedSsDeviations: Double,
+                         updatedSsResiduals: Double,
+                         updatedGeneticParameterStandardError: Double,
+                         updatedtStatistic: Double,
+                         updatedResidualDegreesOfFreedom: Int,
+                         updatedPValue: Double,
+                         updatedWeights: List[Double],
+                         updatedNumSamples: Int): LinearVariantModel = {
 
     val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
@@ -211,8 +211,8 @@ case class LinearVariantModel(uniqueID: String,
       phaseSetId)
   }
 
-  def constructVariantModel(variantID: String,
-                            association: LinearAssociation): LinearVariantModel = {
+  def updateVariantModel(variantID: String,
+                         association: LinearAssociation): LinearVariantModel = {
     LinearVariantModel(variantID,
       association,
       phenotype,
