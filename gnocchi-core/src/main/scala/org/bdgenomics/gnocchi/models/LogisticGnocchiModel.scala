@@ -39,6 +39,7 @@ object LogisticGnocchiModelFactory {
 
     // ToDo: sampling QC Variants better.
     val variantModels = LogisticSiteRegression(genotypes, phenotypes)
+    variantModels.show()
 
     // Create QCVariantModels
     val comparisonVariants = if (QCVariantIDs.isEmpty) {
