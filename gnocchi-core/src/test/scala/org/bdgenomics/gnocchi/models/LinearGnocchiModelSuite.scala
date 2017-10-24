@@ -11,7 +11,7 @@ import org.mockito.Mockito
 import scala.collection.mutable
 
 class LinearGnocchiModelSuite extends GnocchiFunSuite {
-  sparkTest("Unit test of LGM.mergeVariantModels") {
+  ignore("Unit test of LGM.mergeVariantModels") {
     // (TODO) To unit test mergeVariantModels requires a seperate constructor that takes a mock of Dataset[LinearVariantModel] which is fairly messy
   }
 
