@@ -7,7 +7,7 @@ import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, lit, udf }
+import org.apache.spark.sql.functions.{ array, lit, udf, when }
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.utils.misc.Logging
@@ -20,33 +20,48 @@ import scala.collection.JavaConversions._
 import scala.io.StdIn.readLine
 
 object GnocchiSession {
-  // Add GnocchiContext methods
-  implicit def sparkContextToGnocchiSession(sc: SparkContext): GnocchiSession =
-    new GnocchiSession(sc)
+  implicit def sparkContextToGnocchiSession(sc: SparkContext): GnocchiSession = new GnocchiSession(sc)
 }
 
+/**
+ * The GnocchiSession provides functions on top of a SparkContext for loading and
+ * analyzing genome data.
+ *
+ * @param sc The SparkContext to wrap.
+ */
 class GnocchiSession(@transient val sc: SparkContext) extends Serializable with Logging {
 
   val sparkSession = SparkSession.builder().getOrCreate()
   import sparkSession.implicits._
 
+  /**
+   * Returns a filtered Dataset of CalledVariant objects, where all values with
+   * fewer samples than the mind threshold are filtered out.
+   *
+   * @param genotypes The Dataset of CalledVariant objects to filter on
+   * @param mind The percentage threshold of samples to have filled in; values
+   *             with fewer samples will be removed in this operation.
+   * @param ploidy The number of sets of chromosomes
+   *
+   * @return Returns an updated Dataset with values removed, as specified by the
+   *         filtering
+   */
   def filterSamples(genotypes: Dataset[CalledVariant], mind: Double, ploidy: Double): Dataset[CalledVariant] = {
     require(mind >= 0.0 && mind <= 1.0, "`mind` value must be between 0.0 to 1.0 inclusive.")
     val sampleIds = genotypes.first.samples.map(x => x.sampleID)
     val separated = genotypes.select($"uniqueID" +: sampleIds.indices.map(idx => $"samples"(idx) as sampleIds(idx)): _*)
 
-    val missingFn: String => Int = _.split("/|\\|").count(_ == ".")
-    val missingUDF = udf(missingFn)
+    val filtered = separated.select($"uniqueID" +: sampleIds.map(sampleId =>
+      when(separated(sampleId).getField("value") === "./.", 2)
+        .when(separated(sampleId).getField("value").endsWith("."), 1)
+        .when(separated(sampleId).getField("value").startsWith("."), 1)
+        .otherwise(0) as sampleId): _*)
 
-    val filtered = separated.select($"uniqueID" +: sampleIds.map(sampleId => missingUDF(separated(sampleId).getField("value")) as sampleId): _*)
-
-    val summed = filtered.drop("uniqueID").groupBy().sum().toDF(sampleIds: _*)
+    val summed = filtered.drop("uniqueID").groupBy().sum().toDF(sampleIds: _*).select(array(sampleIds.head, sampleIds.tail: _*)).as[Array[Double]].collect.toList.head
     val count = filtered.count()
+    val missingness = summed.map(_ / (ploidy * count))
+    val samplesWithMissingness = sampleIds.zip(missingness)
 
-    val missingness = summed.select(sampleIds.map(sampleId => summed(sampleId) / (ploidy * count) as sampleId): _*)
-    val plainMissingness = missingness.select(array(sampleIds.head, sampleIds.tail: _*)).as[Array[Double]].head
-
-    val samplesWithMissingness = sampleIds.zip(plainMissingness)
     val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
 
     val filteredDF = separated.select($"uniqueID", array(keepers.head, keepers.tail: _*)).toDF("uniqueID", "samples").as[(String, Array[String])]
@@ -54,6 +69,19 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     genotypes.drop("samples").join(filteredDF, "uniqueID").as[CalledVariant]
   }
 
+  /**
+   * Returns a filtered Dataset of CalledVariant objects, where all variants with
+   * values less than the specified geno or maf threshold are filtered out.
+   *
+   * @param genotypes The Dataset of CalledVariant objects to filter on
+   * @param geno The percentage threshold for geno values for each CalledVariant
+   *             object
+   * @param maf The percentage threshold for Minor Allele Frequency for each
+   *            CalledVariant object
+   *
+   * @return Returns an updated Dataset with values removed, as specified by the
+   *         filtering
+   */
   def filterVariants(genotypes: Dataset[CalledVariant], geno: Double, maf: Double): Dataset[CalledVariant] = {
     require(maf >= 0.0 && maf <= 1.0, "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0, "`geno` value must be between 0.0 to 1.0 inclusive.")
@@ -66,6 +94,15 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     mafFiltered
   }
 
+  /**
+   * Returns a modified Dataset of CalledVariant objects, where any value with a
+   * maf > 0.5 is recoded. The recoding is specified as flipping the referenceAllele
+   * and alternateAllele when the frequency of alt is greater than that of ref.
+   *
+   * @param genotypes The Dataset of CalledVariant objects to recode
+   *
+   * @return Returns an updated Dataset that has been recoded
+   */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
     val minorAlleleF = genotypes.map(x => (x.uniqueID, x.maf)).toDF("uniqueID", "maf")
     val genoWithMaf = genotypes.join(minorAlleleF, "uniqueID")
@@ -125,6 +162,23 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     }).toDS
   }
 
+  /**
+   * Returns a map of phenotype name to phenotype object, which is loaded from
+   * a file, specified by phenotypesPath
+   *
+   * @param phenotypesPath A string specifying the location in the file system
+   *                       of the phenotypes file to load in.
+   * @param primaryID The primary sample ID
+   * @param phenoName The primary phenotype
+   * @param delimiter The delimiter used in the input file
+   * @param covarPath Optional parameter specifying the location in the file
+   *                  system of the covariants file
+   * @param covarNames Optional paramter specifying the names of the covariants
+   *                   detailed in the covariants file
+   * @param covarDelimiter The delimiter used in the covariants file
+   *
+   * @return A Map of phenotype name to Phenotype object
+   */
   def loadPhenotypes(phenotypesPath: String,
                      primaryID: String,
                      phenoName: String,
