@@ -60,10 +60,10 @@
   </build>
 
   <dependencies>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-avro</artifactId>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>org.bdgenomics.utils</groupId>
       <artifactId>utils-misc-spark2_${scala.version.prefix}</artifactId>
@@ -87,10 +87,10 @@
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>org.bdgenomics.adam</groupId>
       <artifactId>adam-core-spark2_${scala.version.prefix}</artifactId>
@@ -102,7 +102,7 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.bdgenomics.adam</groupId>
       <artifactId>adam-cli-spark2_${scala.version.prefix}</artifactId>
       <version>${adam.version}</version>
@@ -112,7 +112,7 @@
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-math3</artifactId>
@@ -138,11 +138,11 @@
       <artifactId>slf4j-api</artifactId>
       <version>1.7.5</version>
     </dependency>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
       <version>1.6.4</version>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>org.scala-lang.modules</groupId>
       <artifactId>scala-pickling_2.11</artifactId>
