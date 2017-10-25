@@ -27,8 +27,8 @@ import org.apache.spark.sql.Dataset
 import org.scalatest.FunSuite // (TODO) Replace with GnocchiFunSuite
 
 class JavaGnocchiSessionSuite extends GnocchiFunSuite {
-  var gs:GnocchiSession = null
-  var jgs:JavaGnocchiSession = null
+  var gs: GnocchiSession = null
+  var jgs: JavaGnocchiSession = null
 
   sparkBefore("Creating JavaGnocchiSession") {
     gs = Mockito.mock(classOf[GnocchiSession])
@@ -79,6 +79,6 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
 
     jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter)
 
-    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t",  List(-9))
+    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List(-9))
   }
 }
