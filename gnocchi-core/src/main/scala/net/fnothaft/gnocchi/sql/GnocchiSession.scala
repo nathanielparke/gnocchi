@@ -32,8 +32,21 @@ import scala.collection.JavaConversions._
 object GnocchiSession {
 
   // Add GnocchiContext methods
-  implicit def sparkContextToGnocchiContext(sc: SparkContext): GnocchiSession =
+  implicit def sparkContextToGnocchiSession(sc: SparkContext): GnocchiSession =
     new GnocchiSession(sc)
+
+  /**
+   * Creates a GnocchiSession from SparkSession. Sets the active session to the
+   * input session.
+   *
+   *
+   * @param ss SparkSession
+   * @return GnocchiSession
+   */
+  def GnocchiSessionFromSession(ss: SparkSession): GnocchiSession = {
+    SparkSession.setActiveSession(ss)
+    new GnocchiSession(ss.sparkContext)
+  }
 
 }
 

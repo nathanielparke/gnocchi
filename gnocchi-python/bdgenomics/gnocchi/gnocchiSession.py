@@ -20,11 +20,11 @@ class GnocchiSession(object):
     """
     """
 
-    def __init__(self, sc):
-        self._sc = sc
-        self._jvm = sc._jvm
-        session = sc._jvm.net.fnothaft.gnocchi.sql.GnocchiSession(sc._jsc.sc())
-        self.__jgs = sc._jvm.net.fnothaft.gnocchi.api.java.JavaGnocchiSession(session)
+    def __init__(self, ss):
+        self._sc = ss.sparkContext
+        self._jvm = self._sc._jvm
+        session = self._jvm.net.fnothaft.gnocchi.sql.GnocchiSession.GnocchiSessionFromSession(ss._jsparkSession)
+        self.__jgs = self._jvm.net.fnothaft.gnocchi.api.java.JavaGnocchiSession(session)
 
     def filterSamples(self, genotypesDataset, mind, ploidy):
         dataset = self.__jgs.filterSamples(genotypesDataset.get(), mind, ploidy)
