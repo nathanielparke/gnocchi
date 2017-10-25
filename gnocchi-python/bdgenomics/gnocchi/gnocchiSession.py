@@ -34,8 +34,8 @@ class GnocchiSession(object):
         dataset = self.__jgs.filterVariants(genotypesDataset.get(), geno, maf)
         return CalledVariantDataset(dataset, self._sc)
 
-    def loadGenotypesAsText(self, genotypesPath):
-        dataset = self.__jgs.loadGenotypesAsText(genotypesPath)
+    def loadGenotypes(self, genotypesPath):
+        dataset = self.__jgs.loadGenotypes(genotypesPath)
         return CalledVariantDataset(dataset, self._sc)
 
     def loadPhenotypes(self, phenotypesPath, primaryID, phenoName, delimited,

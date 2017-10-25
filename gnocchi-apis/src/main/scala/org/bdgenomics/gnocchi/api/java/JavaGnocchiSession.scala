@@ -64,8 +64,8 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
   /**
    * (TODO) Add comments
    */
-  def loadGenotypesAsText(genotypesPath: java.lang.String): Dataset[CalledVariant] = {
-    gs.loadGenotypesAsText(genotypesPath)
+  def loadGenotypes(genotypesPath: java.lang.String): Dataset[CalledVariant] = {
+    gs.loadGenotypes(genotypesPath)
   }
 
   /**

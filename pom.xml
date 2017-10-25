@@ -314,12 +314,12 @@
       </dependency>
       <dependency>
         <groupId>org.bdgenomics</groupId>
-        <artifactId>gnocchi-cli_2.10</artifactId>
+        <artifactId>gnocchi-cli_2.11</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.bdgenomics</groupId>
-        <artifactId>gnocchi-apis_2.10</artifactId>
+        <artifactId>gnocchi-apis_2.11</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
