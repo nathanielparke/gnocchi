@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from bdgenomics.gnocchi.rdd import CalledVariantDataset, PhenotypeMap
+from bdgenomics.gnocchi.primitives import CalledVariantDataset, PhenotypeMap
 
 
 class GnocchiSession(object):
@@ -41,13 +41,13 @@ class GnocchiSession(object):
         Returns a filtered Dataset of CalledVariant objects, where all values
         with fewer samples than the mind threshold are filtered out.
 
-        :param bdgenomics.gnocchi.rdd.CalledVariantDataset genotypesDataset:
+        :param bdgenomics.gnocchi.primitives.CalledVariantDataset genotypesDataset:
                the dataset of CalledVariant objects to filter on.
         :param float mind: the percentage threshold of samples to have filled in;
                values with fewer samples will be removed in this operation.
         :param float ploidy: the number of sets of chromosomes.
         :return: a filtered Dataset of CalledVariant objects
-        :rtype: bdgenomics.gnocchi.rdd.CalledVariantDataset
+        :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
         dataset = self.__jgs.filterSamples(genotypesDataset.get(), mind, ploidy)
         return CalledVariantDataset(dataset, self._sc)
@@ -59,14 +59,14 @@ class GnocchiSession(object):
         with values less than the specified geno or maf threshold are filtered 
         out.
 
-        :param bdgenomics.gnocchi.rdd.CalledVariantDataset genotypesDataset:
+        :param bdgenomics.gnocchi.primitives.CalledVariantDataset genotypesDataset:
                the dataset of CalledVariant objects to filter on.
         :param float geno: the percentage threshold for geno values for each
                CalledVariant object.
         :param float maf: the percentage threshold for Minor Allele Frequency
                for each CalledVariant object.
         :return: a filtered Dataset of CalledVariant objects
-        :rtype: bdgenomics.gnocchi.rdd.CalledVariantDataset
+        :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
         dataset = self.__jgs.filterVariants(genotypesDataset.get(), geno, maf)
         return CalledVariantDataset(dataset, self._sc)
@@ -79,10 +79,10 @@ class GnocchiSession(object):
         referenceAllele and alternateAllele when the frequency of alt is greater
         than that of ref.
 
-        :param bdgenomics.gnocchi.rdd.CalledVariantDataset genotypesDataset:
+        :param bdgenomics.gnocchi.primitives.CalledVariantDataset genotypesDataset:
                the dataset of CalledVariant objects to recode.
         :return: a filtered Dataset of CalledVariant objects
-        :rtype: bdgenomics.gnocchi.rdd.CalledVariantDataset
+        :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
         dataset = self.__jgs.recodeMajorAllele(genotypesDataset.get())
         return CalledVariantDataset(dataset, self._sc)
@@ -95,7 +95,7 @@ class GnocchiSession(object):
         :param string genotypesPath: A string specifying the location in the
                file system of the genotypes file to load in.
         :return: a Dataset of CalledVariant objects loaded from a vcf file
-        :rtype: bdgenomics.gnocchi.rdd.CalledVariantDataset
+        :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
         dataset = self.__jgs.loadGenotypes(genotypesPath)
         return CalledVariantDataset(dataset, self._sc)
@@ -125,7 +125,7 @@ class GnocchiSession(object):
                of the covariants detailed in the covariants file
         :param string covarDelimiter: The delimiter used in the covariants file
         :return A map of phenotype name to phenotype object
-        :rtype: bdgenomics.gnocchi.rdd.PhenotypeMap
+        :rtype: bdgenomics.gnocchi.primitives.PhenotypeMap
         """
         phenoMap = self.__jgs.loadPhenotypes(phenotypesPath,
                                              primaryID,
