@@ -18,14 +18,14 @@
 
 // (TODO) Add boilerplate for Java wrapper onto Gnocchi
 
-package net.fnothaft.gnocchi.api.java
+package org.bdgenomics.gnocchi.api.java
 
-import net.fnothaft.gnocchi.primitives.phenotype.Phenotype
-import net.fnothaft.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
+import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.api.java.JavaSparkContext
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.adam.rdd.ADAMContext
-import net.fnothaft.gnocchi.sql.GnocchiSession
+import org.bdgenomics.gnocchi.sql.GnocchiSession
 
 object JavaGnocchiSession {
   // convert to and from java/scala implementation

@@ -23,8 +23,8 @@ class GnocchiSession(object):
     def __init__(self, ss):
         self._sc = ss.sparkContext
         self._jvm = self._sc._jvm
-        session = self._jvm.net.fnothaft.gnocchi.sql.GnocchiSession.GnocchiSessionFromSession(ss._jsparkSession)
-        self.__jgs = self._jvm.net.fnothaft.gnocchi.api.java.JavaGnocchiSession(session)
+        session = self._jvm.org.bdgenomics.gnocchi.sql.GnocchiSession.GnocchiSessionFromSession(ss._jsparkSession)
+        self.__jgs = self._jvm.org.bdgenomics.gnocchi.api.java.JavaGnocchiSession(session)
 
     def filterSamples(self, genotypesDataset, mind, ploidy):
         dataset = self.__jgs.filterSamples(genotypesDataset.get(), mind, ploidy)

@@ -16,11 +16,11 @@
  * limitations under the License.
  */
 
-package net.fnothaft.gnocchi.api
+package org.bdgenomics.gnocchi.api
 
-import net.fnothaft.gnocchi.api.java.{ GnocchiFunSuite, JavaGnocchiSession }
-import net.fnothaft.gnocchi.primitives.variants.CalledVariant
-import net.fnothaft.gnocchi.sql.GnocchiSession
+import org.bdgenomics.gnocchi.api.java.{ GnocchiFunSuite, JavaGnocchiSession }
+import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.sql.GnocchiSession
 import org.apache.spark.SparkContext
 import org.mockito.Mockito
 import org.apache.spark.sql.Dataset

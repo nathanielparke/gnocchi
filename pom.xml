@@ -313,12 +313,12 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>net.fnothaft</groupId>
+        <groupId>org.bdgenomics</groupId>
         <artifactId>gnocchi-cli_2.10</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>net.fnothaft</groupId>
+        <groupId>org.bdgenomics</groupId>
         <artifactId>gnocchi-apis_2.10</artifactId>
         <version>${project.version}</version>
       </dependency>
