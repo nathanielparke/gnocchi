@@ -108,6 +108,16 @@ uuid=$(uuidgen)
 conda create -q -n gnocchi-build-${uuid} python=2.7 anaconda
 source activate gnocchi-build-${uuid}
 
+# what hadoop version are we on? format string for downloading spark assembly
+if [[ $HADOOP_VERSION =~ ^2\.6 ]]; then
+    HADOOP=hadoop2.6
+elif [[ $HADOOP_VERSION =~ ^2\.7 ]]; then
+    HADOOP=hadoop2.7
+else
+    echo "Unknown Hadoop version."
+    exit 1
+fi
+
 # set spark artifact string for downloading assembly
 SPARK=spark-${SPARK_VERSION}
 
