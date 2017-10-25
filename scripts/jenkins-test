@@ -126,7 +126,7 @@ ASSEMBLY_JAR="$(ls -1 "$ASSEMBLY_DIR" | grep "^gnocchi[0-9A-Za-z\_\.-]*\.jar$" |
 export PYSPARK_SUBMIT_ARGS="--jars ${ASSEMBLY_DIR}/${ASSEMBLY_JAR} --driver-class-path ${ASSEMBLY_DIR}/${ASSEMBLY_JAR} pyspark-shell"
 
 # prepare python
-pushd mango-python
+pushd gnocchi-python
 make prepare
 popd
 
