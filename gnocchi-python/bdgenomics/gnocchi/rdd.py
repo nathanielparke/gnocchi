@@ -18,29 +18,56 @@
 class CalledVariantDataset(object):
 
     def __init__(self, jvmDS, sc):
+        """
+        Constructs a Python CalledVariantDataset from a JVM Dataset[CalledVariant]
+
+        :param jvmDS: Py4j handle to underlying JVM object.
+        :param pyspark.context.SparkContext sc: Active Spark Context.
+        """
         self._jvmDS = jvmDS
         self.sc = sc
 
     def get(self):
+        """
+        Access the inner Dataset object
+        """
         return self._jvmDS
 
 
 class Phenotype(object):
 
     def __init__(self, p, sc):
+        """
+        Constructs a Python Phenotype object from a JVM Phenotype
+
+        :param p: Py4j handle to underlying JVM object
+        :param pyspark.context.SparkContext sc: Active Spark Context.
+        """
         self._jvmPhenotype = p
         self.sc = sc
 
 class PhenotypeMap(object):
 
     def __init__(self, jvmMap, sc, jgs):
+        """
+        Constructs a Python PhenotypeMap from a JVM Map[String, Phenotype]
+
+        :param jvmMap: Py4j handle to underlying JVM object.
+        :param pyspark.context.SparkContext sc: Active Spark Context.
+        """
         self._jvmMap = jvmMap
         self.sc = sc
         self._jgs = jgs
 
     def get(self):
+        """
+        Access the inner JVM Map object
+        """
         return self._jvmMap
 
     def getKey(self, k):
+        """
+        Get the Phenotype object corresponding to a specific phenotype name
+        """
         p = self._jgs.getPhenotypeByKey(self._jvmMap, k)
         return Phenotype(p, self.sc)
