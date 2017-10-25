@@ -77,7 +77,7 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
   def filterVariants(genotypes: Dataset[CalledVariant], geno: java.lang.Double, maf: java.lang.Double): Dataset[CalledVariant] = {
     gs.filterVariants(genotypes, geno, maf)
   }
-  
+
   /**
    * Returns a modified Dataset of CalledVariant objects, where any value with a
    * maf > 0.5 is recoded. The recoding is specified as flipping the referenceAllele
