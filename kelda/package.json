@@ -1,0 +1,9 @@
+{
+  "name": "gnocchi",
+  "main": "./deploy.js",
+  "license": "MIT",
+  "dependencies": {
+    "kelda": ">=0.6",
+    "@kelda/spark": "kelda/spark"
+  }
+}
