@@ -38,7 +38,7 @@ You can then run `gnocchi` via `gnocchi-submit`, or open a shell using `gnocchi-
 Test data is included. You can run with the test data by running:
 
 ```
-gnocchi-submit regressPhenotypes examples/testData/5snps10samples.vcf examples/testData/10samples5Phenotypes2covars.txt ADDITIVE_LINEAR ../associations -saveAsText -phenoName pheno1 -covar -covarFile examples/testData/10samples5Phenotypes2covars.txt -covarNames pheno4,pheno5 -sampleIDName SampleID
+gnocchi-submit regressPhenotypes /gnocchi/examples/testData/5snps10samples.vcf /gnocchi/examples/testData/10samples5Phenotypes2covars.txt ADDITIVE_LINEAR ../associations -saveAsText -phenoName pheno1 -covar -covarFile /gnocchi/examples/testData/10samples5Phenotypes2covars.txt -covarNames pheno4,pheno5 -sampleIDName SampleID
 ```
 
 ## Phenotype Input
