@@ -193,7 +193,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
           case GenotypeAllele.ALT | GenotypeAllele.OTHER_ALT => "1"
           case GenotypeAllele.NO_CALL | _                    => "."
         }.mkString("/"))).toList)
-    }).toDS
+    }).toDS.cache()
   }
 
   /**
