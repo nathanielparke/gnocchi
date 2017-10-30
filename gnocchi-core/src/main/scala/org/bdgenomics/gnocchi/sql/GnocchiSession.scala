@@ -173,28 +173,32 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    */
   def loadGenotypes(genotypesPath: String): Dataset[CalledVariant] = {
 
-    val genoFile = new Path(genotypesPath)
-    val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
-    require(fs.exists(genoFile), s"Specified genotypes file path does not exist: ${genotypesPath}")
+    if (genotypesPath.takeRight(4) == ".vcf") {
+      val genoFile = new Path(genotypesPath)
+      val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
+      require(fs.exists(genoFile), s"Specified genotypes file path does not exist: ${genotypesPath}")
 
-    val vcRdd = sc.loadVcf(genotypesPath)
-    vcRdd.rdd.map(vc => {
-      val variant = vc.variant.variant
-      CalledVariant(variant.getContigName.toInt,
-        variant.getEnd.intValue(),
-        variant.getNames.get(0),
-        variant.getReferenceAllele,
-        variant.getAlternateAllele,
-        "", // quality score
-        "", // filter
-        "", // info
-        "", // format
-        vc.genotypes.map(geno => GenotypeState(geno.getSampleId, geno.getAlleles.map {
-          case GenotypeAllele.REF                            => "0"
-          case GenotypeAllele.ALT | GenotypeAllele.OTHER_ALT => "1"
-          case GenotypeAllele.NO_CALL | _                    => "."
-        }.mkString("/"))).toList)
-    }).toDS.cache()
+      val vcRdd = sc.loadVcf(genotypesPath)
+      vcRdd.rdd.map(vc => {
+        val variant = vc.variant.variant
+        CalledVariant(variant.getContigName.toInt,
+          variant.getEnd.intValue(),
+          variant.getNames.get(0),
+          variant.getReferenceAllele,
+          variant.getAlternateAllele,
+          "", // quality score
+          "", // filter
+          "", // info
+          "", // format
+          vc.genotypes.map(geno => GenotypeState(geno.getSampleId, geno.getAlleles.map {
+            case GenotypeAllele.REF                            => "0"
+            case GenotypeAllele.ALT | GenotypeAllele.OTHER_ALT => "1"
+            case GenotypeAllele.NO_CALL | _                    => "."
+          }.mkString("/"))).toList)
+      }).toDS.cache()
+    } else {
+      sparkSession.read.parquet(genotypesPath).as[CalledVariant]
+    }
   }
 
   /**
@@ -317,7 +321,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     if (saveAsText) {
       assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
     } else {
-      assoc.toDF.write.parquet(outPath)
+      assoc.write.parquet(outPath)
     }
   }
 }
