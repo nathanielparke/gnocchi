@@ -183,7 +183,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
         val variant = vc.variant.variant
         CalledVariant(variant.getContigName.toInt,
           variant.getEnd.intValue(),
-          variant.getNames.get(0),
+          if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString,
           variant.getReferenceAllele,
           variant.getAlternateAllele,
           "", // quality score
