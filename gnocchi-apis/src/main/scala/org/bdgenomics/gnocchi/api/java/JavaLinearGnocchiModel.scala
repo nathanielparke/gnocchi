@@ -9,14 +9,14 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
 object JavaLinearGnocchiModelFactory {
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
+            phenotypes: Map[String, Phenotype],
             phenotypeNames: Option[List[String]],
             QCVariantIDs: Option[Set[String]] = None,
             QCVariantSamplingRate: java.lang.Double = 0.1,
             allelicAssumption: java.lang.String = "ADDITIVE",
             validationStringency: java.lang.String = "STRICT"): LinearGnocchiModel = {
     LinearGnocchiModelFactory(genotypes,
-      phenotypes,
+      phenotypes.asInstanceOf[Broadcast[Map[String, Phenotype]]],
       phenotypeNames,
       QCVariantIDs,
       QCVariantSamplingRate,

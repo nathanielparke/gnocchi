@@ -22,20 +22,23 @@ class LinearGnocchiModel(object):
                  genotypes,
                  phenotypes,
                  phenotypeNames,
-                 QCVariantIDs,
-                 QCVariantSamplingRate,
-                 allelicAssumption,
-                 validationStringency):
+                 QCVariantIDs = None,
+                 QCVariantSamplingRate = 0.1,
+                 allelicAssumption = "ADDITIVE",
+                 validationStringency = "STRICT"):
         self._sc = ss.sparkContext
         self._jvm = self._sc._jvm
-        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModel(genotypes,
-                                                                                       phenotypes,
-                                                                                       phenotypeNames,
-                                                                                       QCVariantIDs,
-                                                                                       QCVariantSamplingRate,
-                                                                                       allelicAssumption,
-                                                                                       validationStringency)
+        print("Initialized linearGnocchiModel")
+        # self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModel(genotypes,
+        #                                                                                phenotypes,
+        #                                                                                phenotypeNames,
+        #                                                                                QCVariantIDs,
+        #                                                                                QCVariantSamplingRate,
+        #                                                                                allelicAssumption,
+        #                                                                                validationStringency)
+
     def mergeGnocchiModel(self, otherModel):
+        # (TODO) Add a wrapper class?
         return self.__jlgm.mergeGnocchiModel(otherModel)
 
     def mergeVariantModels(self, newVariantModels):

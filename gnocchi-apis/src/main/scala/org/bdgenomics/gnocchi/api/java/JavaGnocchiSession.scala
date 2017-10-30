@@ -123,9 +123,9 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
                      primaryID: java.lang.String,
                      phenoName: java.lang.String,
                      delimiter: java.lang.String,
-                     covarPath: Option[String] = None,
-                     covarNames: Option[List[String]] = None,
-                     covarDelimiter: String = "\t",
+                     covarPath: Option[java.lang.String] = None,
+                     covarNames: Option[List[java.lang.String]] = None,
+                     covarDelimiter: java.lang.String = "\t",
                      missing: List[Int] = List(-9)): Map[String, Phenotype] = {
     gs.loadPhenotypes(phenotypesPath,
       primaryID,
