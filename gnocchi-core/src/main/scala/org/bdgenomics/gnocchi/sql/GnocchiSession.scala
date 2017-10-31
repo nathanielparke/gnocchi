@@ -171,9 +171,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
    * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
    */
-  def loadGenotypes(genotypesPath: String): Dataset[CalledVariant] = {
+  def loadGenotypes(genotypesPath: String, parquet: Boolean = false): Dataset[CalledVariant] = {
 
-    if (genotypesPath.takeRight(4) == ".vcf") {
+    if (parquet) {
+      sparkSession.read.parquet(genotypesPath).as[CalledVariant]
+    } else {
       val genoFile = new Path(genotypesPath)
       val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
       require(fs.exists(genoFile), s"Specified genotypes file path does not exist: ${genotypesPath}")
@@ -196,8 +198,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
             case GenotypeAllele.NO_CALL | _                    => "."
           }.mkString("/"))).toList)
       }).toDS.cache()
-    } else {
-      sparkSession.read.parquet(genotypesPath).as[CalledVariant]
     }
   }
 
