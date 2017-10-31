@@ -181,7 +181,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       val vcRdd = sc.loadVcf(genotypesPath)
       vcRdd.rdd.map(vc => {
         val variant = vc.variant.variant
-        CalledVariant(variant.getContigName.toInt,
+        CalledVariant(if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt,
           variant.getEnd.intValue(),
           if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString,
           variant.getReferenceAllele,
