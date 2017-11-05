@@ -18,24 +18,23 @@ from bdgenomics.gnocchi.primitives import CalledVariantDataset, PhenotypeMap, Li
 
 class LinearGnocchiModel(object):
 
-    def __init__(self, ss,
+    def __init__(self, sc,
                  genotypes,
                  phenotypes,
                  phenotypeNames,
-                 QCVariantIDs = None,
+                 QCVariantIDs,
                  QCVariantSamplingRate = 0.1,
                  allelicAssumption = "ADDITIVE",
                  validationStringency = "STRICT"):
-        self._sc = ss.sparkContext
+        self._sc = sc
         self._jvm = self._sc._jvm
-        print("Initialized linearGnocchiModel")
-        # self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModel(genotypes,
-        #                                                                                phenotypes,
-        #                                                                                phenotypeNames,
-        #                                                                                QCVariantIDs,
-        #                                                                                QCVariantSamplingRate,
-        #                                                                                allelicAssumption,
-        #                                                                                validationStringency)
+        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModelFactory.apply(genotypes,
+                                                                                       sc.broadcast(phenotypes),
+                                                                                       phenotypeNames,
+                                                                                       QCVariantIDs,
+                                                                                       QCVariantSamplingRate,
+                                                                                       allelicAssumption,
+                                                                                       validationStringency)
 
     def mergeGnocchiModel(self, otherModel):
         # (TODO) Add a wrapper class?
