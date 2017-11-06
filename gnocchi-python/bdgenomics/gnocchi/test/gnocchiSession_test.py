@@ -22,11 +22,11 @@ from bdgenomics.gnocchi.test import SparkTestCase
 
 class GnocchiContextTest(SparkTestCase):
 
-    def test1(self):
-        pass
-    
-    def test2(self):
-        pass
-    
-    def test3(self):
-        pass
+    def test_load_genotypes(self):
+
+        testFile = self.resourceFile("small1.vcf")
+        gs = GnocchiSession(self.ss)
+
+        genotypes = gs.loadGenotypes(testFile)
+
+        self.assertEqual(genotypes._jvmDS.toJavaRDD().count(), 2)

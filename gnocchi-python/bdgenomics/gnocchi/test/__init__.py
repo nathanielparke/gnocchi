@@ -16,16 +16,20 @@
 # limitations under the License.
 #
 
-
+import os
 import sys
 import tempfile
 import unittest
 
 
 from pyspark.sql import SparkSession
-
+from pyspark.context import SparkContext
 
 class SparkTestCase(unittest.TestCase):
+
+    def resourceFile(self, file):
+        gnocchiRoot = os.path.dirname(os.getcwd())
+        return os.path.join(os.path.join(gnocchiRoot, "gnocchi-core/src/test/resources"), file)
 
     def tmpFile(self):
         tempFile = tempfile.NamedTemporaryFile(delete=True)
@@ -49,5 +53,5 @@ class SparkTestCase(unittest.TestCase):
         self.sc = self.ss.sparkContext
 
     def tearDown(self):
-        self.sc.stop()
+        self.ss.stop()
         sys.path = self._old_sys_path
