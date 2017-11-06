@@ -143,5 +143,5 @@ class GnocchiSession(object):
                                              covarDelimiter,
                                              missing)
 
-        #return phenoMap
-        return PhenotypeMap(phenoMap, self._sc, self.__jgs)
+        return phenoMap
+        #return PhenotypeMap(phenoMap, self._sc, self.__jgs)

@@ -6,12 +6,18 @@ import org.bdgenomics.gnocchi.models.variant.{ QualityControlVariantModel, Linea
 import org.bdgenomics.gnocchi.models.{ LinearGnocchiModelFactory, GnocchiModel, LinearGnocchiModel }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.sql.GnocchiSession
 
 import scala.collection.JavaConversions._
 
 object JavaLinearGnocchiModelFactory {
+
+  var gs: GnocchiSession = null
+
+  def generate(gs: GnocchiSession) { this.gs = gs }
+
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[java.lang.String, Phenotype]],
+            phenotypes: scala.collection.immutable.HashMap[java.lang.String, Phenotype],
             phenotypeNames: java.util.ArrayList[java.lang.String], // Option becomes raw object java.util.ArrayList[java.lang.String],
             QCVariantIDs: java.util.ArrayList[java.lang.String], // Option becomes raw object
             QCVariantSamplingRate: java.lang.Double = 0.1,
@@ -34,7 +40,7 @@ object JavaLinearGnocchiModelFactory {
     }
 
     LinearGnocchiModelFactory(genotypes,
-      phenotypes,
+      this.gs.sparkSession.sparkContext.broadcast(phenotypes),
       phenotypeNamesOption,
       QCVariantIDsOption,
       QCVariantSamplingRate,

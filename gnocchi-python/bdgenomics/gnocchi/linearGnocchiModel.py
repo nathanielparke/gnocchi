@@ -18,7 +18,7 @@ from bdgenomics.gnocchi.primitives import CalledVariantDataset, PhenotypeMap, Li
 
 class LinearGnocchiModel(object):
 
-    def __init__(self, sc,
+    def __init__(self, ss,
                  genotypes,
                  phenotypes,
                  phenotypeNames,
@@ -26,15 +26,18 @@ class LinearGnocchiModel(object):
                  QCVariantSamplingRate = 0.1,
                  allelicAssumption = "ADDITIVE",
                  validationStringency = "STRICT"):
-        self._sc = sc
+        self._sc = ss.sparkContext
         self._jvm = self._sc._jvm
-        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModelFactory.apply(genotypes,
-                                                                                       sc.broadcast(phenotypes),
-                                                                                       phenotypeNames,
-                                                                                       QCVariantIDs,
-                                                                                       QCVariantSamplingRate,
-                                                                                       allelicAssumption,
-                                                                                       validationStringency)
+        session = self._jvm.org.bdgenomics.gnocchi.sql.GnocchiSession.GnocchiSessionFromSession(ss._jsparkSession)
+        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModelFactory
+        self.__jlgm.generate(session)
+        self.__jlgm.apply(genotypes,
+               phenotypes,
+               phenotypeNames,
+               QCVariantIDs,
+               QCVariantSamplingRate,
+               allelicAssumption,
+               validationStringency)
 
     def mergeGnocchiModel(self, otherModel):
         # (TODO) Add a wrapper class?
