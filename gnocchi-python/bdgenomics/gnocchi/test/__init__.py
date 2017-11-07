@@ -31,6 +31,10 @@ class SparkTestCase(unittest.TestCase):
         gnocchiRoot = os.path.dirname(os.getcwd())
         return os.path.join(os.path.join(gnocchiRoot, "gnocchi-core/src/test/resources"), file)
 
+    def exampleFile(self, file):
+        gnocchiRoot = os.path.dirname(os.getcwd())
+        return os.path.join(os.path.join(gnocchiRoot, "examples/testData"), file)
+
     def tmpFile(self):
         tempFile = tempfile.NamedTemporaryFile(delete=True)
         tempFile.close()

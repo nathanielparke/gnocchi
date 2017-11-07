@@ -20,13 +20,38 @@ from bdgenomics.gnocchi.gnocchiSession import GnocchiSession
 from bdgenomics.gnocchi.test import SparkTestCase
 
 
-class GnocchiContextTest(SparkTestCase):
+class GnocchiSessionTest(SparkTestCase):
 
     def test_load_genotypes(self):
 
-        testFile = self.resourceFile("small1.vcf")
+        testFile = self.resourceFile("1Sample1Variant.vcf")
         gs = GnocchiSession(self.ss)
 
         genotypes = gs.loadGenotypes(testFile)
 
-        self.assertEqual(genotypes._jvmDS.toJavaRDD().count(), 2)
+        self.assertEqual(genotypes._jvmDS.toJavaRDD().count(), 1)
+
+
+    def test_load_phenotypes(self):
+
+        testFile = self.resourceFile("first5samples5phenotypes2covars.txt")
+        gs = GnocchiSession(self.ss)
+
+        phenoMap = gs.loadPhenotypes(testFile, "SampleID", "pheno1", "\t",
+                                     testFile, ["pheno4", "pheno5"], "\t")
+
+        self.assertEqual(phenoMap._jvmMap.size(), 5)
+
+
+    def test_filters_integration(self):
+
+        testFile = self.exampleFile("time_genos_1.vcf")
+        gs = GnocchiSession(self.ss)
+
+        genotypes = gs.loadGenotypes(testFile)
+        self.assertEqual(genotypes._jvmDS.toJavaRDD().count(), 10000)
+
+        genotypes = gs.filterSamples(genotypes, 0.1, 2)
+        genotypes = gs.filterVariants(genotypes, 0.1, 0.1)
+
+        self.assertEqual(genotypes._jvmDS.toJavaRDD().count(), 8297)
