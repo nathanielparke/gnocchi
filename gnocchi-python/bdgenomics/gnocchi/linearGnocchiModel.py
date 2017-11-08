@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from bdgenomics.gnocchi.primitives import CalledVariantDataset, PhenotypeMap, LinearVariantModelDataset
+from py4j.java_collections import ListConverter
 
 class LinearGnocchiModel(object):
 
@@ -29,19 +30,24 @@ class LinearGnocchiModel(object):
         self._sc = ss.sparkContext
         self._jvm = self._sc._jvm
         session = self._jvm.org.bdgenomics.gnocchi.sql.GnocchiSession.GnocchiSessionFromSession(ss._jsparkSession)
-        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModelFactory
-        self.__jlgm.generate(session)
-        self.__jlgm.apply(genotypes,
+        self.__jlgmf = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModelFactory
+        self.__jlgmf.generate(session)
+
+        self.__lgm = self.__jlgmf.apply(genotypes,
                phenotypes,
-               phenotypeNames,
-               QCVariantIDs,
+                ListConverter().convert(phenotypeNames, self._sc._gateway._gateway_client),
+                ListConverter().convert(QCVariantIDs, self._sc._gateway._gateway_client),
                QCVariantSamplingRate,
                allelicAssumption,
                validationStringency)
 
+        self.__jlgm = self._jvm.org.bdgenomics.gnocchi.api.java.JavaLinearGnocchiModel(self.__lgm)
+
+    def get(self):
+        return self.__jlgm
+
     def mergeGnocchiModel(self, otherModel):
-        # (TODO) Add a wrapper class?
-        return self.__jlgm.mergeGnocchiModel(otherModel)
+        return self.__jlgm.mergeGnocchiModel(otherModel.get())
 
     def mergeVariantModels(self, newVariantModels):
         dataset = self.__jlgm.mergeVariantModels(newVariantModels)

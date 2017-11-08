@@ -8,4 +8,8 @@ gs = GnocchiSession(spark)
 genos = gs.loadGenotypes(genotypesPath1)
 phenos = gs.loadPhenotypes(phenotypesPath1, "IID", "pheno_1", "\t")
 
-lgm = LinearGnocchiModel(spark, genos, phenos, ["AD"], ["GI"])
+lgm = LinearGnocchiModel(spark, genos.get(), phenos.get(), ["AD"], ["GI"])
+lgm2 = LinearGnocchiModel(spark, genos.get(), phenos.get(), ["AD"], ["GI"])
+
+
+lgm.mergeGnocchiModel(lgm2)

@@ -17,12 +17,12 @@ object JavaLinearGnocchiModelFactory {
   def generate(gs: GnocchiSession) { this.gs = gs }
 
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: scala.collection.immutable.HashMap[java.lang.String, Phenotype],
-            phenotypeNames: java.util.ArrayList[java.lang.String], // Option becomes raw object java.util.ArrayList[java.lang.String],
-            QCVariantIDs: java.util.ArrayList[java.lang.String], // Option becomes raw object
-            QCVariantSamplingRate: java.lang.Double = 0.1,
-            allelicAssumption: java.lang.String = "ADDITIVE",
-            validationStringency: java.lang.String = "STRICT"): LinearGnocchiModel = {
+            phenotypes: scala.collection.immutable.Map[java.lang.String, Phenotype],
+            phenotypeNames: java.util.List[java.lang.String], // Option becomes raw object java.util.ArrayList[java.lang.String],
+            QCVariantIDs: java.util.List[java.lang.String], // Option becomes raw object
+            QCVariantSamplingRate: java.lang.Double,
+            allelicAssumption: java.lang.String,
+            validationStringency: java.lang.String): LinearGnocchiModel = {
 
     // Convert python compatible nullable types to scala options
     val phenotypeNamesOption = if (phenotypeNames == null) {
@@ -50,8 +50,8 @@ object JavaLinearGnocchiModelFactory {
 }
 
 class JavaLinearGnocchiModel(val lgm: LinearGnocchiModel) {
-  def mergeGnocchiModel(otherModel: GnocchiModel[LinearVariantModel, LinearGnocchiModel]): GnocchiModel[LinearVariantModel, LinearGnocchiModel] = {
-    lgm.mergeGnocchiModel(otherModel)
+  def mergeGnocchiModel(otherModel: JavaLinearGnocchiModel): GnocchiModel[LinearVariantModel, LinearGnocchiModel] = {
+    lgm.mergeGnocchiModel(otherModel.lgm)
   }
 
   def mergeVariantModels(newVariantModels: Dataset[LinearVariantModel]): Dataset[LinearVariantModel] = {
