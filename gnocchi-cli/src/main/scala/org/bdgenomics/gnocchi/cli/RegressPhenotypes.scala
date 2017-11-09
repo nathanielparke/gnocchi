@@ -106,7 +106,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
     val phenoDelimiter = if (args.phenoSpaceDelimiter) { " " } else { "\t" }
     val covarDelimiter = if (args.covarSpaceDelimiter) { " " } else { "\t" }
-    val missingPhenos = if (args.oneTwo) List(0, -9) else List(-9)
+    val missingPhenos = if (args.oneTwo) List("0", "-9") else List("-9")
 
     val phenotypes = if (args.covarFile != null) {
       sc.loadPhenotypes(args.phenotypes,

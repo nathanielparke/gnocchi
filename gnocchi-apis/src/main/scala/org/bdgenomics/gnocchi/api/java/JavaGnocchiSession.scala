@@ -125,7 +125,7 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
                      covarPath: java.lang.String,
                      covarNames: java.util.ArrayList[java.lang.String],
                      covarDelimiter: java.lang.String,
-                     missing: java.util.ArrayList[java.lang.Integer]): Map[java.lang.String, Phenotype] = {
+                     missing: java.util.ArrayList[java.lang.String]): Map[java.lang.String, Phenotype] = {
 
     // Convert python compatible nullable types to scala options                   
     val covarPathOption = if (covarPath == null) {
@@ -143,7 +143,6 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
     }
 
     val missingList = asScalaBuffer(missing).toList
-    val missingListWithIntValues = missingList.map(i => i.intValue)
 
     gs.loadPhenotypes(phenotypesPath,
       primaryID,
@@ -152,7 +151,7 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
       covarPathOption,
       covarNamesOption,
       covarDelimiter,
-      missingListWithIntValues)
+      missingList)
   }
 
   /**

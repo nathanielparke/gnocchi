@@ -79,6 +79,6 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
 
     jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter)
 
-    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List(-9))
+    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List("-9"))
   }
 }
