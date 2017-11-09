@@ -253,6 +253,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       .toDF("sampleId", "phenotype_stage")
       .filter(!$"phenotype_stage".isin(missing: _*))
       .withColumn("phenotype", $"phenotype_stage".cast("double"))
+      .drop($"phenotype_stage")
 
 
     val covariateDF = if (covarPath.isDefined && covarNames.isDefined) {
