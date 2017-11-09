@@ -250,7 +250,10 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val phenotypesDF = prelimPhenotypesDF
       .select(primaryID, phenoName)
-      .toDF("sampleId", "phenotype")
+      .toDF("sampleId", "phenotype_stage")
+      .filter(!$"phenotype_stage".isin(missing: _*))
+      .withColumn("phenotype", $"phenotype_stage".cast("double"))
+
 
     val covariateDF = if (covarPath.isDefined && covarNames.isDefined) {
       val prelimCovarDF = sparkSession.read.format("csv")
@@ -289,7 +292,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     // need to filter out the missing covariates as well.
     phenoCovarDF
       .withColumn("phenoName", lit(phenoName))
-      .filter(!$"phenotype".isin(missing: _*))
       .as[Phenotype]
       .collect()
       .map(x => (x.sampleId, x)).toMap
