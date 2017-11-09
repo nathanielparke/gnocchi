@@ -98,8 +98,7 @@ class GnocchiSession(object):
         :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
         dataset = self.__jgs.loadGenotypes(genotypesPath)
-        return dataset
-        #return CalledVariantDataset(dataset, self._sc)
+        return CalledVariantDataset(dataset, self._sc)
 
 
     def loadPhenotypes(self,
@@ -143,5 +142,4 @@ class GnocchiSession(object):
                                              covarDelimiter,
                                              missing)
 
-        return phenoMap
-        #return PhenotypeMap(phenoMap, self._sc, self.__jgs)
+        return PhenotypeMap(phenoMap, self._sc, self.__jgs)
