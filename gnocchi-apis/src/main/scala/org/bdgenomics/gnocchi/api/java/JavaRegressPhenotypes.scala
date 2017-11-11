@@ -12,7 +12,6 @@ object JavaRegressPhenotypes {
   def generate(gs: GnocchiSession) { this.gs = gs }
 
   def apply(args: java.util.List[java.lang.String]) = {
-    println("In JavaRegressPhenotypes.scala")
     RegressPhenotypes(asScalaBuffer(args).toArray).run(this.gs.sc)
   }
 }

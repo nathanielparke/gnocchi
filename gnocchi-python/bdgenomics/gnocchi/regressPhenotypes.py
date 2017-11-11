@@ -27,5 +27,4 @@ class RegressPhenotypes(object):
 
     def apply(self, args):
         argsList = args.split(" ")
-        print("In RegressPhenotypes.py")
         self._rp.apply(ListConverter().convert(argsList, self._sc._gateway._gateway_client))
