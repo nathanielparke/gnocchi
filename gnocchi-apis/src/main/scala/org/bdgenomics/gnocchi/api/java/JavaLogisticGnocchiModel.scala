@@ -50,8 +50,9 @@ object JavaLogisticGnocchiModelFactory {
 }
 
 class JavaLogisticGnocchiModel(val lgm: LogisticGnocchiModel) {
-  def mergeGnocchiModel(otherModel: JavaLogisticGnocchiModel): GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] = {
-    lgm.mergeGnocchiModel(otherModel.lgm)
+  def mergeGnocchiModel(otherModel: JavaLogisticGnocchiModel): JavaLogisticGnocchiModel = {
+    val newModel = lgm.mergeGnocchiModel(otherModel.lgm).asInstanceOf[LogisticGnocchiModel]
+    new JavaLogisticGnocchiModel(newModel)
   }
 
   def mergeVariantModels(newVariantModels: Dataset[LogisticVariantModel]): Dataset[LogisticVariantModel] = {
