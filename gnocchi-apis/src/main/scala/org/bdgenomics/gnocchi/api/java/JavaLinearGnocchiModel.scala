@@ -61,4 +61,8 @@ class JavaLinearGnocchiModel(val lgm: LinearGnocchiModel) {
   def mergeQCVariants(newQCVariantModels: Dataset[QualityControlVariantModel[LinearVariantModel]]): Dataset[CalledVariant] = {
     lgm.mergeQCVariants(newQCVariantModels)
   }
+
+  def save(saveTo: java.lang.String) = {
+    // (TODO) Fill out serialization
+  }
 }

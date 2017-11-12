@@ -57,3 +57,6 @@ class LinearGnocchiModel(object):
         dataset = self.__jlgm.mergeQCVariants(newQCVariantModels)
         return CalledVariantDataset(dataset, self._sc)
 
+    def save(self, saveTo):
+        self.__jlgm.save(saveTo)
+
