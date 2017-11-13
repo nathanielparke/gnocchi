@@ -49,14 +49,14 @@ class GnocchiSession(object):
         :return: a filtered Dataset of CalledVariant objects
         :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
-        dataset = self.__jgs.filterSamples(genotypesDataset.get(), mind, ploidy)
+        dataset = self.__jgs.filterSamples(genotypesDataset.get(), float(mind), float(ploidy))
         return CalledVariantDataset(dataset, self._sc)
 
 
     def filterVariants(self, genotypesDataset, geno, maf):
         """
         Returns a filtered Dataset of CalledVariant objects, where all variants
-        with values less than the specified geno or maf threshold are filtered 
+        with values less than the specified geno or maf threshold are filtered
         out.
 
         :param bdgenomics.gnocchi.primitives.CalledVariantDataset genotypesDataset:
@@ -68,7 +68,7 @@ class GnocchiSession(object):
         :return: a filtered Dataset of CalledVariant objects
         :rtype: bdgenomics.gnocchi.primitives.CalledVariantDataset
         """
-        dataset = self.__jgs.filterVariants(genotypesDataset.get(), geno, maf)
+        dataset = self.__jgs.filterVariants(genotypesDataset.get(), float(geno), float(maf))
         return CalledVariantDataset(dataset, self._sc)
 
 

@@ -47,21 +47,4 @@ fi
 
 GNOCCHI_CLI_JAR="${ASSEMBLY_DIR}/${ASSEMBLY_JARS}"
 
-if [ -z "$SPARK_HOME" ]; then
-  PYSPARK=$(which pyspark || echo)
-else
-  PYSPARK="$SPARK_HOME"/bin/pyspark
-fi
-if [ -z "$PYSPARK" ]; then
-  echo "SPARK_HOME not set and spark-shell not on PATH; Aborting."
-  exit 1
-fi
-echo "Using PYSPARK=$PYSPARK"
-
-# submit the job to Spark
-"$PYSPARK" \
-    --conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
-    --conf spark.kryo.registrator=org.bdgenomics.adam.serialization.ADAMKryoRegistrator \
-    --jars ${GNOCCHI_CLI_JAR} \
-    --driver-class-path ${GNOCCHI_CLI_JAR} \
-    "$@"
+export PYSPARK_SUBMIT_ARGS="--jars ${GNOCCHI_CLI_JAR} --driver-class-path ${GNOCCHI_CLI_JAR} pyspark-shell"
