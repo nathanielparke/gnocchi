@@ -77,7 +77,7 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
     val mockPhenoName = ""
     val mockDelimiter = ""
 
-    jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter)
+    jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, null, null)
 
     Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List("-9"))
   }
