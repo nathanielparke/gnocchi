@@ -255,7 +255,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       .withColumn("phenotype", $"phenotype_stage".cast("double"))
       .drop($"phenotype_stage")
 
-
     val covariateDF = if (covarPath.isDefined && covarNames.isDefined) {
       val prelimCovarDF = sparkSession.read.format("csv")
         .option("header", "true")
