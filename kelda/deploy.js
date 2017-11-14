@@ -13,6 +13,6 @@ const infra = new kelda.Infrastructure(machine, keldaWorkers);
 
 spark.setImage("kayousterhout/gnocchi")
 const s = new spark.Spark(numSparkWorkers,
-  { memoryMB: spark.getWorkerMemoryMB(machine) });
+  { memoryMiB: spark.getWorkerMemoryMiB(machine) });
 s.exposeUIToPublic();
 s.deploy(infra);
