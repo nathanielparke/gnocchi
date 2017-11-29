@@ -60,11 +60,23 @@ filteredGenosVariants = gs.filterVariants(filteredGenos, 0.1, 0.1)
 
 ## Accessing Spark primitives
 
-<span style="color:red"> ** (TODO ADITHYA) Write primitive summary ** </span>
+Of particular convenience in this Python wrapper is the fact that we can run Scala dataset operations on the Python-wrapped CalledVariantDataset objects, because the underlying Datasets have been exposed from the JVM to Python. This allows users to interact with the rich Scala-defined properties of the internal objects. 
+
+For example, the following lines of code access the first element of the `filteredGenoVariants` Dataset using the `head()` operator from Scala but through Python. Furthermore, its clear how the internal attributes of the CalledVariant can now be viewed.
+
+```
+calledVariant = filteredGenosVariants.get().head()
+
+print("calledVariant.chromosome =", calledVariant.chromosome())
+print("calledVariant.position =", calledVariant.position())
+print("calledVariant.uniqueID =", calledVariant.uniqueID())
+print("calledVariant.referenceAllele =", calledVariant.referenceAllele())
+print("calledVariant.alternateAllele =", calledVariant.alternateAllele())
+```
 
 ### Exposing Scala
 
-<span style="color:red"> ** (TODO ADITHYA) How Py4J exposes underlying methods ** </span>
+The detailed technical specs for how this happens can be found documented at the [Py4J website](https://www.py4j.org/), but a brief summary is provided here. Essentially how PyGnocchi works is that we define Python wrappers for all the exposed classes and methods. However, in order for the Python wrapper to communicate with the raw Scala code we define an intermediary set of Java classes that act as middle-men for method calls and accesses to the Python object that are translated, using Py4J into requests to the Scala code.
 
 ### Dos and Donts
 
