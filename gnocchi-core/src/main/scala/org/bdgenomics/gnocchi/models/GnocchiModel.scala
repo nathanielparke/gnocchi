@@ -184,10 +184,10 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
     path_oos.writeObject(QCPhenotypes)
     path_oos.close
 
-    val metaData_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
-    val metaData_oos = new ObjectOutputStream(metaData_fs.create(qcPhenoPath))
+    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
 
-    metaData_oos.writeObject(QCPhenotypes)
+    metaData_oos.writeObject(metaData)
     metaData_oos.close
   }
 }

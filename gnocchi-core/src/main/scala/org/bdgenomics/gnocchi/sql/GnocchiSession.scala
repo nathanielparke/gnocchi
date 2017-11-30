@@ -341,14 +341,16 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @return
    */
   def loadGnocchiModel(path: String): GnocchiModel[_, _] = {
-    val fis = new FileInputStream(path + "/metaData")
-    val ois = new ObjectInputStream(fis)
+    val metaDataPath = new Path(path + "/metaData")
 
+    val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois = new ObjectInputStream(path_fs.open(metaDataPath))
     val metaData = ois.readObject.asInstanceOf[GnocchiModelMetaData]
     ois.close
 
-    val fis_2 = new FileInputStream(path + "/qcPhenotypes")
-    val ois_2 = new ObjectInputStream(fis_2) {
+    val qcPhenotypesPath = new Path(path + "/qcPhenotypes")
+    val qcPhenotypes_fs = qcPhenotypesPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois_2 = new ObjectInputStream(qcPhenotypes_fs.open(qcPhenotypesPath)) {
       override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
         try { Class.forName(desc.getName, false, getClass.getClassLoader) }
         catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
