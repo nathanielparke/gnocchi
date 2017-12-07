@@ -119,13 +119,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   def filterVariants(genotypes: Dataset[CalledVariant], geno: Double, maf: Double): Dataset[CalledVariant] = {
     require(maf >= 0.0 && maf <= 1.0, "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0, "`geno` value must be between 0.0 to 1.0 inclusive.")
-    val filtersDF = genotypes.map(x => (x.uniqueID, x.maf, x.geno)).toDF("uniqueID", "maf", "geno")
-    val mafFiltered = genotypes.join(filtersDF, "uniqueID")
-      .filter($"maf" >= maf && lit(1) - $"maf" >= maf && $"geno" <= geno)
-      .drop("maf", "geno")
-      .as[CalledVariant]
-
-    mafFiltered
+    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
   /**
