@@ -182,9 +182,9 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
           variant.getReferenceAllele,
           variant.getAlternateAllele,
           vc.genotypes.map(geno => GenotypeState(geno.getSampleId,
-            geno.getAlleles.count(al => al == GenotypeAllele.REF),
-            geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT),
-            geno.getAlleles.count(al => al == GenotypeAllele.NO_CALL))).toList)
+            geno.getAlleles.count(al => al == GenotypeAllele.REF).toByte,
+            geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
+            geno.getAlleles.count(al => al == GenotypeAllele.NO_CALL).toByte)).toList)
       }).toDS.cache()
     }
   }
