@@ -85,21 +85,22 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    */
   def filterSamples(genotypes: Dataset[CalledVariant], mind: Double, ploidy: Double): Dataset[CalledVariant] = {
     require(mind >= 0.0 && mind <= 1.0, "`mind` value must be between 0.0 to 1.0 inclusive.")
-    val sampleIds = genotypes.first.samples.map(x => x.sampleID)
-    val separated = genotypes.select($"uniqueID" +: sampleIds.indices.map(idx => $"samples"(idx) as sampleIds(idx)): _*)
+    val x = genotypes.rdd.flatMap(f => { f.samples.map(g => { (g.sampleID, g.misses.toInt) }) })
+    val summed = x.reduceByKey(_ + _)
 
-    val filtered = separated.select($"uniqueID" +: sampleIds.map(sampleId => separated(sampleId).getField("misses") as sampleId): _*).cache()
+    val count = genotypes.count()
+    val samplesWithMissingness = summed.map { case (a, b) => (a, b / (ploidy * count)) }
 
-    val summed = filtered.drop("uniqueID").groupBy().sum().toDF(sampleIds: _*).select(array(sampleIds.head, sampleIds.tail: _*)).as[Array[Double]].collect.toList.head
-    val count = filtered.count()
-    val missingness = summed.map(_ / (ploidy * count))
-    val samplesWithMissingness = sampleIds.zip(missingness)
+    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1).collect
 
-    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
-
-    val filteredDF = separated.select($"uniqueID", array(keepers.head, keepers.tail: _*)).toDF("uniqueID", "samples").as[(String, Array[String])]
-
-    genotypes.drop("samples").join(filteredDF, "uniqueID").as[CalledVariant]
+    genotypes.map(f => {
+      CalledVariant(f.chromosome,
+        f.position,
+        f.uniqueID,
+        f.referenceAllele,
+        f.alternateAllele,
+        f.samples.filter(g => keepers.contains(g.sampleID)))
+    }).as[CalledVariant]
   }
 
   /**
