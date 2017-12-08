@@ -133,21 +133,18 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @return Returns an updated Dataset that has been recoded
    */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
-    val minorAlleleF = genotypes.map(x => (x.uniqueID, x.maf)).toDF("uniqueID", "maf")
-    val genoWithMaf = genotypes.join(minorAlleleF, "uniqueID")
-    val toRecode = genoWithMaf.filter($"maf" > 0.5).drop("maf").as[CalledVariant]
-    val recoded = toRecode.map(
-      x => {
+    genotypes.map(x => {
+      if (x.maf > 0.5) {
         CalledVariant(x.chromosome,
           x.position,
           x.uniqueID,
           x.alternateAllele,
           x.referenceAllele,
           x.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses)))
-      }).as[CalledVariant]
-    // Note: the below .map(a => a) is a hack solution to the fact that spark cannot union two
-    // datasets of the same type that have reordered columns. See issue: https://issues.apache.org/jira/browse/SPARK-21109
-    genoWithMaf.filter($"maf" <= 0.5).drop("maf").as[CalledVariant].map(a => a).union(recoded)
+      } else {
+        x
+      }
+    })
   }
 
   /**
@@ -334,9 +331,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     }
 
     val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
+    val necessaryFields = List("uniqueID", "chromosome", "position", "referenceAllele", "alternateAllele", "association.pValue").map(col(_))
+    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
 
     val assoc = associations
-      .select(flattenSchema(associations.schema): _*).sort($"pValue".asc)
+      .select(necessaryFields ::: fields: _*).sort($"pValue".asc)
       .withColumn("weights", stringify($"weights"))
       .coalesce(1)
       .cache()
