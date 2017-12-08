@@ -24,13 +24,14 @@ import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, lit, udf, when }
-import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.apache.spark.sql.functions.{ array, lit, udf, when, col }
+import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.utils.misc.Logging
 import java.nio.file.{ Files, Paths }
 
 import org.apache.hadoop.fs.Path
+import org.apache.spark.sql.types.StructType
 import org.bdgenomics.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData, LinearGnocchiModel, LogisticGnocchiModel }
 import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, QualityControlVariantModel, VariantModel }
 
@@ -178,9 +179,9 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
           variant.getReferenceAllele,
           variant.getAlternateAllele,
           vc.genotypes.map(geno => GenotypeState(geno.getSampleId,
-            geno.getAlleles.count(al => al == GenotypeAllele.REF).toByte,
+            geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-            geno.getAlleles.count(al => al == GenotypeAllele.NO_CALL).toByte)).toList)
+            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList)
       }).toDS.cache()
     }
   }
@@ -295,6 +296,25 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       .map(x => (x.sampleId, x)).toMap
   }
 
+  /**
+   * shamelessly lifted from here:
+   * https://stackoverflow.com/questions/37471346/automatically-and-elegantly-flatten-dataframe-in-spark-sql
+   *
+   * @param schema
+   * @param prefix
+   * @return
+   */
+  def flattenSchema(schema: StructType, prefix: String = null): Array[Column] = {
+    schema.fields.flatMap(f => {
+      val colName = if (prefix == null) f.name else (prefix + "." + f.name)
+
+      f.dataType match {
+        case st: StructType => flattenSchema(st, colName)
+        case _              => Array(col(colName))
+      }
+    })
+  }
+
   def saveAssociations[A <: VariantModel[A]](associations: Dataset[A],
                                              outPath: String,
                                              saveAsText: Boolean = false,
@@ -313,8 +333,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       }
     }
 
+    val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
+
     val assoc = associations
-      .select($"uniqueID", $"chromosome", $"position", $"association.pValue", $"association.weights".getItem(0).as("weights"), $"association.numSamples").sort($"pValue".asc)
+      .select(flattenSchema(associations.schema): _*).sort($"pValue".asc)
+      .withColumn("weights", stringify($"weights"))
       .coalesce(1)
       .cache()
 
