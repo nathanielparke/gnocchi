@@ -50,7 +50,15 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     })
   }
 
-  def applyToSite(phenotypes: Map[String, Phenotype],
+  /**
+   * Apply to site.
+   *
+   * @param phenotypes
+   * @param genotypes
+   * @param allelicAssumption
+   * @return
+   */
+  private[siteregression] def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant,
                   allelicAssumption: String): LinearAssociation = {
 
@@ -98,6 +106,14 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       x.rows)
   }
 
+  /**
+   * Take a CalledVariant and turn it into a Breeze Matrix and DenseVector.
+   *
+   * @param genotypes
+   * @param phenotypes
+   * @param allelicAssumption
+   * @return
+   */
   private[algorithms] def prepareDesignMatrix(genotypes: CalledVariant,
                                               phenotypes: Map[String, Phenotype],
                                               allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
@@ -130,10 +146,20 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
   }
 
+  /**
+   *
+   *
+   * @param variant
+   * @param phenotype
+   * @param association
+   * @param allelicAssumption
+   * @return
+   */
   def constructVM(variant: CalledVariant,
                   phenotype: Phenotype,
                   association: LinearAssociation,
                   allelicAssumption: String): LinearVariantModel = {
+
     LinearVariantModel(variant.uniqueID,
       association,
       phenotype.phenoName,
@@ -141,11 +167,15 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       variant.position,
       variant.referenceAllele,
       variant.alternateAllele,
-      allelicAssumption,
-      phaseSetId = 0)
+      allelicAssumption)
   }
 }
 
 object LinearSiteRegression extends LinearSiteRegression {
   val regressionName = "LinearSiteRegression"
+
+//  def apply()
+//
+//  lazy val model = BuildModel()
+
 }

@@ -47,11 +47,14 @@ object LinearGnocchiModelFactory {
     val variantModels = LinearSiteRegression(genotypes, phenotypes, allelicAssumption = allelicAssumption, validationStringency = validationStringency)
 
     // Create QCVariantModels
+
+    // ToDo Maybe, but probably delete
     val comparisonVariants = if (QCVariantIDs.isEmpty) {
       genotypes.sample(withReplacement = false, fraction = 0.1)
     } else {
-      genotypes.filter(x => QCVariantIDs.get.contains(x.uniqueID))
+      genotypes.filter(x => QCVariantIDs.getOrElse(Set()).contains(x.uniqueID))
     }
+
 
     val QCVariantModels = variantModels
       .joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
