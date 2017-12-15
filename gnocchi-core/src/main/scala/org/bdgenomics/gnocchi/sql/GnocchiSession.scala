@@ -94,14 +94,28 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1).collect
 
+    createCalledVariant(genotypes,
+      f => f.filter(g => keepers.contains(g.sampleID)))
+  }
+
+
+  /**
+   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]] [[Dataset]].
+   *
+   * @param genotypes
+   * @param samplesFn
+   * @return
+   */
+  def createCalledVariant(genotypes: Dataset[CalledVariant],
+                          samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
     genotypes.map(f => {
       CalledVariant(f.chromosome,
         f.position,
         f.uniqueID,
         f.referenceAllele,
         f.alternateAllele,
-        f.samples.filter(g => keepers.contains(g.sampleID)))
-    }).as[CalledVariant]
+        samplesFn(f.samples))
+    })
   }
 
   /**
@@ -124,26 +138,14 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     val trainIDs = phenotypes.keys.take(phenotypes.size - numTest)
     val testIDs = phenotypes.keys.takeRight(numTest)
 
-    val test = genotypes.map(f => {
-      CalledVariant(f.chromosome,
-        f.position,
-        f.uniqueID,
-        f.referenceAllele,
-        f.alternateAllele,
-        f.samples.filter(g => testIDs.contains(g.sampleID)))
-    }).as[CalledVariant]
+    val test = createCalledVariant(genotypes,
+      f => f.filter(g => testIDs.contains(g.sampleID)))
 
-    val train = genotypes.map(f => {
-      CalledVariant(f.chromosome,
-        f.position,
-        f.uniqueID,
-        f.referenceAllele,
-        f.alternateAllele,
-        f.samples.filter(g => trainIDs.contains(g.sampleID)))
-    }).as[CalledVariant]
+    val train = createCalledVariant(genotypes,
+      f => f.filter(g => trainIDs.contains(g.sampleID)))
 
-    test.write.parquet(testPath+"/parquet")
-    train.write.parquet(trainPath+"/parquet")
+    test.write.parquet(testPath + "/parquet")
+    train.write.parquet(trainPath + "/parquet")
   }
 
   /**
@@ -175,16 +177,16 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @return Returns an updated Dataset that has been recoded
    */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
-    genotypes.map(x => {
-      if (x.maf > 0.5) {
-        CalledVariant(x.chromosome,
-          x.position,
-          x.uniqueID,
-          x.alternateAllele,
-          x.referenceAllele,
-          x.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses)))
+    genotypes.map(f => {
+      if (f.maf > 0.5) {
+        CalledVariant(f.chromosome,
+          f.position,
+          f.uniqueID,
+          f.alternateAllele,
+          f.referenceAllele,
+          f.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses)))
       } else {
-        x
+        f
       }
     })
   }
@@ -212,15 +214,21 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       val vcRdd = sc.loadVcf(genotypesPath)
       vcRdd.rdd.map(vc => {
         val variant = vc.variant.variant
-        CalledVariant(if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt,
-          variant.getEnd.intValue(),
-          if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString,
-          variant.getReferenceAllele,
-          variant.getAlternateAllele,
-          vc.genotypes.map(geno => GenotypeState(geno.getSampleId,
+        val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
+        val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
+
+        val genotypeStates = vc.genotypes.map(geno =>
+          GenotypeState(geno.getSampleId,
             geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList)
+            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList
+
+        CalledVariant(contigName,
+          variant.getEnd.intValue(),
+          rs_id,
+          variant.getReferenceAllele,
+          variant.getAlternateAllele,
+          genotypeStates)
       }).toDS.cache()
     }
   }
@@ -235,6 +243,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    *      - converting categorical data into dummy variables
    *      - indexed columns that can be accessed by phenotype name
    *      - phenotypic summary information like histograms for particular phenotypes
+   *
+   * @solution = use java file input stream
    *
    * @param phenotypesPath A string specifying the location in the file system
    *                       of the phenotypes file to load in.
@@ -252,7 +262,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   def loadPhenotypes(phenotypesPath: String,
                      primaryID: String,
                      phenoName: String,
-                     delimiter: String,
+                     delimiter: String, // try to remove this
                      covarPath: Option[String] = None,
                      covarNames: Option[List[String]] = None,
                      covarDelimiter: String = "\t",

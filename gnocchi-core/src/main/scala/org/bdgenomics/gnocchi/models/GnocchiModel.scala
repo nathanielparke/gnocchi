@@ -206,7 +206,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
       covarMat.map(g => {
         ((f.uniqueID, g._1), (f.association.weights(1), g._2 * weights + f.association.weights(0)))
       })
-    })
+    }).filter(f => !f._2._2.isNaN)
 
     val genotypes_2 = genotypes.repartition(40).rdd.flatMap(f => f.samples.map(g => ((f.uniqueID, g.sampleID), g.alts.toDouble)))
 

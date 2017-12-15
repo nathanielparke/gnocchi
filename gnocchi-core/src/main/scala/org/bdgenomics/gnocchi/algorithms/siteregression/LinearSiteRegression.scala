@@ -58,8 +58,8 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @param allelicAssumption
    * @return
    */
-//  private[siteregression] def applyToSite(phenotypes: Map[String, Phenotype],
-    def applyToSite(phenotypes: Map[String, Phenotype],
+  //  private[siteregression] def applyToSite(phenotypes: Map[String, Phenotype],
+  def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant,
                   allelicAssumption: String): LinearAssociation = {
 
@@ -175,8 +175,8 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 object LinearSiteRegression extends LinearSiteRegression {
   val regressionName = "LinearSiteRegression"
 
-//  def apply()
-//
-//  lazy val model = BuildModel()
+  //  def apply()
+  //
+  //  lazy val model = BuildModel()
 
 }

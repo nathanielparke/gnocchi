@@ -60,6 +60,7 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
                   genotypes: CalledVariant,
                   allelicAssumption: String): LogisticAssociation = {
 
+    // ToDo: Orthogonalize the matrix so we dont get singular matrices
     val (data, labels) = prepareDesignMatrix(phenotypes, genotypes, allelicAssumption)
 
     val maxIter = 1000

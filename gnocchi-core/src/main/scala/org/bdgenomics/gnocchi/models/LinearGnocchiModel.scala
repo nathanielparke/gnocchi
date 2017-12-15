@@ -55,7 +55,6 @@ object LinearGnocchiModelFactory {
       genotypes.filter(x => QCVariantIDs.getOrElse(Set()).contains(x.uniqueID))
     }
 
-
     val QCVariantModels = variantModels
       .joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
       .withColumnRenamed("_1", "variantModel")
