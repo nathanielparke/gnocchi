@@ -89,7 +89,8 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
       beta.toList,
       genoStandardError,
       waldTests(1),
-      data.rows)
+      data.rows,
+      zScores(1))
   }
 
   /**

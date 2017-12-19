@@ -98,7 +98,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       f => f.filter(g => keepers.contains(g.sampleID)))
   }
 
-
   /**
    * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]] [[Dataset]].
    *

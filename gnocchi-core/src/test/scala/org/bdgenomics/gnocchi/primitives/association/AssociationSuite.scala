@@ -24,7 +24,7 @@ class AssociationSuite extends GnocchiFunSuite {
     val assoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
-      tStatistic = 0.5,
+      geneticParameterScore = 0.5,
       residualDegreesOfFreedom = 2,
       pValue = 0.5,
       weights = List(0.5, 0.5),
@@ -36,7 +36,8 @@ class AssociationSuite extends GnocchiFunSuite {
     val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
-      numSamples = 10)
+      numSamples = 10,
+      geneticParameterScore = 0.5)
     assert(assoc.isInstanceOf[LogisticAssociation], "Cannot create LogisticAssociation")
   }
 }

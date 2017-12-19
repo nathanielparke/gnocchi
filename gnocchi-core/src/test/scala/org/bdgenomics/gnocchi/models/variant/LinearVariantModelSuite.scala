@@ -27,7 +27,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     val assoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
-      tStatistic = 0.5,
+      geneticParameterScore = 0.5,
       residualDegreesOfFreedom = 2,
       pValue = 0.5,
       weights = List(0.5, 0.5),
@@ -51,7 +51,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     assert(newVariantModel.association.ssDeviations === 0.1)
     assert(newVariantModel.association.ssResiduals === 0.2)
     assert(newVariantModel.association.geneticParameterStandardError === 0.3)
-    assert(newVariantModel.association.tStatistic === 0.4)
+    assert(newVariantModel.association.geneticParameterScore === 0.4)
     assert(newVariantModel.association.residualDegreesOfFreedom === 100)
     assert(newVariantModel.association.pValue === 0.6)
     assert(newVariantModel.association.weights === List(0.7, 0.8))
@@ -70,7 +70,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     val assoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
-      tStatistic = 0.5,
+      geneticParameterScore = 0.5,
       residualDegreesOfFreedom = 2,
       pValue = 0.5,
       weights = List(0.5, 0.5),
@@ -81,7 +81,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     val newAssoc = LinearAssociation(ssDeviations = 0.1,
       ssResiduals = 0.2,
       geneticParameterStandardError = 0.3,
-      tStatistic = 0.4,
+      geneticParameterScore = 0.4,
       residualDegreesOfFreedom = 100,
       pValue = 0.6,
       weights = List(0.7, 0.8),
@@ -95,7 +95,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     assert(newVariantModel.association.ssDeviations === 0.1)
     assert(newVariantModel.association.ssResiduals === 0.2)
     assert(newVariantModel.association.geneticParameterStandardError === 0.3)
-    assert(newVariantModel.association.tStatistic === 0.4)
+    assert(newVariantModel.association.geneticParameterScore === 0.4)
     assert(newVariantModel.association.residualDegreesOfFreedom === 100)
     assert(newVariantModel.association.pValue === 0.6)
     assert(newVariantModel.association.weights === List(0.7, 0.8))
@@ -114,7 +114,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     val firstAssoc = LinearAssociation(ssDeviations = 0.5,
       ssResiduals = 0.5,
       geneticParameterStandardError = 0.5,
-      tStatistic = 0.5,
+      geneticParameterScore = 0.5,
       residualDegreesOfFreedom = 2,
       pValue = 0.5,
       weights = List(0.5, 0.5),
@@ -125,7 +125,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     val secondAssoc = LinearAssociation(ssDeviations = 0.2,
       ssResiduals = 0.3,
       geneticParameterStandardError = 0.4,
-      tStatistic = 0.6,
+      geneticParameterScore = 0.6,
       residualDegreesOfFreedom = 1,
       pValue = 0.6,
       weights = List(0.7, 0.8),
@@ -142,7 +142,7 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
     assert(mergedVariantModel.association.ssResiduals === 0.8)
     assert(mergedVariantModel.association.geneticParameterStandardError === 0.2519 +- 0.0001)
     assert(mergedVariantModel.association.residualDegreesOfFreedom === 12)
-    assert(mergedVariantModel.association.tStatistic === 2.5796 +- 0.0001)
+    assert(mergedVariantModel.association.geneticParameterScore === 2.5796 +- 0.0001)
     assert(mergedVariantModel.association.pValue === 0.0241 +- 0.0001)
   }
 

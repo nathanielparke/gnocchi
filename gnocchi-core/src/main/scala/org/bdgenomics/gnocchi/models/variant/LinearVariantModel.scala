@@ -91,14 +91,14 @@ case class LinearVariantModel(uniqueID: String,
     val updatedGeneticParameterStandardError = computeGeneticParameterStandardError(updatedSsResiduals,
       updatedSsDeviations, updatedNumSamples)
     val updatedResidualDegreesOfFreedom = updateResidualDegreesOfFreedom(variantModel.association.numSamples)
-    val updatedtStatistic = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
-    val updatedPValue = calculatePValue(updatedtStatistic, updatedResidualDegreesOfFreedom)
+    val updatedgeneticParameterScore = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
+    val updatedPValue = calculatePValue(updatedgeneticParameterScore, updatedResidualDegreesOfFreedom)
 
     constructUpdatedVariantModel(this.uniqueID,
       updatedSsDeviations,
       updatedSsResiduals,
       updatedGeneticParameterStandardError,
-      updatedtStatistic,
+      updatedgeneticParameterScore,
       updatedResidualDegreesOfFreedom,
       updatedPValue,
       updatedWeights,
@@ -189,16 +189,16 @@ case class LinearVariantModel(uniqueID: String,
    * Returns p-value for linear model given t-statistic and degrees of freedom
    * of the residual.
    *
-   * @param tStatistic Value for t-statistic
+   * @param geneticParameterScore Value for t-statistic
    * @param residualDegreesOfFreedom Degrees of freedom to use in t-distribution
    *
    * @return P-value, given a t-statistic and degrees of freedom for
    *         t-distribution
    */
-  def calculatePValue(tStatistic: Double,
+  def calculatePValue(geneticParameterScore: Double,
                       residualDegreesOfFreedom: Int): Double = {
     val tDist = new TDistribution(residualDegreesOfFreedom)
-    val pvalue = 2 * tDist.cumulativeProbability(-math.abs(tStatistic))
+    val pvalue = 2 * tDist.cumulativeProbability(-math.abs(geneticParameterScore))
     pvalue
   }
 
@@ -210,7 +210,7 @@ case class LinearVariantModel(uniqueID: String,
    * @param updatedSsDeviations New ssDeviations
    * @param updatedSsResiduals New ssResiduals
    * @param updatedGeneticParameterStandardError New geneticParameterStandardError
-   * @param updatedtStatistic New tStatistic
+   * @param updatedgeneticParameterScore New geneticParameterScore
    * @param updatedResidualDegreesOfFreedom New residualDegreesOfFreedom
    * @param updatedPValue New pValue
    * @param updatedWeights New weights
@@ -221,7 +221,7 @@ case class LinearVariantModel(uniqueID: String,
                                    updatedSsDeviations: Double,
                                    updatedSsResiduals: Double,
                                    updatedGeneticParameterStandardError: Double,
-                                   updatedtStatistic: Double,
+                                   updatedgeneticParameterScore: Double,
                                    updatedResidualDegreesOfFreedom: Int,
                                    updatedPValue: Double,
                                    updatedWeights: List[Double],
@@ -230,7 +230,7 @@ case class LinearVariantModel(uniqueID: String,
     val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
-      tStatistic = updatedtStatistic,
+      geneticParameterScore = updatedgeneticParameterScore,
       residualDegreesOfFreedom = updatedResidualDegreesOfFreedom,
       pValue = updatedPValue,
       weights = updatedWeights,

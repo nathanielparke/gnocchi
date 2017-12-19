@@ -53,11 +53,13 @@ case class LogisticVariantModel(uniqueID: String,
     val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
     val updatedWaldStatistic = calculateWaldStatistic(updatedGeneticParameterStandardError, updatedWeights)
     val updatedPValue = calculatePvalue(updatedWaldStatistic)
+
     constructUpdatedVariantModel(this.uniqueID,
       updatedGeneticParameterStandardError,
       updatedPValue,
       updatedWeights,
-      updatedNumSamples)
+      updatedNumSamples,
+      variantModel.association.geneticParameterScore)
   }
 
   /**
@@ -128,12 +130,14 @@ case class LogisticVariantModel(uniqueID: String,
                                    updatedGeneticParameterStandardError: Double,
                                    updatedPValue: Double,
                                    updatedWeights: List[Double],
-                                   updatedNumSamples: Int): LogisticVariantModel = {
+                                   updatedNumSamples: Int,
+                                   updatedZscore: Double): LogisticVariantModel = {
 
     val association = LogisticAssociation(weights = updatedWeights,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
       pValue = updatedPValue,
-      numSamples = updatedNumSamples)
+      numSamples = updatedNumSamples,
+      updatedZscore)
 
     LogisticVariantModel(variantId,
       association,
