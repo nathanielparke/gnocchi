@@ -21,7 +21,7 @@ import java.io.{ File, PrintWriter }
 
 import org.bdgenomics.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{ Dataset, Column }
 import java.io.FileOutputStream
 import java.io.ObjectOutputStream
 
@@ -195,13 +195,15 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
     metaData_oos.close
   }
 
-  def predict(genotypes: Dataset[CalledVariant], covariates: Map[String, List[Double]]): Array[(String, Double)] = {
+  def predict(genotypes: Dataset[CalledVariant],
+              covariates: Map[String, List[Double]],
+              numVariants: Int): Array[(String, Double)] = {
     // broadcast this
     val covarMat = covariates.map(f => {
       (f._1, DenseVector(f._2: _*).t)
     })
 
-    val covarVals = variantModels.repartition(40).rdd.flatMap(f => {
+    val covarVals = variantModels.repartition(40).sort(variantModels("association.pValue").asc).limit(numVariants).rdd.flatMap(f => {
       val weights = DenseVector(f.association.weights.drop(2): _*)
       covarMat.map(g => {
         ((f.uniqueID, g._1), (f.association.weights(1), g._2 * weights + f.association.weights(0)))
@@ -218,13 +220,15 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
     y_hat.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
   }
 
-  def predictWithWeightedT(genotypes: Dataset[CalledVariant], covariates: Map[String, List[Double]]): Array[(String, Double)] = {
+  def predictWithWeightedT(genotypes: Dataset[CalledVariant],
+                           covariates: Map[String, List[Double]],
+                           numVariants: Int): Array[(String, Double)] = {
     // broadcast this
     val covarMat = covariates.map(f => {
       (f._1, DenseVector(f._2: _*).t)
     })
 
-    val covarVals = variantModels.repartition(40).rdd.flatMap(f => {
+    val covarVals = variantModels.repartition(40).sort(variantModels("association.pValue").asc).limit(numVariants).rdd.flatMap(f => {
       val weights = DenseVector(f.association.weights.drop(2): _*)
       covarMat.map(g => {
         ((f.uniqueID, g._1), (f.association.weights(1), g._2 * weights + f.association.weights(0), math.abs(f.association.geneticParameterScore)))
@@ -238,7 +242,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
       (f._1._2, ((f._2._1 * f._2._2._1 + f._2._2._2)* f._2._2._3, f._2._2._3))
     })
 
-    // (sampleID, (prediction, weight_geneticParameterScore))
+    // (sampleID, (prediction, geneticParameterScore))
     y_hat.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
   }
 }
