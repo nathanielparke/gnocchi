@@ -235,9 +235,10 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 
     val y_hat = genotypes_2.join(covarVals).map(f => {
       // f = ((rsID, sampleID), (alts (genoBeta, beta*covar, geneticParameterScore)))
-      (f._1._2, (f._2._1 * f._2._2._1 + f._2._2._2, f._2._2._3))
+      (f._1._2, ((f._2._1 * f._2._2._1 + f._2._2._2)* f._2._2._3, f._2._2._3))
     })
 
-    y_hat.reduceByKey((x, y) => (x._1*x._2 + y._1*y._2, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
+    // (sampleID, (prediction, weight_geneticParameterScore))
+    y_hat.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
   }
 }
