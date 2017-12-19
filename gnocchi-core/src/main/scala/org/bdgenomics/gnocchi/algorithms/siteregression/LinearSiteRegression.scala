@@ -65,8 +65,10 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
 
-    // TODO: Determine if QR factorization is faster
-    val beta = x \ y
+    val xTx = x.t * x // p x p matrix
+    val xTy = x.t * y // p x 1 vector
+
+    val beta = xTx \ xTy
 
     val residuals = y - (x * beta)
     val ssResiduals = residuals.t * residuals
@@ -76,7 +78,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     val ssDeviations = deviations.t * deviations
 
     // compute the regression parameters standard errors
-    val betaVariance = diag(inv(x.t * x))
+    val betaVariance = diag(inv(xTx))
     val sigma = residuals.t * residuals / (x.rows - x.cols)
     val standardErrors = sqrt(sigma * betaVariance)
 
@@ -97,8 +99,8 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     val pValue = 2 * tDist.cdf(-math.abs(t))
 
     LinearAssociation(
-      ssDeviations,
-      ssResiduals,
+      xTx,
+      xTy,
       genoSE,
       t,
       residualDegreesOfFreedom,
@@ -115,9 +117,10 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @param allelicAssumption
    * @return
    */
-  private[algorithms] def prepareDesignMatrix(genotypes: CalledVariant,
-                                              phenotypes: Map[String, Phenotype],
-                                              allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
+  //  private[algorithms] def prepareDesignMatrix_covar(genotypes: CalledVariant,
+  def prepareDesignMatrix(genotypes: CalledVariant,
+                          phenotypes: Map[String, Phenotype],
+                          allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
 
     val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
 
@@ -146,6 +149,29 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
   }
+
+  //  def constructReusableCovarianceMat(phenotypes: Map[String, Phenotype],
+  //                                     allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
+  //
+  //    val primitiveY = phenotypes.flatMap({
+  //      case (sampleID, genotype) if phenotypes.contains(sampleID) => {
+  //        Some(genotype +: phenotypes(sampleID).covariates.toArray, phenotypes(sampleID).phenotype)
+  //      }
+  //      case _ => None
+  //    }).toArray.unzip
+  //
+  //    if (primitiveX.length == 0) {
+  //      // TODO: Determine what to do when the design matrix is empty (i.e. no overlap btwn geno and pheno sampleIDs, etc.)
+  //      throw new IllegalArgumentException("No overlap between phenotype and genotype state sample IDs.")
+  //    }
+  //
+  //    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
+  //    // val x = new DenseMatrix(x(0).length, x.length, x.flatten).t
+  //    // val x = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
+  //    // val x = new DenseMatrix(x :_*)
+  //
+  //    (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
+  //  }
 
   /**
    *

@@ -134,7 +134,7 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     val update = -inv(hessian) * score
     val updatedBeta = beta + update
 
-    if (updatedBeta.exists(_.isNaN)) logError("LOG_REG - Broke on iteration: " + iter)
+    if (updatedBeta.exists(_.isNaN)) logError("LOG_REG - Broke on iteration: " + iter) // ToDo: deal with this better. Probably need to break / retry with an orthogonal matrix
     if (max(abs(update)) <= tolerance || iter + 1 == maxIter) return (updatedBeta.toArray, hessian)
 
     findBeta(X, Y, updatedBeta, iter = iter + 1, maxIter = maxIter, tolerance = tolerance)

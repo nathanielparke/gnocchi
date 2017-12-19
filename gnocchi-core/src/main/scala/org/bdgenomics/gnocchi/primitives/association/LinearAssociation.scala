@@ -17,8 +17,10 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
-case class LinearAssociation(ssDeviations: Double,
-                             ssResiduals: Double,
+import breeze.linalg.{DenseMatrix, DenseVector}
+
+case class LinearAssociation(xTx: DenseMatrix[Double],
+                             xTy: DenseVector[Double],
                              geneticParameterStandardError: Double,
                              tStatistic: Double,
                              residualDegreesOfFreedom: Int,
