@@ -20,7 +20,7 @@ package org.bdgenomics.gnocchi.primitives.association
 case class LinearAssociation(ssDeviations: Double,
                              ssResiduals: Double,
                              geneticParameterStandardError: Double,
-                             tStatistic: Double,
+                             geneticParameterScore: Double,
                              residualDegreesOfFreedom: Int,
                              pValue: Double,
                              weights: List[Double],

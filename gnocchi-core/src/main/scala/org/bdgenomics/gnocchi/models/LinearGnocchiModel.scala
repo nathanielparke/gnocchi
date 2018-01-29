@@ -17,12 +17,15 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
 import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, QualityControlVariantModel }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+
+import scala.collection.immutable.Map
 
 object LinearGnocchiModelFactory {
 
@@ -38,14 +41,18 @@ object LinearGnocchiModelFactory {
 
     import genotypes.sqlContext.implicits._
 
+    genotypes.cache()
+
     // ToDo: sampling QC Variants better.
     val variantModels = LinearSiteRegression(genotypes, phenotypes, allelicAssumption = allelicAssumption, validationStringency = validationStringency)
 
     // Create QCVariantModels
+
+    // ToDo Maybe, but probably delete
     val comparisonVariants = if (QCVariantIDs.isEmpty) {
       genotypes.sample(withReplacement = false, fraction = 0.1)
     } else {
-      genotypes.filter(x => QCVariantIDs.get.contains(x.uniqueID))
+      genotypes.filter(x => QCVariantIDs.getOrElse(Set()).contains(x.uniqueID))
     }
 
     val QCVariantModels = variantModels
@@ -72,6 +79,7 @@ object LinearGnocchiModelFactory {
       QCVariantModels = QCVariantModels,
       QCPhenotypes = phenotypes.value)
   }
+
 }
 
 case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
@@ -82,7 +90,7 @@ case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
 
   import variantModels.sqlContext.implicits._
 
-  def mergeGnocchiModel(otherModel: GnocchiModel[LinearVariantModel, LinearGnocchiModel]): GnocchiModel[LinearVariantModel, LinearGnocchiModel] = {
+  def mergeGnocchiModel(otherModel: GnocchiModel[LinearVariantModel, LinearGnocchiModel]): LinearGnocchiModel = {
 
     require(otherModel.metaData.modelType == metaData.modelType,
       "Models being merged are not the same type. Type equality is required to merge two models correctly.")
@@ -120,10 +128,6 @@ case class LinearGnocchiModel(metaData: GnocchiModelMetaData,
           x._1.uniqueID,
           x._1.referenceAllele,
           x._1.alternateAllele,
-          x._1.qualityScore,
-          x._1.filter,
-          x._1.info,
-          x._1.format,
           x._1.samples ++ x._2.samples))
   }
 }

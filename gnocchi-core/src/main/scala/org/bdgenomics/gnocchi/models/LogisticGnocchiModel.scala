@@ -17,12 +17,15 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
 import org.bdgenomics.gnocchi.models.variant.{ LogisticVariantModel, QualityControlVariantModel }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+
+import scala.collection.immutable.Map
 
 object LogisticGnocchiModelFactory {
 
@@ -37,6 +40,8 @@ object LogisticGnocchiModelFactory {
             validationStringency: String = "STRICT"): LogisticGnocchiModel = {
 
     import genotypes.sqlContext.implicits._
+
+    genotypes.cache()
 
     // ToDo: sampling QC Variants better.
     val variantModels = LogisticSiteRegression(genotypes, phenotypes, allelicAssumption = allelicAssumption, validationStringency = validationStringency)
@@ -120,10 +125,6 @@ case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
           x._1.uniqueID,
           x._1.referenceAllele,
           x._1.alternateAllele,
-          x._1.qualityScore,
-          x._1.filter,
-          x._1.info,
-          x._1.format,
           x._1.samples ++ x._2.samples))
   }
 }

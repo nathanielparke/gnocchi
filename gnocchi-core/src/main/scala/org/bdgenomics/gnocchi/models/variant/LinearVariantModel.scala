@@ -17,9 +17,11 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
+import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.apache.commons.math3.distribution.TDistribution
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
+import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
@@ -38,6 +40,34 @@ case class LinearVariantModel(uniqueID: String,
   val modelType: String = "Linear Variant Model"
   val regressionName = "Linear Regression"
 
+  /**
+   * Given an individual's genotype state and covariates predict the primary phenotype value.
+   *
+   * @param genotype the genotype state of the individual being predicted
+   * @param covariates the covariates, a [[List<Double>]] that contain the covariates.
+   * @return the prediction for the particular individual
+   */
+  def predict(genotype: GenotypeState, covariates: List[Double]): Double = {
+    val weights = DenseVector(association.weights: _*)
+    val predictors = DenseVector(1.0 :: genotype.alts.toDouble :: covariates: _*)
+    predictors dot weights
+  }
+
+  /**
+   * Given an individual's genotype state and covariates predict the primary phenotype value.
+   *
+   * @param genotypes the genotype state of the individual being predicted
+   * @param covariates the covariates, a [[List<Double>]] that contain the covariates.
+   * @return the prediction for the particular individual
+   */
+  def predict(genotypes: CalledVariant, covariates: Map[String, List[Double]]): List[Double] = {
+    val genotypeStates = genotypes.samples.map(x => (x.sampleID, x.alts.toDouble))
+    val predictorsMatrix = DenseMatrix(genotypeStates.map { case (id, geno) => 1.0 :: geno :: covariates(id) }: _*)
+
+    val weights = DenseVector(association.weights: _*)
+    (predictorsMatrix * weights).toArray.toList
+  }
+
   def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): LinearVariantModel = {
     val batchVariantModel = constructUpdatedVariantModel(uniqueID, applyToSite(phenotypes, genotypes, allelicAssumption))
     mergeWith(batchVariantModel)
@@ -52,36 +82,27 @@ case class LinearVariantModel(uniqueID: String,
    * @return Returns updated LinearVariantModel of correct subtype
    */
   def mergeWith(variantModel: LinearVariantModel): LinearVariantModel = {
-    val updatedNumSamples = updateNumSamples(variantModel.association.numSamples)
+    val updatedNumSamples = association.numSamples + variantModel.association.numSamples
+
     val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
-    val updatedSsDeviations = updateSsDeviations(variantModel.association.ssDeviations)
-    val updatedSsResiduals = updateSsResiduals(variantModel.association.ssResiduals)
+
+    val updatedSsDeviations = association.ssDeviations + variantModel.association.ssDeviations
+    val updatedSsResiduals = association.ssResiduals + variantModel.association.ssResiduals
     val updatedGeneticParameterStandardError = computeGeneticParameterStandardError(updatedSsResiduals,
       updatedSsDeviations, updatedNumSamples)
     val updatedResidualDegreesOfFreedom = updateResidualDegreesOfFreedom(variantModel.association.numSamples)
-    val updatedtStatistic = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
-    val updatedPValue = calculatePValue(updatedtStatistic, updatedResidualDegreesOfFreedom)
+    val updatedgeneticParameterScore = calculateTStatistic(updatedWeights, updatedGeneticParameterStandardError)
+    val updatedPValue = calculatePValue(updatedgeneticParameterScore, updatedResidualDegreesOfFreedom)
+
     constructUpdatedVariantModel(this.uniqueID,
       updatedSsDeviations,
       updatedSsResiduals,
       updatedGeneticParameterStandardError,
-      updatedtStatistic,
+      updatedgeneticParameterScore,
       updatedResidualDegreesOfFreedom,
       updatedPValue,
       updatedWeights,
       updatedNumSamples)
-    // TODO: implement dominant version of linear model
-    //      case domLin: DominantLinearVariantModel => DominantLinearVariantModel(this.variantId,
-    //        updatedSsDeviations,
-    //        updatedSsResiduals,
-    //        updatedGeneticParameterStandardError,
-    //        updatedtStatistic,
-    //        updatedResidualDegreesOfFreedom,
-    //        updatedPValue,
-    //        this.variant,
-    //        updatedWeights,
-    //        this.haplotypeBlock,
-    //        updatedNumSamples)
   }
 
   /**
@@ -168,16 +189,16 @@ case class LinearVariantModel(uniqueID: String,
    * Returns p-value for linear model given t-statistic and degrees of freedom
    * of the residual.
    *
-   * @param tStatistic Value for t-statistic
+   * @param geneticParameterScore Value for t-statistic
    * @param residualDegreesOfFreedom Degrees of freedom to use in t-distribution
    *
    * @return P-value, given a t-statistic and degrees of freedom for
    *         t-distribution
    */
-  def calculatePValue(tStatistic: Double,
+  def calculatePValue(geneticParameterScore: Double,
                       residualDegreesOfFreedom: Int): Double = {
     val tDist = new TDistribution(residualDegreesOfFreedom)
-    val pvalue = 2 * tDist.cumulativeProbability(-math.abs(tStatistic))
+    val pvalue = 2 * tDist.cumulativeProbability(-math.abs(geneticParameterScore))
     pvalue
   }
 
@@ -189,7 +210,7 @@ case class LinearVariantModel(uniqueID: String,
    * @param updatedSsDeviations New ssDeviations
    * @param updatedSsResiduals New ssResiduals
    * @param updatedGeneticParameterStandardError New geneticParameterStandardError
-   * @param updatedtStatistic New tStatistic
+   * @param updatedgeneticParameterScore New geneticParameterScore
    * @param updatedResidualDegreesOfFreedom New residualDegreesOfFreedom
    * @param updatedPValue New pValue
    * @param updatedWeights New weights
@@ -200,7 +221,7 @@ case class LinearVariantModel(uniqueID: String,
                                    updatedSsDeviations: Double,
                                    updatedSsResiduals: Double,
                                    updatedGeneticParameterStandardError: Double,
-                                   updatedtStatistic: Double,
+                                   updatedgeneticParameterScore: Double,
                                    updatedResidualDegreesOfFreedom: Int,
                                    updatedPValue: Double,
                                    updatedWeights: List[Double],
@@ -209,7 +230,7 @@ case class LinearVariantModel(uniqueID: String,
     val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
       ssResiduals = updatedSsResiduals,
       geneticParameterStandardError = updatedGeneticParameterStandardError,
-      tStatistic = updatedtStatistic,
+      geneticParameterScore = updatedgeneticParameterScore,
       residualDegreesOfFreedom = updatedResidualDegreesOfFreedom,
       pValue = updatedPValue,
       weights = updatedWeights,

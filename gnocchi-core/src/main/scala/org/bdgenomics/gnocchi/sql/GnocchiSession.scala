@@ -17,24 +17,28 @@
  */
 package org.bdgenomics.gnocchi.sql
 
-import java.io.Serializable
+import java.io.{ FileInputStream, ObjectInputStream, Serializable }
 
 import org.bdgenomics.formats.avro.GenotypeAllele
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, lit, udf, when }
-import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.apache.spark.sql.functions.{ array, lit, udf, when, col }
+import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.utils.misc.Logging
 import java.nio.file.{ Files, Paths }
 
 import org.apache.hadoop.fs.Path
-import org.bdgenomics.gnocchi.models.variant.VariantModel
+import org.apache.spark.sql.types.StructType
+import org.bdgenomics.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData, LinearGnocchiModel, LogisticGnocchiModel }
+import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, QualityControlVariantModel, VariantModel }
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.io.StdIn.readLine
+import scala.io.Source.fromFile
 
 object GnocchiSession {
 
@@ -82,25 +86,65 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    */
   def filterSamples(genotypes: Dataset[CalledVariant], mind: Double, ploidy: Double): Dataset[CalledVariant] = {
     require(mind >= 0.0 && mind <= 1.0, "`mind` value must be between 0.0 to 1.0 inclusive.")
-    val sampleIds = genotypes.first.samples.map(x => x.sampleID)
-    val separated = genotypes.select($"uniqueID" +: sampleIds.indices.map(idx => $"samples"(idx) as sampleIds(idx)): _*)
+    val x = genotypes.rdd.flatMap(f => { f.samples.map(g => { (g.sampleID, g.misses.toInt) }) })
+    val summed = x.reduceByKey(_ + _)
 
-    val filtered = separated.select($"uniqueID" +: sampleIds.map(sampleId =>
-      when(separated(sampleId).getField("value") === "./.", 2)
-        .when(separated(sampleId).getField("value").endsWith("."), 1)
-        .when(separated(sampleId).getField("value").startsWith("."), 1)
-        .otherwise(0) as sampleId): _*).cache()
+    val count = genotypes.count()
+    val samplesWithMissingness = summed.map { case (a, b) => (a, b / (ploidy * count)) }
 
-    val summed = filtered.drop("uniqueID").groupBy().sum().toDF(sampleIds: _*).select(array(sampleIds.head, sampleIds.tail: _*)).as[Array[Double]].collect.toList.head
-    val count = filtered.count()
-    val missingness = summed.map(_ / (ploidy * count))
-    val samplesWithMissingness = sampleIds.zip(missingness)
+    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1).collect
 
-    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
+    createCalledVariant(genotypes,
+      f => f.filter(g => keepers.contains(g.sampleID)))
+  }
 
-    val filteredDF = separated.select($"uniqueID", array(keepers.head, keepers.tail: _*)).toDF("uniqueID", "samples").as[(String, Array[String])]
+  /**
+   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]] [[Dataset]].
+   *
+   * @param genotypes
+   * @param samplesFn
+   * @return
+   */
+  def createCalledVariant(genotypes: Dataset[CalledVariant],
+                          samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
+    genotypes.map(f => {
+      CalledVariant(f.chromosome,
+        f.position,
+        f.uniqueID,
+        f.referenceAllele,
+        f.alternateAllele,
+        samplesFn(f.samples))
+    })
+  }
 
-    genotypes.drop("samples").join(filteredDF, "uniqueID").as[CalledVariant]
+  /**
+   * Split the genotyping data into two datasets based off of present phenotypes
+   *
+   * @param genotypes
+   * @param phenotypes
+   * @param trainPath
+   * @param testPath
+   * @param percentTest
+   */
+  def trainAndTestPartition(genotypes: Dataset[CalledVariant],
+                            phenotypes: Map[String, Phenotype],
+                            trainPath: String,
+                            testPath: String,
+                            percentTest: Double = 0.1) = {
+
+    val numTest = math.round(phenotypes.size * percentTest).toInt
+
+    val trainIDs = phenotypes.keys.take(phenotypes.size - numTest)
+    val testIDs = phenotypes.keys.takeRight(numTest)
+
+    val test = createCalledVariant(genotypes,
+      f => f.filter(g => testIDs.contains(g.sampleID)))
+
+    val train = createCalledVariant(genotypes,
+      f => f.filter(g => trainIDs.contains(g.sampleID)))
+
+    test.write.parquet(testPath + "/parquet")
+    train.write.parquet(trainPath + "/parquet")
   }
 
   /**
@@ -119,13 +163,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   def filterVariants(genotypes: Dataset[CalledVariant], geno: Double, maf: Double): Dataset[CalledVariant] = {
     require(maf >= 0.0 && maf <= 1.0, "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0, "`geno` value must be between 0.0 to 1.0 inclusive.")
-    val filtersDF = genotypes.map(x => (x.uniqueID, x.maf, x.geno)).toDF("uniqueID", "maf", "geno")
-    val mafFiltered = genotypes.join(filtersDF, "uniqueID")
-      .filter($"maf" >= maf && lit(1) - $"maf" >= maf && $"geno" <= geno)
-      .drop("maf", "geno")
-      .as[CalledVariant]
-
-    mafFiltered
+    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
   /**
@@ -138,29 +176,18 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @return Returns an updated Dataset that has been recoded
    */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
-    val minorAlleleF = genotypes.map(x => (x.uniqueID, x.maf)).toDF("uniqueID", "maf")
-    val genoWithMaf = genotypes.join(minorAlleleF, "uniqueID")
-    val toRecode = genoWithMaf.filter($"maf" > 0.5).drop("maf").as[CalledVariant]
-    val recoded = toRecode.map(
-      x => {
-        CalledVariant(x.chromosome,
-          x.position,
-          x.uniqueID,
-          x.alternateAllele,
-          x.referenceAllele,
-          x.qualityScore,
-          x.filter,
-          x.info,
-          x.format,
-          x.samples.map(geno => GenotypeState(geno.sampleID, geno.toList.map {
-            case "0" => "1"
-            case "1" => "0"
-            case "." => "."
-          }.mkString("/"))))
-      }).as[CalledVariant]
-    // Note: the below .map(a => a) is a hack solution to the fact that spark cannot union two
-    // datasets of the same type that have reordered columns. See issue: https://issues.apache.org/jira/browse/SPARK-21109
-    genoWithMaf.filter($"maf" <= 0.5).drop("maf").as[CalledVariant].map(a => a).union(recoded)
+    genotypes.map(f => {
+      if (f.maf > 0.5) {
+        CalledVariant(f.chromosome,
+          f.position,
+          f.uniqueID,
+          f.alternateAllele,
+          f.referenceAllele,
+          f.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses)))
+      } else {
+        f
+      }
+    })
   }
 
   /**
@@ -170,35 +197,53 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
    * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
    */
-  def loadGenotypes(genotypesPath: String): Dataset[CalledVariant] = {
+  def loadGenotypes(genotypesPath: String, parquet: Boolean = false): Dataset[CalledVariant] = {
 
-    val genoFile = new Path(genotypesPath)
-    val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
-    require(fs.exists(genoFile), s"Specified genotypes file path does not exist: ${genotypesPath}")
+    if (parquet) {
+      if (genotypesPath.split(",").length > 2) {
+        sparkSession.read.parquet(genotypesPath.split(","): _*).as[CalledVariant]
+      } else {
+        sparkSession.read.parquet(genotypesPath).as[CalledVariant]
+      }
+    } else {
+      val genoFile = new Path(genotypesPath)
+      val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
+      require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
 
-    val vcRdd = sc.loadVcf(genotypesPath)
-    vcRdd.rdd.map(vc => {
-      val variant = vc.variant.variant
-      CalledVariant(variant.getContigName.toInt,
-        variant.getEnd.intValue(),
-        variant.getNames.get(0),
-        variant.getReferenceAllele,
-        variant.getAlternateAllele,
-        "", // quality score
-        "", // filter
-        "", // info
-        "", // format
-        vc.genotypes.map(geno => GenotypeState(geno.getSampleId, geno.getAlleles.map {
-          case GenotypeAllele.REF                            => "0"
-          case GenotypeAllele.ALT | GenotypeAllele.OTHER_ALT => "1"
-          case GenotypeAllele.NO_CALL | _                    => "."
-        }.mkString("/"))).toList)
-    }).toDS
+      val vcRdd = sc.loadVcf(genotypesPath)
+      vcRdd.rdd.map(vc => {
+        val variant = vc.variant.variant
+        val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
+        val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
+
+        val genotypeStates = vc.genotypes.map(geno =>
+          GenotypeState(geno.getSampleId,
+            geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
+            geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
+            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList
+
+        CalledVariant(contigName,
+          variant.getEnd.intValue(),
+          rs_id,
+          variant.getReferenceAllele,
+          variant.getAlternateAllele,
+          genotypeStates)
+      }).toDS.cache()
+    }
   }
 
   /**
    * Returns a map of phenotype name to phenotype object, which is loaded from
    * a file, specified by phenotypesPath
+   *
+   * @todo Eventually this should be reimplemented without spark. The dataframe abstraction is nice, but there are
+   *      limitations. Data manipulations we want to support. We want a pandas like object
+   *      - automatic detection of missing values
+   *      - converting categorical data into dummy variables
+   *      - indexed columns that can be accessed by phenotype name
+   *      - phenotypic summary information like histograms for particular phenotypes
+   *
+   * @solution = use java file input stream
    *
    * @param phenotypesPath A string specifying the location in the file system
    *                       of the phenotypes file to load in.
@@ -216,11 +261,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   def loadPhenotypes(phenotypesPath: String,
                      primaryID: String,
                      phenoName: String,
-                     delimiter: String,
+                     delimiter: String, // try to remove this
                      covarPath: Option[String] = None,
                      covarNames: Option[List[String]] = None,
                      covarDelimiter: String = "\t",
-                     missing: List[Int] = List(-9)): Map[String, Phenotype] = {
+                     missing: List[String] = List("-9")): Map[String, Phenotype] = {
 
     val phenoFile = new Path(phenotypesPath)
     val fs = phenoFile.getFileSystem(sc.hadoopConfiguration)
@@ -245,7 +290,10 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val phenotypesDF = prelimPhenotypesDF
       .select(primaryID, phenoName)
-      .toDF("sampleId", "phenotype")
+      .toDF("sampleId", "phenotype_stage")
+      .filter(!$"phenotype_stage".isin(missing: _*))
+      .withColumn("phenotype", $"phenotype_stage".cast("double"))
+      .drop($"phenotype_stage")
 
     val covariateDF = if (covarPath.isDefined && covarNames.isDefined) {
       val prelimCovarDF = sparkSession.read.format("csv")
@@ -275,18 +323,44 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val phenoCovarDF = if (covariateDF.isDefined) {
       val joinedDF = phenotypesDF.join(covariateDF.get, Seq("sampleId"))
-      joinedDF.withColumn("covariates", array(covarNames.get.head, covarNames.get.tail: _*))
+
+      val filterCov = udf { (tags: mutable.WrappedArray[String]) => tags.forall(x => !missing.contains(x)) }
+      val castCov = udf { (tags: mutable.WrappedArray[String]) => tags.map(x => x.toDouble) }
+
+      joinedDF
+        .withColumn("covariates_staged", array(covarNames.get.head, covarNames.get.tail: _*))
+        .filter(filterCov($"covariates_staged"))
+        .withColumn("covariates", castCov($"covariates_staged"))
         .select("sampleId", "phenotype", "covariates")
     } else {
       phenotypesDF.withColumn("covariates", array())
     }
 
+    // need to filter out the missing covariates as well.
     phenoCovarDF
       .withColumn("phenoName", lit(phenoName))
       .as[Phenotype]
       .collect()
-      .filter(x => !missing.contains(x.phenotype) && x.covariates.forall(!missing.contains(_)))
       .map(x => (x.sampleId, x)).toMap
+  }
+
+  /**
+   * shamelessly lifted from here:
+   * https://stackoverflow.com/questions/37471346/automatically-and-elegantly-flatten-dataframe-in-spark-sql
+   *
+   * @param schema
+   * @param prefix
+   * @return
+   */
+  def flattenSchema(schema: StructType, prefix: String = null): Array[Column] = {
+    schema.fields.flatMap(f => {
+      val colName = if (prefix == null) f.name else (prefix + "." + f.name)
+
+      f.dataType match {
+        case st: StructType => flattenSchema(st, colName)
+        case _              => Array(col(colName))
+      }
+    })
   }
 
   def saveAssociations[A <: VariantModel[A]](associations: Dataset[A],
@@ -307,8 +381,13 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       }
     }
 
+    val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
+    val necessaryFields = List("uniqueID", "chromosome", "position", "referenceAllele", "alternateAllele", "association.pValue").map(col(_))
+    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
+
     val assoc = associations
-      .select($"uniqueID", $"chromosome", $"position", $"association.pValue", $"association.weights".getItem(0).as("weights"), $"association.numSamples").sort($"pValue".asc)
+      .select(necessaryFields ::: fields: _*).sort($"pValue".asc)
+      .withColumn("weights", stringify($"weights"))
       .coalesce(1)
       .cache()
 
@@ -316,7 +395,47 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     if (saveAsText) {
       assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
     } else {
-      assoc.toDF.write.parquet(outPath)
+      associations.write.parquet(outPath)
+    }
+  }
+
+  /**
+   * see https://stackoverflow.com/questions/16386252/scala-deserialization-class-not-found for the object input stream
+   * fix on qcPhenotypes
+   *
+   * @param path
+   * @return
+   */
+  def loadGnocchiModel(path: String): GnocchiModel[_, _] = {
+    val metaDataPath = new Path(path + "/metaData")
+
+    val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois = new ObjectInputStream(path_fs.open(metaDataPath))
+    val metaData = ois.readObject.asInstanceOf[GnocchiModelMetaData]
+    ois.close
+
+    val qcPhenotypesPath = new Path(path + "/qcPhenotypes")
+    val qcPhenotypes_fs = qcPhenotypesPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois_2 = new ObjectInputStream(qcPhenotypes_fs.open(qcPhenotypesPath)) {
+      override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+        try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+        catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+      }
+    }
+
+    val qcPhenotypes = ois_2.readObject.asInstanceOf[Map[String, Phenotype]]
+    ois_2.close
+
+    if (metaData.modelType == "LinearRegression") {
+      val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LinearVariantModel]
+      val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LinearVariantModel]]
+
+      LinearGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
+    } else {
+      val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LogisticVariantModel]
+      val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LogisticVariantModel]]
+
+      LogisticGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
     }
   }
 }

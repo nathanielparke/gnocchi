@@ -40,12 +40,25 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions
-    genotypes.map((genos: CalledVariant) => {
-      val association = applyToSite(phenotypes.value, genos, allelicAssumption)
-      constructVM(genos, phenotypes.value.head._2, association, allelicAssumption)
+    genotypes.flatMap((genos: CalledVariant) => {
+      try {
+        val association = applyToSite(phenotypes.value, genos, allelicAssumption)
+        Some(constructVM(genos, phenotypes.value.head._2, association, allelicAssumption))
+      } catch {
+        case e: breeze.linalg.MatrixSingularException => None
+      }
     })
   }
 
+  /**
+   * Apply to site.
+   *
+   * @param phenotypes
+   * @param genotypes
+   * @param allelicAssumption
+   * @return
+   */
+  //  private[siteregression] def applyToSite(phenotypes: Map[String, Phenotype],
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant,
                   allelicAssumption: String): LinearAssociation = {
@@ -91,14 +104,22 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       residualDegreesOfFreedom,
       pValue,
       beta.data.toList,
-      genotypes.numValidSamples)
+      x.rows)
   }
 
+  /**
+   * Take a CalledVariant and turn it into a Breeze Matrix and DenseVector.
+   *
+   * @param genotypes
+   * @param phenotypes
+   * @param allelicAssumption
+   * @return
+   */
   private[algorithms] def prepareDesignMatrix(genotypes: CalledVariant,
                                               phenotypes: Map[String, Phenotype],
                                               allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
 
-    val validGenos = genotypes.samples.filter(genotypeState => !genotypeState.value.contains(".") && phenotypes.contains(genotypeState.sampleID))
+    val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
 
     val samplesGenotypes = allelicAssumption.toUpperCase match {
       case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.additive))
@@ -126,10 +147,20 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
   }
 
+  /**
+   *
+   *
+   * @param variant
+   * @param phenotype
+   * @param association
+   * @param allelicAssumption
+   * @return
+   */
   def constructVM(variant: CalledVariant,
                   phenotype: Phenotype,
                   association: LinearAssociation,
                   allelicAssumption: String): LinearVariantModel = {
+
     LinearVariantModel(variant.uniqueID,
       association,
       phenotype.phenoName,
@@ -137,11 +168,15 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       variant.position,
       variant.referenceAllele,
       variant.alternateAllele,
-      allelicAssumption,
-      phaseSetId = 0)
+      allelicAssumption)
   }
 }
 
 object LinearSiteRegression extends LinearSiteRegression {
   val regressionName = "LinearSiteRegression"
+
+  //  def apply()
+  //
+  //  lazy val model = BuildModel()
+
 }

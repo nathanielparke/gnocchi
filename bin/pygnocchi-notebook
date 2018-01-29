@@ -19,11 +19,33 @@
 
 set -e
 
+
+# Split args into Spark and notebook args
+DD=False  # DD is "double dash"
+PRE_DD=()
+POST_DD=()
+for ARG in "$@"; do
+  shift
+  if [[ $ARG == "--" ]]; then
+    DD=True
+    POST_DD=( "$@" )
+    break
+  fi
+  PRE_DD+=("$ARG")
+done
+
+if [[ $DD == True ]]; then
+  SPARK_ARGS="${PRE_DD[@]}"
+  NOTEBOOK_ARGS="${POST_DD[@]}"
+else
+  SPARK_ARGS=()
+  NOTEBOOK_ARGS="${PRE_DD[@]}"
+fi
+
 # Figure out where Gnocchi is installed
-SCRIPT_DIR="$(cd `dirname $0`/..; pwd)"
+export SCRIPT_DIR="$(cd `dirname $0`/..; pwd)"
 
 # Find Gnocchi cli assembly jar
-GNOCCHI_CLI_JAR=
 if [ -d "$SCRIPT_DIR/repo" ]; then
   ASSEMBLY_DIR="$SCRIPT_DIR/repo"
 else
@@ -57,6 +79,12 @@ if [ -z "$PYSPARK" ]; then
   exit 1
 fi
 echo "Using PYSPARK=$PYSPARK"
+
+export PYSPARK_DRIVER_PYTHON=jupyter
+export PYSPARK_DRIVER_PYTHON_OPTS="notebook $NOTEBOOK_ARGS"
+
+PY4J_ZIP="$(ls -1 "${SPARK_HOME}/python/lib" | grep py4j)"
+export PYTHONPATH=${SPARK_HOME}/python:${SPARK_HOME}/python/lib/${PY4J_ZIP}:${PYTHONPATH}
 
 # submit the job to Spark
 "$PYSPARK" \

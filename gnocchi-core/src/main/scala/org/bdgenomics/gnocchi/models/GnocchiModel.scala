@@ -21,26 +21,22 @@ import java.io.{ File, PrintWriter }
 
 import org.bdgenomics.gnocchi.models.variant.{ QualityControlVariantModel, VariantModel }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{ Dataset, Column }
+import java.io.FileOutputStream
+import java.io.ObjectOutputStream
 
-import scala.pickling.Defaults._
-import scala.pickling.json._
+import breeze.linalg.{ DenseMatrix, DenseVector }
+import org.apache.hadoop.fs.Path
+import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+
+import scala.collection.immutable.Map
 
 case class GnocchiModelMetaData(modelType: String,
                                 phenotype: String,
                                 covariates: String,
                                 numSamples: Int,
                                 haplotypeBlockErrorThreshold: Double = 0.1,
-                                flaggedVariantModels: Option[List[String]] = None) {
-
-  def save(saveTo: String): Unit = {
-    val metadataPkl = this.pickle.value
-    val outputFile = new File(saveTo)
-    val writer = new PrintWriter(outputFile)
-    writer.write(metadataPkl)
-    writer.close()
-  }
-}
+                                flaggedVariantModels: Option[List[String]] = None)
 
 /**
  * A trait that wraps an RDD of variant-specific models that are incrementally
@@ -95,7 +91,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    *                        element corresponding to the primary phenotype being
    *                        regressed on, and the remainder corresponding to the covariates.
    */
-  //  def mergeGnocchiModel(otherModel: GnocchiModel[VM, GM]): GnocchiModel[VM, GM]
+  def mergeGnocchiModel(otherModel: GnocchiModel[VM, GM]): GnocchiModel[VM, GM]
 
   def getVariantModels: Dataset[VM] = { variantModels }
 
@@ -182,7 +178,71 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
   def save(saveTo: String): Unit = {
     variantModels.write.parquet(saveTo + "/variantModels")
     QCVariantModels.write.parquet(saveTo + "/qcModels")
-    metaData.save(saveTo + "/metaData")
+
+    val qcPhenoPath = new Path(saveTo + "/qcPhenotypes")
+    val metaDataPath = new Path(saveTo + "/metaData")
+
+    val path_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val path_oos = new ObjectOutputStream(path_fs.create(qcPhenoPath))
+
+    path_oos.writeObject(QCPhenotypes)
+    path_oos.close
+
+    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
+
+    metaData_oos.writeObject(metaData)
+    metaData_oos.close
+  }
+
+  def predict(genotypes: Dataset[CalledVariant],
+              covariates: Map[String, List[Double]],
+              numVariants: Int): Array[(String, Double)] = {
+    // broadcast this
+    val covarMat = covariates.map(f => {
+      (f._1, DenseVector(f._2: _*).t)
+    })
+
+    val covarVals = variantModels.repartition(40).sort(variantModels("association.pValue").asc).limit(numVariants).rdd.flatMap(f => {
+      val weights = DenseVector(f.association.weights.drop(2): _*)
+      covarMat.map(g => {
+        ((f.uniqueID, g._1), (f.association.weights(1), g._2 * weights + f.association.weights(0)))
+      })
+    }).filter(f => !f._2._2.isNaN)
+
+    val genotypes_2 = genotypes.repartition(40).rdd.flatMap(f => f.samples.map(g => ((f.uniqueID, g.sampleID), g.alts.toDouble)))
+
+    val y_hat = genotypes_2.join(covarVals).map(f => {
+      // f = ((rsID, sampleID), (alts (genoBeta, beta*covar)))
+      (f._1._2, f._2._1 * f._2._2._1 + f._2._2._2)
+    }).mapValues(x => (x, 1))
+
+    y_hat.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
+  }
+
+  def predictWithWeightedT(genotypes: Dataset[CalledVariant],
+                           covariates: Map[String, List[Double]],
+                           numVariants: Int): Array[(String, Double)] = {
+    // broadcast this
+    val covarMat = covariates.map(f => {
+      (f._1, DenseVector(f._2: _*).t)
+    })
+
+    val covarVals = variantModels.repartition(40).sort(variantModels("association.pValue").asc).limit(numVariants).rdd.flatMap(f => {
+      val weights = DenseVector(f.association.weights.drop(2): _*)
+      covarMat.map(g => {
+        ((f.uniqueID, g._1), (f.association.weights(1), g._2 * weights + f.association.weights(0), math.abs(f.association.geneticParameterScore)))
+      })
+    }).filter(f => !f._2._2.isNaN && !f._2._3.isNaN)
+
+    val genotypes_2 = genotypes.repartition(40).rdd.flatMap(f => f.samples.map(g => ((f.uniqueID, g.sampleID), g.alts.toDouble)))
+
+    val y_hat = genotypes_2.join(covarVals).map(f => {
+      // f = ((rsID, sampleID), (alts (genoBeta, beta*covar, geneticParameterScore)))
+      (f._1._2, ((f._2._1 * f._2._2._1 + f._2._2._2) * f._2._2._3, f._2._2._3))
+    })
+
+    // (sampleID, (prediction, geneticParameterScore))
+    y_hat.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2)).mapValues(y => 1.0 * y._1 / y._2).collect
   }
 }
-

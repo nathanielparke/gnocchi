@@ -25,21 +25,22 @@ import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.bdgenomics.gnocchi.models.{ LinearGnocchiModelFactory, LogisticGnocchiModelFactory }
 import org.bdgenomics.utils.cli._
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
 import scala.io.StdIn.readLine
 
-object RegressPhenotypes extends BDGCommandCompanion {
-  val commandName = "regressPhenotypes"
-  val commandDescription = "Pilot code for computing genotype/phenotype associations using ADAM"
+object BuildGnocchiModel extends BDGCommandCompanion {
+  val commandName = "buildGnocchiModel"
+  val commandDescription = "Builds a GnocchiModel and saves the output."
 
   def apply(cmdLine: Array[String]) = {
-    new RegressPhenotypes(Args4j[RegressPhenotypesArgs](cmdLine))
+    new BuildGnocchiModel(Args4j[BuildGnocchiModelArgs](cmdLine))
   }
 }
 
-class RegressPhenotypesArgs extends Args4jBase {
+class BuildGnocchiModelArgs extends Args4jBase {
   @Argument(required = true, metaVar = "GENOTYPES", usage = "The genotypes to process.", index = 0)
   var genotypes: String = _
 
@@ -107,7 +108,7 @@ class RegressPhenotypesArgs extends Args4jBase {
   var parquetInput: Boolean = false
 }
 
-class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSparkCommand[RegressPhenotypesArgs] {
+class BuildGnocchiModel(protected val args: BuildGnocchiModelArgs) extends BDGSparkCommand[BuildGnocchiModelArgs] {
   val companion = RegressPhenotypes
 
   def run(sc: SparkContext) {
@@ -135,19 +136,21 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     val sampleFiltered = sc.filterSamples(recoded, mind = args.mind, ploidy = args.ploidy)
     val filteredGeno = sc.filterVariants(sampleFiltered, geno = args.geno, maf = args.maf)
 
+    val phenotypeNames = if (args.covarFile != null) args.phenoName :: args.covarNames.split(",").toList else List(args.phenoName)
+
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
-        val associations = LinearSiteRegression(filteredGeno, broadPhenotype, "ADDITIVE")
-        sc.saveAssociations[LinearVariantModel](associations, args.output, args.saveAsText, args.forceSave)
+        val gm = LinearGnocchiModelFactory(filteredGeno, broadPhenotype, Option(phenotypeNames), allelicAssumption = "ADDITIVE")
+        gm.save(args.output)
       case "DOMINANT_LINEAR" =>
-        val associations = LinearSiteRegression(filteredGeno, broadPhenotype, "DOMINANT")
-        sc.saveAssociations[LinearVariantModel](associations, args.output, args.saveAsText, args.forceSave)
+        val gm = LinearGnocchiModelFactory(filteredGeno, broadPhenotype, Option(phenotypeNames), allelicAssumption = "DOMINANT")
+        gm.save(args.output)
       case "ADDITIVE_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "ADDITIVE")
-        sc.saveAssociations[LogisticVariantModel](associations, args.output, args.saveAsText, args.forceSave)
+        val gm = LogisticGnocchiModelFactory(filteredGeno, broadPhenotype, Option(phenotypeNames), allelicAssumption = "ADDITIVE")
+        gm.save(args.output)
       case "DOMINANT_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "DOMINANT")
-        sc.saveAssociations[LogisticVariantModel](associations, args.output, args.saveAsText, args.forceSave)
+        val gm = LogisticGnocchiModelFactory(filteredGeno, broadPhenotype, Option(phenotypeNames), allelicAssumption = "DOMINANT")
+        gm.save(args.output)
     }
   }
 }

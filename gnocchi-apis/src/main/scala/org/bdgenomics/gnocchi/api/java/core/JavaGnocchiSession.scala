@@ -16,16 +16,16 @@
  * limitations under the License.
  */
 
-// (TODO) Add boilerplate for Java wrapper onto Gnocchi
+package org.bdgenomics.gnocchi.api.java.core
 
-package org.bdgenomics.gnocchi.api.java
-
-import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.spark.api.java.JavaSparkContext
 import org.apache.spark.sql.Dataset
-import org.bdgenomics.adam.rdd.ADAMContext
+import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
+import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession
+
+import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.JavaConverters._
 
 object JavaGnocchiSession {
   // convert to and from java/scala implementation
@@ -119,22 +119,41 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
    *
    * @return A Map of phenotype name to Phenotype object
    */
+
   def loadPhenotypes(phenotypesPath: java.lang.String,
                      primaryID: java.lang.String,
                      phenoName: java.lang.String,
                      delimiter: java.lang.String,
-                     covarPath: Option[String] = None,
-                     covarNames: Option[List[String]] = None,
-                     covarDelimiter: String = "\t",
-                     missing: List[Int] = List(-9)): Map[String, Phenotype] = {
+                     covarPath: java.lang.String,
+                     covarNames: java.util.ArrayList[java.lang.String],
+                     covarDelimiter: java.lang.String = "\t",
+                     missing: java.util.ArrayList[java.lang.String] = new java.util.ArrayList[String](List("-9").asJava)): Map[java.lang.String, Phenotype] = {
+
+    // Convert python compatible nullable types to scala options                   
+    val covarPathOption = if (covarPath == null) {
+      None
+    } else {
+      Some(covarPath)
+    }
+
+    // Convert python compatible nullable types to scala options                   
+    val covarNamesOption = if (covarNames == null) {
+      None
+    } else {
+      val covarNamesList = asScalaBuffer(covarNames).toList
+      Some(covarNamesList)
+    }
+
+    val missingList = asScalaBuffer(missing).toList
+
     gs.loadPhenotypes(phenotypesPath,
       primaryID,
       phenoName,
       delimiter,
-      covarPath,
-      covarNames,
+      covarPathOption,
+      covarNamesOption,
       covarDelimiter,
-      missing)
+      missingList)
   }
 
   /**
@@ -145,7 +164,7 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
    *
    * @return The Phenotype corresponding to the input key
    */
-  def getPhenotypeByKey(phenotypeMap: Map[String, Phenotype], key: java.lang.String): Phenotype = {
+  def getPhenotypeByKey(phenotypeMap: Map[java.lang.String, Phenotype], key: java.lang.String): Phenotype = {
     phenotypeMap(key)
   }
 }

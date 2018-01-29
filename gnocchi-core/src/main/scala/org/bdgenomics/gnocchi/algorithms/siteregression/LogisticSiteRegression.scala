@@ -48,6 +48,10 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
           logError(e.toString)
           None
         }
+        case e: org.apache.commons.math3.exception.ConvergenceException => {
+          logError(e.toString)
+          None
+        }
       }
     })
   }
@@ -56,9 +60,8 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
                   genotypes: CalledVariant,
                   allelicAssumption: String): LogisticAssociation = {
 
+    // ToDo: Orthogonalize the matrix so we dont get singular matrices
     val (data, labels) = prepareDesignMatrix(phenotypes, genotypes, allelicAssumption)
-
-    val numObservations = genotypes.samples.count(x => !x.value.contains("."))
 
     val maxIter = 1000
     val tolerance = 1e-6
@@ -86,7 +89,8 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
       beta.toList,
       genoStandardError,
       waldTests(1),
-      numObservations)
+      data.rows,
+      zScores(1))
   }
 
   /**
@@ -151,7 +155,7 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
                           genotypes: CalledVariant,
                           allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
 
-    val validGenos = genotypes.samples.filter(genotypeState => !genotypeState.value.contains(".") && phenotypes.contains(genotypeState.sampleID))
+    val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
 
     val samplesGenotypes = allelicAssumption.toUpperCase match {
       case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.additive)))

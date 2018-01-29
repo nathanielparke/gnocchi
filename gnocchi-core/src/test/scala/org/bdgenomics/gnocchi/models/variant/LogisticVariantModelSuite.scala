@@ -27,10 +27,11 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
-      numSamples = 10)
+      numSamples = 10,
+      geneticParameterScore = 0.5)
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
-    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", 0.1, 0.2, List(0.3, 0.4), 1)
+    val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", 0.1, 0.2, List(0.3, 0.4), 1, 0.5)
 
     // Assert that all values in the LogisticVariantModel object match expected
     // The following values should be updated given the new parameters
@@ -53,14 +54,16 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
-      numSamples = 10)
+      numSamples = 10,
+      geneticParameterScore = 0.5)
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
 
     val newAssoc = LogisticAssociation(geneticParameterStandardError = 0.1,
       pValue = 0.2,
       weights = List(0.3, 0.4),
-      numSamples = 1)
+      numSamples = 1,
+      geneticParameterScore = 0.5)
 
     val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", newAssoc)
 
@@ -85,13 +88,16 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     val firstAssoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),
-      numSamples = 10)
+      numSamples = 10,
+      geneticParameterScore = 0.5)
     val firstVariantModel = LogisticVariantModel("rs123456", firstAssoc, "", 1, 1, "A", "C", "")
 
     val secondAssoc = LogisticAssociation(geneticParameterStandardError = 0.2,
       pValue = 0.2,
       weights = List(0.2, 0.8),
-      numSamples = 5)
+      numSamples = 5,
+      geneticParameterScore = 0.5)
+
     val secondVariantModel = LogisticVariantModel("rs123456", secondAssoc, "", 1, 1, "A", "C", "")
 
     // Merge firstVariantModel with secondVariantModel
