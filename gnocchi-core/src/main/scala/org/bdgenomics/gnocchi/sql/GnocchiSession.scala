@@ -98,6 +98,10 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
       f => f.filter(g => keepers.contains(g.sampleID)))
   }
 
+  def selectSamples(genotypes: Dataset[CalledVariant], sampleIDs: Set[String]): Dataset[CalledVariant] = {
+    createCalledVariant(genotypes, f => f.filter(g => sampleIDs.contains(g.sampleID)))
+  }
+
   /**
    * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]] [[Dataset]].
    *
