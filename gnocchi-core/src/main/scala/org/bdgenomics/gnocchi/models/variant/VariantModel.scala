@@ -33,18 +33,18 @@ trait VariantModel[VM <: VariantModel[VM]] {
   val alternateAllele: String
   val association: Association
 
-  /**
-   * Returns an updated VariantModel given a new batch of data
-   *
-   * @param observations Array containing data at the particular site for
-   *                     all samples. Format of each element is:
-   *                     (gs, Array(pheno, covar1, ... covarp))
-   *                     where gs is the diploid genotype at that site for the
-   *                     given sample [0, 1, or 2], pheno is the sample's value for
-   *                     the phenotype being regressed on, and covar1-covarp are that
-   *                     sample's values for each covariate.
-   */
-  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): VM
+  //  /**
+  //   * Returns an updated VariantModel given a new batch of data
+  //   *
+  //   * @param observations Array containing data at the particular site for
+  //   *                     all samples. Format of each element is:
+  //   *                     (gs, Array(pheno, covar1, ... covarp))
+  //   *                     where gs is the diploid genotype at that site for the
+  //   *                     given sample [0, 1, or 2], pheno is the sample's value for
+  //   *                     the phenotype being regressed on, and covar1-covarp are that
+  //   *                     sample's values for each covariate.
+  //   */
+  //  def update(genotypes: CalledVariant, phenotypes: Map[String, Phenotype]): VM
 
   /**
    * Returns updated weights for the model taking a weighted average of the previous
