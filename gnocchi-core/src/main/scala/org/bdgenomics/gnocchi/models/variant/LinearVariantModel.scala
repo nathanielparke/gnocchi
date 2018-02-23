@@ -77,12 +77,14 @@ case class LinearVariantModel(uniqueID: String,
    * @return Returns updated LinearVariantModel of correct subtype
    */
   def mergeWith(variantModel: LinearVariantModel): LinearVariantModel = {
-    val newXtX = association.xTx + variantModel.association.xTx
-    val newXty = association.xTy + variantModel.association.xTy
+    val newXtXList = association.xTx.zip(variantModel.association.xTx).map { case (x, y) => x + y }
+    val newXtX = new DenseMatrix(association.numPredictors, association.numPredictors, newXtXList)
+    val newXtYList = association.xTy.zip(variantModel.association.xTy).map { case (x, y) => x + y }
+    val newXtY = new DenseVector(newXtYList)
     val newNumSamples = variantModel.association.numSamples + association.numSamples
-    val newResidualDegreesOfFreedom = newNumSamples - newXtX.cols
-    val newWeights = newXtX \ newXty
-    val newAssociation = new LinearAssociation(newXtX, newXty, newResidualDegreesOfFreedom, newWeights.data.toList, newNumSamples)
+    val newResidualDegreesOfFreedom = newNumSamples - association.numPredictors
+    val newWeights = newXtX \ newXtY
+    val newAssociation = new LinearAssociation(newXtXList, newXtYList, newResidualDegreesOfFreedom, newWeights.data.toList, newNumSamples, association.numPredictors)
     constructUpdatedVariantModel(newAssociation)
   }
 

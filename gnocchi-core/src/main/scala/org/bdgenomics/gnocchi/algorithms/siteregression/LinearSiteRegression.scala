@@ -104,6 +104,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       residualDegreesOfFreedom,
       beta.data.toList,
       x.rows,
+      x.cols,
       genoSE,
       t,
       pValue)

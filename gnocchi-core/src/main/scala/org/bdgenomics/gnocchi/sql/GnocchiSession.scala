@@ -269,7 +269,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val phenoFile = new Path(phenotypesPath)
     val fs = phenoFile.getFileSystem(sc.hadoopConfiguration)
-    require(fs.exists(phenoFile), s"Specified genotypes file path does not exits: ${phenotypesPath}")
+    require(fs.exists(phenoFile), s"Specified phenotypes file path does not exits: ${phenotypesPath}")
     logInfo("Loading phenotypes from %s.".format(phenotypesPath))
 
     // ToDo: keeps these operations on one machine, because phenotypes are small.
@@ -365,8 +365,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
   def saveAssociations[A <: VariantModel[A]](associations: Dataset[A],
                                              outPath: String,
-                                             saveAsText: Boolean = false,
-                                             forceSave: Boolean) = {
+                                             forceSave: Boolean,
+                                             saveAsText: Boolean = false) = {
     // save dataset
     val associationsFile = new Path(outPath)
     val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
@@ -382,11 +382,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     }
 
     val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
-    val necessaryFields = List("uniqueID", "chromosome", "position", "referenceAllele", "alternateAllele", "association.pValue").map(col(_))
-    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
+    val necessaryFields = List("uniqueID", "chromosome", "position", "referenceAllele", "alternateAllele", "association.pValue", "association.numSamples", "association.weights").map(col(_))
+    //    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
 
     val assoc = associations
-      .select(necessaryFields ::: fields: _*).sort($"pValue".asc)
+      .select(necessaryFields: _*).sort($"pValue".asc)
       .withColumn("weights", stringify($"weights"))
       .coalesce(1)
       .cache()
