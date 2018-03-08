@@ -31,18 +31,18 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
 
   val regressionName: String
 
-  def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
-            allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): Dataset[VM]
+  //  def apply(genotypes: Dataset[CalledVariant],
+  //            phenotypes: Broadcast[Map[String, Phenotype]],
+  //            allelicAssumption: String = "ADDITIVE",
+  //            validationStringency: String = "STRICT"): Dataset[VM]
+  //
+  //  def applyToSite(phenotypes: Map[String, Phenotype],
+  //                  genotypes: CalledVariant,
+  //                  allelicAssumption: String): A
 
-  def applyToSite(phenotypes: Map[String, Phenotype],
-                  genotypes: CalledVariant,
-                  allelicAssumption: String): A
-
-  def constructVM(variant: CalledVariant,
-                  phenotype: Phenotype,
-                  association: A,
-                  allelicAssumption: String): VM
+  //  def constructVM(variant: CalledVariant,
+  //                  phenotype: Phenotype,
+  //                  association: A,
+  //                  allelicAssumption: String): VM
 }
 

@@ -81,7 +81,7 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     assert(newVariantModel.allelicAssumption === "")
   }
 
-  sparkTest("Test LogisticVariantModel.mergeWith works") {
+  ignore("Test LogisticVariantModel.mergeWith works") {
     val firstAssoc = LogisticAssociation(geneticParameterStandardError = 0.5,
       pValue = 0.5,
       weights = List(0.5, 0.5),

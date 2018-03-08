@@ -28,14 +28,16 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import scala.collection.immutable.Map
 
 case class LinearVariantModel(uniqueID: String,
-                              association: LinearAssociation,
-                              phenotype: String,
+                              xTx: Array[Double],
+                              xTy: Array[Double],
+                              residualDegreesOfFreedom: Int,
+                              weights: List[Double],
+                              numSamples: Int,
+                              numPredictors: Int,
                               chromosome: Int,
                               position: Int,
                               referenceAllele: String,
-                              alternateAllele: String,
-                              allelicAssumption: String,
-                              phaseSetId: Int = 0) extends VariantModel[LinearVariantModel] with LinearSiteRegression {
+                              alternateAllele: String) extends VariantModel[LinearVariantModel] with LinearSiteRegression {
 
   val modelType: String = "Linear Variant Model"
   val regressionName = "Linear Regression"
@@ -48,7 +50,7 @@ case class LinearVariantModel(uniqueID: String,
    * @return the prediction for the particular individual
    */
   def predict(genotype: GenotypeState, covariates: List[Double]): Double = {
-    val weights = DenseVector(association.weights: _*)
+    val weights = DenseVector(this.weights: _*)
     val predictors = DenseVector(1.0 :: genotype.alts.toDouble :: covariates: _*)
     predictors dot weights
   }
@@ -60,214 +62,40 @@ case class LinearVariantModel(uniqueID: String,
    * @param covariates the covariates, a [[List<Double>]] that contain the covariates.
    * @return the prediction for the particular individual
    */
-  def predict(genotypes: CalledVariant, covariates: Map[String, List[Double]]): List[Double] = {
+  def predict(genotypes: CalledVariant,
+              covariates: Map[String, List[Double]]): List[Double] = {
     val genotypeStates = genotypes.samples.map(x => (x.sampleID, x.alts.toDouble))
     val predictorsMatrix = DenseMatrix(genotypeStates.map { case (id, geno) => 1.0 :: geno :: covariates(id) }: _*)
 
-    val weights = DenseVector(association.weights: _*)
+    val weights = DenseVector(this.weights: _*)
     (predictorsMatrix * weights).toArray.toList
   }
 
   /**
-   * Returns updated LinearVariantModel of correct subtype
+   * Merges this [[LinearVariantModel]] with another that is passed in as an argument.
    *
-   * @param variantModel Variant model whose parameters are to be used to update
-   *                     existing variant model.
-   *
-   * @return Returns updated LinearVariantModel of correct subtype
+   * @param variantModel The [[LinearVariantModel]] to merge with.
+   * @return A new [[LinearVariantModel]] that is the result of merging the two models.
    */
   def mergeWith(variantModel: LinearVariantModel): LinearVariantModel = {
-    val newXtXList = association.xTx.zip(variantModel.association.xTx).map { case (x, y) => x + y }
-    val newXtX = new DenseMatrix(association.numPredictors, association.numPredictors, newXtXList)
-    val newXtYList = association.xTy.zip(variantModel.association.xTy).map { case (x, y) => x + y }
+    val newXtXList = this.xTx.zip(variantModel.xTx).map { case (x, y) => x + y }
+    val newXtX = new DenseMatrix(this.numPredictors, this.numPredictors, newXtXList)
+    val newXtYList = this.xTy.zip(variantModel.xTy).map { case (x, y) => x + y }
     val newXtY = new DenseVector(newXtYList)
-    val newNumSamples = variantModel.association.numSamples + association.numSamples
-    val newResidualDegreesOfFreedom = newNumSamples - association.numPredictors
+    val newNumSamples = variantModel.numSamples + this.numSamples
+    val newResidualDegreesOfFreedom = newNumSamples - this.numPredictors
     val newWeights = newXtX \ newXtY
-    val newAssociation = new LinearAssociation(newXtXList, newXtYList, newResidualDegreesOfFreedom, newWeights.data.toList, newNumSamples, association.numPredictors)
-    constructUpdatedVariantModel(newAssociation)
-  }
 
-  /**
-   * Creates an updated LinearVariantModel from the current model to contain
-   * the input Association object.
-   *
-   * @param association New association object
-   * @return Returns a new LinearVariantModel
-   */
-  def constructUpdatedVariantModel(association: LinearAssociation): LinearVariantModel = {
     LinearVariantModel(uniqueID,
-      association,
-      phenotype,
+      newXtXList.toArray,
+      newXtYList.toArray,
+      newResidualDegreesOfFreedom,
+      newWeights.toArray.toList,
+      newNumSamples,
+      numPredictors,
       chromosome,
       position,
       referenceAllele,
-      alternateAllele,
-      allelicAssumption,
-      phaseSetId)
+      alternateAllele)
   }
-
-  //  /**
-  //   * Returns updated sum of squared deviations from the mean of the genotype at that site
-  //   * by adding the sum of squared deviations from the batch to the sum of squared
-  //   * deviations of the existing model.
-  //   *
-  //   * @note The mean used in the calculation of the sum of squared deviations in the batch
-  //   *       is the batch mean, not the global mean, since this enables a cleaner equation
-  //   *       when approximating genetic parameter standard error in the update.
-  //   *
-  //   * @param batchSsDeviations The sum of squared deviations of the genotype values in
-  //   *                          the batch from the batch mean.
-  //   */
-  //  def updateSsDeviations(batchSsDeviations: Double): Double = {
-  //    association.ssDeviations + batchSsDeviations
-  //  }
-  //
-  //  /**
-  //   * Returns updated sum of squared residuals for the model by adding the sum of squared
-  //   * residuals for the batch to the sum of squared residuals of the existing model.
-  //   *
-  //   * @note The estimated value for the phenotype is estimated based on the batch-
-  //   *       optimized model, not the global model.
-  //   *
-  //   * @param batchSsResiduals The sum of squared residuals for the batch
-  //   */
-  //  def updateSsResiduals(batchSsResiduals: Double): Double = {
-  //    association.ssResiduals + batchSsResiduals
-  //  }
-
-  /**
-   * Returns updated standard error of the genetic parameter using
-   * updated values for the sum of squared residuals, sum of squared
-   * deviations, and the number of samples.
-   *
-   * @note New standard error calculated based on updated values rather
-   *       than taking an average of the batch standard error and the
-   *       existing standard error (i.e. the method of update for
-   *       the standard error in LogisticVariantModel's) in order to
-   *       produce a closer approximation to the true standard error
-   *       of the genetic parameter for the whole sample.
-   *
-   * @param updatedSsResiduals the result of updatesSsResiduals
-   * @param updatedSsDeviations the result of updateSsDeviations
-   * @param updatedNumSamples the result of updateNumSamples
-   * @return Updated standard error for the genetic parameter in the model
-   */
-  def computeGeneticParameterStandardError(updatedSsResiduals: Double,
-                                           updatedSsDeviations: Double,
-                                           updatedNumSamples: Int): Double = {
-    math.sqrt(((1.0 / (updatedNumSamples - association.weights.length)) * updatedSsResiduals) / (updatedSsDeviations))
-  }
-
-  /**
-   * Returns updated geneticParameterDegreesOfFreedom for the model by adding
-   * the number of samples in the batch to the existing value for degrees of
-   * freedom in the model.
-   *
-   * @param batchNumSamples Number of samples in the batch used to update
-   *
-   * @return Updated degrees of freedom of the residual
-   *
-   */
-  def updateResidualDegreesOfFreedom(batchNumSamples: Int): Int = {
-    association.residualDegreesOfFreedom + batchNumSamples
-  }
-
-  /**
-   * Returns t-statistic by taking the ratio of the weight associated with
-   * the genetic parameter and the provided standard error of the genetic parameter.
-   *
-   * @param weights Array of doubles representing the model weights
-   * @param geneticParameterStandardError Value for standard error of
-   *                                             genetic parameter.
-   * @return T-statistic for genetic parameter
-   */
-  def calculateTStatistic(weights: List[Double],
-                          geneticParameterStandardError: Double): Double = {
-    weights(1) / geneticParameterStandardError
-  }
-
-  /**
-   * Returns p-value for linear model given t-statistic and degrees of freedom
-   * of the residual.
-   *
-   * @param tStatistic Value for t-statistic
-   * @param residualDegreesOfFreedom Degrees of freedom to use in t-distribution
-   *
-   * @return P-value, given a t-statistic and degrees of freedom for
-   *         t-distribution
-   */
-  def calculatePValue(tStatistic: Double,
-                      residualDegreesOfFreedom: Int): Double = {
-    val tDist = new TDistribution(residualDegreesOfFreedom)
-    val pvalue = 2 * tDist.cumulativeProbability(-math.abs(tStatistic))
-    pvalue
-  }
-
-  //  /**
-  //   * Creates an updated LinearVariantModel from the current model with a new
-  //   * Association object on the specified parameters.
-  //   *
-  //   * @param variantId Variant Id of the new VariantModel
-  //   * @param updatedSsDeviations New ssDeviations
-  //   * @param updatedSsResiduals New ssResiduals
-  //   * @param updatedGeneticParameterStandardError New geneticParameterStandardError
-  //   * @param updatedtStatistic New tStatistic
-  //   * @param updatedResidualDegreesOfFreedom New residualDegreesOfFreedom
-  //   * @param updatedPValue New pValue
-  //   * @param updatedWeights New weights
-  //   * @param updatedNumSamples New numSamples
-  //   * @return Returns a new LinearVariantModel
-  //   */
-  //  def constructUpdatedVariantModel(variantID: String,
-  //                                   updatedSsDeviations: Double,
-  //                                   updatedSsResiduals: Double,
-  //                                   updatedGeneticParameterStandardError: Double,
-  //                                   updatedtStatistic: Double,
-  //                                   updatedResidualDegreesOfFreedom: Int,
-  //                                   updatedPValue: Double,
-  //                                   updatedWeights: List[Double],
-  //                                   updatedNumSamples: Int): LinearVariantModel = {
-  //
-  //    val updatedAssociation = LinearAssociation(ssDeviations = updatedSsDeviations,
-  //      ssResiduals = updatedSsResiduals,
-  //      geneticParameterStandardError = updatedGeneticParameterStandardError,
-  //      tStatistic = updatedtStatistic,
-  //      residualDegreesOfFreedom = updatedResidualDegreesOfFreedom,
-  //      pValue = updatedPValue,
-  //      weights = updatedWeights,
-  //      numSamples = updatedNumSamples)
-  //
-  //    LinearVariantModel(variantID,
-  //      updatedAssociation,
-  //      phenotype,
-  //      chromosome,
-  //      position,
-  //      referenceAllele,
-  //      alternateAllele,
-  //      allelicAssumption,
-  //      phaseSetId)
-  //  }
-  //
-  //  /**
-  //   * Creates an updated LinearVariantModel from the current model to contain
-  //   * the input Association object.
-  //   *
-  //   * @param variantId VariantId of the new VariantModel
-  //   * @param association New association object
-  //   * @return Returns a new LinearVariantModel
-  //   */
-  //  def constructUpdatedVariantModel(variantID: String,
-  //                                   association: LinearAssociation): LinearVariantModel = {
-  //    LinearVariantModel(variantID,
-  //      association,
-  //      phenotype,
-  //      chromosome,
-  //      position,
-  //      referenceAllele,
-  //      alternateAllele,
-  //      allelicAssumption,
-  //      phaseSetId)
-  //  }
-
 }

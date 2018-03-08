@@ -18,6 +18,6 @@
 package org.bdgenomics.gnocchi.primitives.association
 
 trait Association {
-  val weights: List[Double]
-  val numSamples: Int
+  //  val weights: List[Double]
+  //  val numSamples: Int
 }

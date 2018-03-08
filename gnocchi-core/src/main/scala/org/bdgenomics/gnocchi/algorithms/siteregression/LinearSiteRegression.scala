@@ -26,28 +26,43 @@ import breeze.stats._
 import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.bdgenomics.gnocchi.models.ResultWrapper
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 
 import scala.collection.immutable.Map
 
 trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAssociation] {
 
+  /**
+   * Default apply which creates two datasets, one for the model, one for the results
+   *
+   * @param genotypes
+   * @param phenotypes
+   * @param allelicAssumption
+   * @param validationStringency
+   * @return
+   */
   def apply(genotypes: Dataset[CalledVariant],
             phenotypes: Broadcast[Map[String, Phenotype]],
             allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): Dataset[LinearVariantModel] = {
+            validationStringency: String = "STRICT"): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
 
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions
-    genotypes.flatMap((genos: CalledVariant) => {
+    val ModelAndAssociation = genotypes.rdd.flatMap((genos: CalledVariant) => {
       try {
-        val association = applyToSite(phenotypes.value, genos, allelicAssumption)
-        Some(constructVM(genos, phenotypes.value.head._2, association, allelicAssumption))
+        val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
+        Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => None
       }
     })
+
+    val model = genotypes.sparkSession.createDataset(ModelAndAssociation.map(f => f._1))
+    val association = genotypes.sparkSession.createDataset(ModelAndAssociation.map(f => f._2))
+
+    (model, association)
   }
 
   /**
@@ -58,10 +73,9 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @param allelicAssumption
    * @return
    */
-  //  private[siteregression] def applyToSite(phenotypes: Map[String, Phenotype],
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant,
-                  allelicAssumption: String): LinearAssociation = {
+                  allelicAssumption: String): (LinearVariantModel, LinearAssociation) = {
 
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
 
@@ -70,16 +84,135 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val beta = xTx \ xTy
 
-    val residuals = y - (x * beta)
-    val ssResiduals = residuals.t * residuals
+    val (genoSE, t, pValue) = calculateSignificance(x, y, beta, xTx)
 
-    // calculate sum of squared deviations
-    val deviations = y - mean(y)
-    val ssDeviations = deviations.t * deviations
+    val association = LinearAssociation(
+      genotypes.uniqueID,
+      genotypes.chromosome,
+      genotypes.position,
+      t,
+      pValue,
+      genoSE)
+
+    val model = LinearVariantModel(
+      genotypes.uniqueID,
+      xTx.toArray,
+      xTy.toArray,
+      x.rows - x.cols,
+      beta.data.toList,
+      x.rows,
+      x.cols,
+      genotypes.chromosome,
+      genotypes.position,
+      genotypes.referenceAllele,
+      genotypes.alternateAllele)
+
+    (model, association)
+  }
+
+  def createVariantModelDataset(genotypes: Dataset[CalledVariant],
+                                phenotypes: Broadcast[Map[String, Phenotype]],
+                                allelicAssumption: String = "ADDITIVE",
+                                validationStringency: String = "STRICT"): Dataset[LinearVariantModel] = {
+    import genotypes.sqlContext.implicits._
+
+    //ToDo: Singular Matrix Exceptions
+    genotypes.flatMap((genos: CalledVariant) => {
+      try {
+        val model = createVariantModel(phenotypes.value, genos, allelicAssumption)
+        Some(model)
+      } catch {
+        case e: breeze.linalg.MatrixSingularException => None
+      }
+    })
+  }
+
+  def createVariantModel(phenotypes: Map[String, Phenotype],
+                         genotypes: CalledVariant,
+                         allelicAssumption: String): LinearVariantModel = {
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
+
+    val xTx = x.t * x // p x p matrix
+    val xTy = x.t * y // p x 1 vector
+
+    val beta = xTx \ xTy
+
+    val model = LinearVariantModel(
+      genotypes.uniqueID,
+      xTx.toArray,
+      xTy.toArray,
+      x.rows - x.cols,
+      beta.data.toList,
+      x.rows,
+      x.cols,
+      genotypes.chromosome,
+      genotypes.position,
+      genotypes.referenceAllele,
+      genotypes.alternateAllele)
+
+    model
+  }
+
+  def createAssociationsDataset(genotypes: Dataset[CalledVariant],
+                                phenotypes: Broadcast[Map[String, Phenotype]],
+                                allelicAssumption: String = "ADDITIVE",
+                                validationStringency: String = "STRICT"): Dataset[LinearAssociation] = {
+    import genotypes.sqlContext.implicits._
+
+    //ToDo: Singular Matrix Exceptions
+    genotypes.flatMap((genos: CalledVariant) => {
+      try {
+        val association = createAssociation(phenotypes.value, genos, allelicAssumption)
+        Some(association)
+      } catch {
+        case e: breeze.linalg.MatrixSingularException => None
+      }
+    })
+  }
+
+  def createAssociation(phenotypes: Map[String, Phenotype],
+                        genotypes: CalledVariant,
+                        allelicAssumption: String): LinearAssociation = {
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
+
+    val xTx = x.t * x // p x p matrix
+    val xTy = x.t * y // p x 1 vector
+
+    val beta = xTx \ xTy
+
+    val (genoSE, t, pValue) = calculateSignificance(x, y, beta, xTx)
+
+    val association = LinearAssociation(
+      genotypes.uniqueID,
+      genotypes.chromosome,
+      genotypes.position,
+      t,
+      pValue,
+      genoSE)
+
+    association
+  }
+
+  /**
+   *
+   * @param x
+   * @param y
+   * @param beta
+   * @param modelxTx
+   * @param partialSSResiduals Optional parameter that can be used as the SSResiduals from another/other datasets
+   * @return (genoSE, t, pValue)
+   */
+  def calculateSignificance(x: DenseMatrix[Double],
+                            y: DenseVector[Double],
+                            beta: DenseVector[Double],
+                            modelxTx: DenseMatrix[Double],
+                            partialSSResiduals: Double = 0): (Double, Double, Double) = {
+    val residuals = y - (x * beta)
+    val ssResiduals = residuals.t * residuals + partialSSResiduals
 
     // compute the regression parameters standard errors
-    val betaVariance = diag(inv(xTx))
-    val sigma = residuals.t * residuals / (x.rows - x.cols)
+    val betaVariance = diag(inv(modelxTx))
+    val sigma = ssResiduals / (x.rows - x.cols)
     val standardErrors = sqrt(sigma * betaVariance)
 
     // get standard error for genotype parameter (for p value calculation)
@@ -97,17 +230,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     val residualDegreesOfFreedom = x.rows - x.cols
     val tDist = StudentsT(residualDegreesOfFreedom)
     val pValue = 2 * tDist.cdf(-math.abs(t))
-
-    LinearAssociation(
-      xTx,
-      xTy,
-      residualDegreesOfFreedom,
-      beta.data.toList,
-      x.rows,
-      x.cols,
-      genoSE,
-      t,
-      pValue)
+    (genoSE, t, pValue)
   }
 
   /**
@@ -149,30 +272,6 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     // val x = new DenseMatrix(x :_*)
 
     (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
-  }
-
-  /**
-   *
-   *
-   * @param variant
-   * @param phenotype
-   * @param association
-   * @param allelicAssumption
-   * @return
-   */
-  def constructVM(variant: CalledVariant,
-                  phenotype: Phenotype,
-                  association: LinearAssociation,
-                  allelicAssumption: String): LinearVariantModel = {
-
-    LinearVariantModel(variant.uniqueID,
-      association,
-      phenotype.phenoName,
-      variant.chromosome,
-      variant.position,
-      variant.referenceAllele,
-      variant.alternateAllele,
-      allelicAssumption)
   }
 }
 

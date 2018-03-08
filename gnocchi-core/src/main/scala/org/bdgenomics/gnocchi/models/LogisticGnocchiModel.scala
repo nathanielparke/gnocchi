@@ -17,7 +17,10 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import java.io.ObjectOutputStream
+
 import breeze.linalg.{ DenseMatrix, DenseVector }
+import org.apache.hadoop.fs.Path
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
@@ -87,7 +90,7 @@ case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
 
   import variantModels.sqlContext.implicits._
 
-  def mergeGnocchiModel(otherModel: GnocchiModel[LogisticVariantModel, LogisticGnocchiModel]): GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] = {
+  def mergeGnocchiModel(otherModel: LogisticGnocchiModel): GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] = {
 
     require(otherModel.metaData.modelType == metaData.modelType,
       "Models being merged are not the same type. Type equality is required to merge two models correctly.")
@@ -126,5 +129,29 @@ case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
           x._1.referenceAllele,
           x._1.alternateAllele,
           x._1.samples ++ x._2.samples))
+  }
+
+  /**
+   * Saves Gnocchi model by saving GnocchiModelMetaData as Java object,
+   * variantModels as parquet, and comparisonVariantModels as parquet.
+   */
+  def save(saveTo: String): Unit = {
+    variantModels.write.parquet(saveTo + "/variantModels")
+    QCVariantModels.write.parquet(saveTo + "/qcModels")
+
+    val qcPhenoPath = new Path(saveTo + "/qcPhenotypes")
+    val metaDataPath = new Path(saveTo + "/metaData")
+
+    val path_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val path_oos = new ObjectOutputStream(path_fs.create(qcPhenoPath))
+
+    path_oos.writeObject(QCPhenotypes)
+    path_oos.close
+
+    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
+
+    metaData_oos.writeObject(metaData)
+    metaData_oos.close
   }
 }

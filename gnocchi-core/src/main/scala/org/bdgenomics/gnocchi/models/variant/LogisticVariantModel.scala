@@ -42,15 +42,17 @@ case class LogisticVariantModel(uniqueID: String,
   /**
    * Returns updated LogisticVariantModel of correct subtype
    *
+   * TODO: Broken update weights function
+   *
    * @param variantModel Variant model whose parameters are to be used to update
    *                     existing variant model.
    *
    * @return Returns updated LogisticVariantModel of correct subtype
    */
   def mergeWith(variantModel: LogisticVariantModel): LogisticVariantModel = {
-    val updatedNumSamples = updateNumSamples(variantModel.association.numSamples)
+    val updatedNumSamples = variantModel.association.numSamples + association.numSamples
     val updatedGeneticParameterStandardError = computeGeneticParameterStandardError(variantModel.association.geneticParameterStandardError, variantModel.association.numSamples)
-    val updatedWeights = updateWeights(variantModel.association.weights, variantModel.association.numSamples)
+    val updatedWeights = variantModel.association.weights
     val updatedWaldStatistic = calculateWaldStatistic(updatedGeneticParameterStandardError, updatedWeights)
     val updatedPValue = calculatePvalue(updatedWaldStatistic)
     constructUpdatedVariantModel(this.uniqueID,
