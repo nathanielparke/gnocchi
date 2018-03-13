@@ -20,6 +20,8 @@ package org.bdgenomics.gnocchi.primitives.association
 case class LinearAssociation(uniqueID: String,
                              chromosome: Int,
                              position: Int,
+                             numSamples: Int,
                              tStatistic: Double,
                              pValue: Double,
-                             GenotypeStandardError: Double) extends Association
+                             GenotypeStandardError: Double,
+                             SSResiduals: Double) extends Association

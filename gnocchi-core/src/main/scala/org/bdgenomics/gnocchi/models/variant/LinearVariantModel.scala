@@ -71,6 +71,26 @@ case class LinearVariantModel(uniqueID: String,
     (predictorsMatrix * weights).toArray.toList
   }
 
+  def createAssociation(genotypes: CalledVariant,
+                        phenotypes: Map[String, Phenotype]): LinearAssociation = {
+    // toDo: fix allelic assumption
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, "ADDITIVE")
+    val breezeXtX = new DenseMatrix(numPredictors, numPredictors, xTx)
+    val beta = new DenseVector(weights.toArray)
+
+    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(x, y, beta, breezeXtX)
+
+    LinearAssociation(
+      uniqueID,
+      chromosome,
+      position,
+      x.rows,
+      t,
+      pValue,
+      genoSE,
+      ssResiduals)
+  }
+
   /**
    * Merges this [[LinearVariantModel]] with another that is passed in as an argument.
    *

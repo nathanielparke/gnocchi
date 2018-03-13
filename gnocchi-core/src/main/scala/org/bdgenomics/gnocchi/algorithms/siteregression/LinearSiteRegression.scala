@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
-import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
+import org.bdgenomics.gnocchi.primitives.association.{ LinearAssociation, LinearAssociationBuilder }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import breeze.linalg._
@@ -26,7 +26,6 @@ import breeze.stats._
 import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
-import org.bdgenomics.gnocchi.models.ResultWrapper
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 
 import scala.collection.immutable.Map
@@ -45,24 +44,19 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   def apply(genotypes: Dataset[CalledVariant],
             phenotypes: Broadcast[Map[String, Phenotype]],
             allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
+            validationStringency: String = "STRICT"): Dataset[LinearAssociationBuilder] = {
 
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions
-    val ModelAndAssociation = genotypes.rdd.flatMap((genos: CalledVariant) => {
+    genotypes.flatMap((genos: CalledVariant) => {
       try {
         val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
-        Some((model, association))
+        Some(LinearAssociationBuilder(model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => None
       }
     })
-
-    val model = genotypes.sparkSession.createDataset(ModelAndAssociation.map(f => f._1))
-    val association = genotypes.sparkSession.createDataset(ModelAndAssociation.map(f => f._2))
-
-    (model, association)
   }
 
   /**
@@ -84,15 +78,17 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val beta = xTx \ xTy
 
-    val (genoSE, t, pValue) = calculateSignificance(x, y, beta, xTx)
+    val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
 
     val association = LinearAssociation(
       genotypes.uniqueID,
       genotypes.chromosome,
       genotypes.position,
+      x.rows,
       t,
       pValue,
-      genoSE)
+      genoSE,
+      ssResiduals)
 
     val model = LinearVariantModel(
       genotypes.uniqueID,
@@ -180,15 +176,17 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val beta = xTx \ xTy
 
-    val (genoSE, t, pValue) = calculateSignificance(x, y, beta, xTx)
+    val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
 
     val association = LinearAssociation(
       genotypes.uniqueID,
       genotypes.chromosome,
       genotypes.position,
+      x.rows,
       t,
       pValue,
-      genoSE)
+      genoSE,
+      ssResiduals)
 
     association
   }
@@ -206,13 +204,18 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
                             y: DenseVector[Double],
                             beta: DenseVector[Double],
                             modelxTx: DenseMatrix[Double],
-                            partialSSResiduals: Double = 0): (Double, Double, Double) = {
+                            partialSSResiduals: Option[Double] = None,
+                            additionalSamples: Option[Int] = None): (Double, Double, Double, Double) = {
+
+    require(partialSSResiduals.isDefined == additionalSamples.isDefined,
+      "You need to either define both partialSSResiduals and additionalNumSamples, or neither.")
+
     val residuals = y - (x * beta)
-    val ssResiduals = residuals.t * residuals + partialSSResiduals
+    val ssResiduals = residuals.t * residuals + partialSSResiduals.getOrElse(0: Double)
 
     // compute the regression parameters standard errors
     val betaVariance = diag(inv(modelxTx))
-    val sigma = ssResiduals / (x.rows - x.cols)
+    val sigma = ssResiduals / (additionalSamples.getOrElse(0: Int) + x.rows - x.cols)
     val standardErrors = sqrt(sigma * betaVariance)
 
     // get standard error for genotype parameter (for p value calculation)
@@ -227,10 +230,10 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       (N = number of samples, p = number of regressors i.e. genotype+covariates+intercept)
       https://en.wikipedia.org/wiki/T-statistic
     */
-    val residualDegreesOfFreedom = x.rows - x.cols
+    val residualDegreesOfFreedom = additionalSamples.getOrElse(0: Int) + x.rows - x.cols
     val tDist = StudentsT(residualDegreesOfFreedom)
     val pValue = 2 * tDist.cdf(-math.abs(t))
-    (genoSE, t, pValue)
+    (genoSE, t, pValue, ssResiduals)
   }
 
   /**

@@ -31,10 +31,11 @@ import org.bdgenomics.utils.misc.Logging
 import java.nio.file.{ Files, Paths }
 
 import org.apache.hadoop.fs.Path
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.types.StructType
 import org.bdgenomics.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData, LinearGnocchiModel, LogisticGnocchiModel }
 import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, QualityControlVariantModel, VariantModel }
-import org.bdgenomics.gnocchi.primitives.association.Association
+import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -346,6 +347,47 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   }
 
   /**
+   * Joins a [[Dataset]] of [[CalledVariant]] with a [[Dataset]] of [[LinearAssociationBuilder]] and updates
+   * the [[LinearAssociationBuilder]].
+   *
+   * ToDo: Make sure individuals in new data were part of the originally created model
+   *
+   * @param newGenotypeData new [[Dataset]] of [[CalledVariant]] to apply the model to and get the sum of squared residuals for
+   * @param newPhenotypeData new [[Map]] of [[Phenotype]] objects for the new genotype data
+   * @param associationBuilder a [[Dataset]] of [[LinearAssociationBuilder]] which contains partially built associations
+   * @return a new [[Dataset]] of [[LinearAssociationBuilder]] which is updated with the added data
+   */
+  def updateLinearAssociationBuilder(newGenotypeData: Dataset[CalledVariant],
+                                     newPhenotypeData: Broadcast[Map[String, Phenotype]],
+                                     associationBuilder: Dataset[LinearAssociationBuilder]): Dataset[LinearAssociationBuilder] = {
+    associationBuilder
+      .joinWith(newGenotypeData, associationBuilder("model.uniqueID") === newGenotypeData("uniqueID"))
+      .map {
+        case (builder, newVariant) => {
+          builder.addNewData(newVariant, newPhenotypeData.value)
+        }
+      }
+  }
+
+  /**
+   *
+   * @param newGenotypeData
+   * @param newPhenotypeData
+   * @param models
+   * @return
+   */
+  def createLinearAssociationsBuilder(newGenotypeData: Dataset[CalledVariant],
+                                      newPhenotypeData: Broadcast[Map[String, Phenotype]],
+                                      models: Dataset[LinearVariantModel]): Dataset[LinearAssociationBuilder] = {
+    models.joinWith(newGenotypeData, models("uniqueID") === newGenotypeData("uniqueID"))
+      .map {
+        case (model, genotype) => {
+          LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.value))
+        }
+      }
+  }
+
+  /**
    * shamelessly lifted from here:
    * https://stackoverflow.com/questions/37471346/automatically-and-elegantly-flatten-dataframe-in-spark-sql
    *
@@ -388,7 +430,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
 
     val assoc = associations
       .select(necessaryFields: _*).sort($"pValue".asc)
-      .withColumn("weights", stringify($"weights"))
       .coalesce(1)
       .cache()
 

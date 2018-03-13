@@ -100,7 +100,7 @@ case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
     // ToDo: 1. [DONE] make sure models are of same type 2. [DONE] find intersection of QCVariants and use those as the gnocchiModel
     // ToDo: QCVariants 3. Make sure the phenotype of the models are the same 4. Make sure the covariates of the model
     // ToDo: are the same (currently broken because covariates stored in [[Phenotype]] object are the values not names)
-    val updatedMetaData = updateMetaData(otherModel.metaData.numSamples)
+    val updatedMetaData = updateMetaData(otherModel.metaData.numSamples, metaData)
 
     val mergedQCVariants = mergeQCVariants(otherModel.QCVariantModels)
     val mergedQCVariantModels = mergedVMs.joinWith(mergedQCVariants, mergedVMs("uniqueID") === mergedQCVariants("uniqueID"), "inner")

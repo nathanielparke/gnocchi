@@ -41,7 +41,7 @@ case class GnocchiModelMetaData(modelType: String,
 
 trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 
-  val metaData: GnocchiModelMetaData
+  //  val metaData: GnocchiModelMetaData
 
   val variantModels: Dataset[VM]
 
@@ -57,16 +57,17 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
    * @param newFlaggedVariantModels VariantModels flagged after update
    */
   def updateMetaData(numAdditionalSamples: Int,
+                     metaData: GnocchiModelMetaData,
                      newFlaggedVariantModels: Option[List[String]] = None): GnocchiModelMetaData = {
-    val numSamples = this.metaData.numSamples + numAdditionalSamples
+    val numSamples = metaData.numSamples + numAdditionalSamples
 
     GnocchiModelMetaData(
-      this.metaData.modelType,
-      this.metaData.phenotype,
-      this.metaData.covariates,
+      metaData.modelType,
+      metaData.phenotype,
+      metaData.covariates,
       numSamples,
-      this.metaData.haplotypeBlockErrorThreshold,
-      if (newFlaggedVariantModels.isDefined) newFlaggedVariantModels else this.metaData.flaggedVariantModels)
+      metaData.haplotypeBlockErrorThreshold,
+      if (newFlaggedVariantModels.isDefined) newFlaggedVariantModels else metaData.flaggedVariantModels)
   }
 
   //  def predict(genotypes: Dataset[CalledVariant],
