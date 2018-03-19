@@ -245,7 +245,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    *      - indexed columns that can be accessed by phenotype name
    *      - phenotypic summary information like histograms for particular phenotypes
    *
-   * @solution = use java file input stream
+   * solution = use java file input stream
    *
    * @param phenotypesPath A string specifying the location in the file system
    *                       of the phenotypes file to load in.
@@ -267,7 +267,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
                      covarPath: Option[String] = None,
                      covarNames: Option[List[String]] = None,
                      covarDelimiter: String = "\t",
-                     missing: List[String] = List("-9")): Map[String, Phenotype] = {
+                     missing: List[String] = List("-9")): PhenotypesContainer = {
 
     val phenoFile = new Path(phenotypesPath)
     val fs = phenoFile.getFileSystem(sc.hadoopConfiguration)
@@ -339,50 +339,30 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     }
 
     // need to filter out the missing covariates as well.
-    phenoCovarDF
+    val phenotypes = phenoCovarDF
       .withColumn("phenoName", lit(phenoName))
       .as[Phenotype]
       .collect()
       .map(x => (x.sampleId, x)).toMap
+
+    PhenotypesContainer(sc.broadcast(phenotypes), phenoName, covarNames)
   }
 
   /**
-   * Joins a [[Dataset]] of [[CalledVariant]] with a [[Dataset]] of [[LinearAssociationBuilder]] and updates
-   * the [[LinearAssociationBuilder]].
    *
-   * ToDo: Make sure individuals in new data were part of the originally created model
-   *
-   * @param newGenotypeData new [[Dataset]] of [[CalledVariant]] to apply the model to and get the sum of squared residuals for
-   * @param newPhenotypeData new [[Map]] of [[Phenotype]] objects for the new genotype data
-   * @param associationBuilder a [[Dataset]] of [[LinearAssociationBuilder]] which contains partially built associations
-   * @return a new [[Dataset]] of [[LinearAssociationBuilder]] which is updated with the added data
-   */
-  def updateLinearAssociationBuilder(newGenotypeData: Dataset[CalledVariant],
-                                     newPhenotypeData: Broadcast[Map[String, Phenotype]],
-                                     associationBuilder: Dataset[LinearAssociationBuilder]): Dataset[LinearAssociationBuilder] = {
-    associationBuilder
-      .joinWith(newGenotypeData, associationBuilder("model.uniqueID") === newGenotypeData("uniqueID"))
-      .map {
-        case (builder, newVariant) => {
-          builder.addNewData(newVariant, newPhenotypeData.value)
-        }
-      }
-  }
-
-  /**
    *
    * @param newGenotypeData
    * @param newPhenotypeData
-   * @param models
+   * @param model
    * @return
    */
   def createLinearAssociationsBuilder(newGenotypeData: Dataset[CalledVariant],
-                                      newPhenotypeData: Broadcast[Map[String, Phenotype]],
-                                      models: Dataset[LinearVariantModel]): Dataset[LinearAssociationBuilder] = {
-    models.joinWith(newGenotypeData, models("uniqueID") === newGenotypeData("uniqueID"))
+                                      newPhenotypeData: PhenotypesContainer,
+                                      model: LinearGnocchiModel): Dataset[LinearAssociationBuilder] = {
+    model.variantModels.joinWith(newGenotypeData, model.variantModels("uniqueID") === newGenotypeData("uniqueID"))
       .map {
         case (model, genotype) => {
-          LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.value))
+          LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.phenotypes.value))
         }
       }
   }

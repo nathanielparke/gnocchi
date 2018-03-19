@@ -21,7 +21,7 @@ case class LinearAssociation(uniqueID: String,
                              chromosome: Int,
                              position: Int,
                              numSamples: Int,
-                             tStatistic: Double,
                              pValue: Double,
-                             GenotypeStandardError: Double,
-                             SSResiduals: Double) extends Association
+                             genotypeStandardError: Double,
+                             ssResiduals: Double,
+                             tStatistic: Double) extends Association

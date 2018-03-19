@@ -85,11 +85,13 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
 
     val waldTests = 1d - probs
 
-    LogisticAssociation(
-      beta.toList,
-      genoStandardError,
+    LogisticAssociation(genotypes.uniqueID,
+      genotypes.chromosome,
+      genotypes.position,
+      data.rows,
       waldTests(1),
-      data.rows)
+      genoStandardError,
+      beta.toList)
   }
 
   /**

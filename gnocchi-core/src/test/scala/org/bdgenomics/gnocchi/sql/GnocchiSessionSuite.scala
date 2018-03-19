@@ -163,13 +163,13 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   sparkTest("sc.loadPhenotypes should produce a scala `Map[String, Phenotype]`.") {
     val path = testFile("first5samples5phenotypes2covars.txt")
-    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t", Option(path), Option(List("pheno2", "pheno3")), covarDelimiter = "\t")
+    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t", Option(path), Option(List("pheno2", "pheno3")), covarDelimiter = "\t").phenotypes.value
     assert(pheno.isInstanceOf[Map[String, Phenotype]], "sc.loadPhenotypes does not produce a `Map[String, Phenotype]`")
   }
 
   sparkTest("sc.loadPhenotypes should properly load in covariates.") {
     val path = testFile("first5samples5phenotypes2covars.txt")
-    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t", Option(path), Option(List("pheno4", "pheno5")), covarDelimiter = "\t")
+    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t", Option(path), Option(List("pheno4", "pheno5")), covarDelimiter = "\t").phenotypes.value
     assert(pheno("sample1").covariates == List(0.8404, 2.9080), "sc.loadPhenotypes does not load in proper covariates: sample1")
     assert(pheno("sample2").covariates == List(-0.8880, 0.8252), "sc.loadPhenotypes does not load in proper covariates: sample2")
     assert(pheno("sample3").covariates == List(0.1001, 1.3790), "sc.loadPhenotypes does not load in proper covariates: sample3")
@@ -179,7 +179,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   sparkTest("sc.loadPhenotypes should create empty lists in the covariate field of the Phenotype objects if there are no covariates.") {
     val path = testFile("first5samples5phenotypes2covars.txt")
-    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t")
+    val pheno = sc.loadPhenotypes(path, "SampleID", "pheno1", "\t").phenotypes.value
     assert(pheno("sample1").covariates == List(), "sc.loadPhenotypes does not load in proper covariates: sample1")
     assert(pheno("sample2").covariates == List(), "sc.loadPhenotypes does not load in proper covariates: sample2")
     assert(pheno("sample3").covariates == List(), "sc.loadPhenotypes does not load in proper covariates: sample3")

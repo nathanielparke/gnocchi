@@ -24,10 +24,7 @@ import org.scalactic.Tolerance._
 class LogisticVariantModelSuite extends GnocchiFunSuite {
 
   sparkTest("Test constructUpdatedVariantModel works") {
-    val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
-      pValue = 0.5,
-      weights = List(0.5, 0.5),
-      numSamples = 10)
+    val assoc = LogisticAssociation("rs123456", 1, 1, numSamples = 10, pValue = 0.5, genotypeStandardError = 0.5, weights = List(0.5, 0.5))
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
     val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", 0.1, 0.2, List(0.3, 0.4), 1)
@@ -35,7 +32,7 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
     // Assert that all values in the LogisticVariantModel object match expected
     // The following values should be updated given the new parameters
     assert(newVariantModel.uniqueID === "rs234567")
-    assert(newVariantModel.association.geneticParameterStandardError === 0.1)
+    assert(newVariantModel.association.genotypeStandardError === 0.1)
     assert(newVariantModel.association.pValue === 0.2)
     assert(newVariantModel.association.weights === List(0.3, 0.4))
     assert(newVariantModel.association.numSamples === 1)
@@ -50,24 +47,18 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("Test constructUpdatedVariantModel with association parameter works") {
-    val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
-      pValue = 0.5,
-      weights = List(0.5, 0.5),
-      numSamples = 10)
+    val assoc = LogisticAssociation("rs123456", 1, 1, numSamples = 10, pValue = 0.5, genotypeStandardError = 0.5, weights = List(0.5, 0.5))
 
     val variantModel = LogisticVariantModel("rs123456", assoc, "", 1, 1, "A", "C", "")
 
-    val newAssoc = LogisticAssociation(geneticParameterStandardError = 0.1,
-      pValue = 0.2,
-      weights = List(0.3, 0.4),
-      numSamples = 1)
+    val newAssoc = LogisticAssociation("rs234567", 1, 1, numSamples = 1, pValue = 0.2, genotypeStandardError = 0.1, weights = List(0.3, 0.4))
 
     val newVariantModel = variantModel.constructUpdatedVariantModel("rs234567", newAssoc)
 
     // Assert that all values in the LogisticVariantModel object match expected
     // The following values should be updated given the new parameters
     assert(newVariantModel.uniqueID === "rs234567")
-    assert(newVariantModel.association.geneticParameterStandardError === 0.1)
+    assert(newVariantModel.association.genotypeStandardError === 0.1)
     assert(newVariantModel.association.pValue === 0.2)
     assert(newVariantModel.association.weights === List(0.3, 0.4))
     assert(newVariantModel.association.numSamples === 1)
@@ -82,16 +73,10 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
   }
 
   ignore("Test LogisticVariantModel.mergeWith works") {
-    val firstAssoc = LogisticAssociation(geneticParameterStandardError = 0.5,
-      pValue = 0.5,
-      weights = List(0.5, 0.5),
-      numSamples = 10)
+    val firstAssoc = LogisticAssociation("rs123456", 1, 1, numSamples = 10, pValue = 0.5, genotypeStandardError = 0.5, weights = List(0.5, 0.5))
     val firstVariantModel = LogisticVariantModel("rs123456", firstAssoc, "", 1, 1, "A", "C", "")
 
-    val secondAssoc = LogisticAssociation(geneticParameterStandardError = 0.2,
-      pValue = 0.2,
-      weights = List(0.2, 0.8),
-      numSamples = 5)
+    val secondAssoc = LogisticAssociation("rs123456", 1, 1, numSamples = 5, pValue = 0.2, genotypeStandardError = 0.2, weights = List(0.2, 0.8))
     val secondVariantModel = LogisticVariantModel("rs123456", secondAssoc, "", 1, 1, "A", "C", "")
 
     // Merge firstVariantModel with secondVariantModel
@@ -102,7 +87,7 @@ class LogisticVariantModelSuite extends GnocchiFunSuite {
 
     // Assert that new geneticParameterStandardError is the weighted average of
     // the geneticParameterStandardErrors of the first and second model
-    assert(mergedVariantModel.association.geneticParameterStandardError === 0.4)
+    assert(mergedVariantModel.association.genotypeStandardError === 0.4)
 
     // Assert that the new weights are weighted averages of the weights from
     // the first and second model

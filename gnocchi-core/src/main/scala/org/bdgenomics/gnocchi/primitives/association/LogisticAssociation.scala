@@ -17,7 +17,10 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
-case class LogisticAssociation(weights: List[Double],
-                               geneticParameterStandardError: Double,
+case class LogisticAssociation(uniqueID: String,
+                               chromosome: Int,
+                               position: Int,
+                               numSamples: Int,
                                pValue: Double,
-                               numSamples: Int) extends Association
+                               genotypeStandardError: Double,
+                               weights: List[Double]) extends Association

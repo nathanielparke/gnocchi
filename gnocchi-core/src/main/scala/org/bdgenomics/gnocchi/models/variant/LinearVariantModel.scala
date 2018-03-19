@@ -80,15 +80,7 @@ case class LinearVariantModel(uniqueID: String,
 
     val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(x, y, beta, breezeXtX)
 
-    LinearAssociation(
-      uniqueID,
-      chromosome,
-      position,
-      x.rows,
-      t,
-      pValue,
-      genoSE,
-      ssResiduals)
+    LinearAssociation(uniqueID, chromosome, position, x.rows, pValue, genoSE, ssResiduals, t)
   }
 
   /**

@@ -27,6 +27,7 @@ import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
+import org.bdgenomics.gnocchi.sql.PhenotypesContainer
 
 import scala.collection.immutable.Map
 
@@ -42,21 +43,31 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @return
    */
   def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
+            phenotypesContainer: PhenotypesContainer,
             allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): Dataset[LinearAssociationBuilder] = {
+            validationStringency: String = "STRICT"): LinearRegressionResults = {
+
+    LinearRegressionResults(genotypes, phenotypesContainer, allelicAssumption, validationStringency)
+  }
+
+  def createModelAndAssociations(genotypes: Dataset[CalledVariant],
+                                 phenotypes: Broadcast[Map[String, Phenotype]],
+                                 allelicAssumption: String = "ADDITIVE",
+                                 validationStringency: String = "STRICT"): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
 
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions
-    genotypes.flatMap((genos: CalledVariant) => {
+    val results = genotypes.flatMap((genos: CalledVariant) => {
       try {
         val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
-        Some(LinearAssociationBuilder(model, association))
+        Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => None
       }
     })
+
+    (results.map(_._1), results.map(_._2))
   }
 
   /**
@@ -80,15 +91,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
 
-    val association = LinearAssociation(
-      genotypes.uniqueID,
-      genotypes.chromosome,
-      genotypes.position,
-      x.rows,
-      t,
-      pValue,
-      genoSE,
-      ssResiduals)
+    val association = LinearAssociation(genotypes.uniqueID, genotypes.chromosome, genotypes.position, x.rows, pValue, genoSE, ssResiduals, t)
 
     val model = LinearVariantModel(
       genotypes.uniqueID,
@@ -178,15 +181,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
 
-    val association = LinearAssociation(
-      genotypes.uniqueID,
-      genotypes.chromosome,
-      genotypes.position,
-      x.rows,
-      t,
-      pValue,
-      genoSE,
-      ssResiduals)
+    val association = LinearAssociation(genotypes.uniqueID, genotypes.chromosome, genotypes.position, x.rows, pValue, genoSE, ssResiduals, t)
 
     association
   }
@@ -198,7 +193,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @param beta
    * @param modelxTx
    * @param partialSSResiduals Optional parameter that can be used as the SSResiduals from another/other datasets
-   * @return (genoSE, t, pValue)
+   * @return (genotype parameter standard error, t-statistic for model, pValue for model, sum of squared residuals)
    */
   def calculateSignificance(x: DenseMatrix[Double],
                             y: DenseVector[Double],

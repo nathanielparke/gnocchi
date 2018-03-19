@@ -117,7 +117,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     val covarDelimiter = if (args.covarSpaceDelimiter) { " " } else { "\t" }
     val missingPhenos = if (args.missingPhenoChars == null) List("-9") else args.missingPhenoChars.split(",").toList
 
-    val phenotypes = if (args.covarFile != null) {
+    val phenotypesContainer = if (args.covarFile != null) {
       sc.loadPhenotypes(args.phenotypes,
         args.sampleUID,
         args.phenoName,
@@ -129,7 +129,6 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     } else {
       sc.loadPhenotypes(args.phenotypes, args.sampleUID, args.phenoName, phenoDelimiter, missing = missingPhenos)
     }
-    val broadPhenotype = sc.broadcast(phenotypes)
 
     val rawGenotypes = sc.loadGenotypes(args.genotypes, parquet = args.parquetInput)
     val recoded = sc.recodeMajorAllele(rawGenotypes)
@@ -138,16 +137,16 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
-        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, broadPhenotype, "ADDITIVE")
+        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer.phenotypes, "ADDITIVE")
         sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText, args.forceSave)
       case "DOMINANT_LINEAR" =>
-        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, broadPhenotype, "DOMINANT")
+        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer.phenotypes, "DOMINANT")
         sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText, args.forceSave)
       case "ADDITIVE_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "ADDITIVE")
+        val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer.phenotypes, "ADDITIVE")
         sc.saveVariantModel[LogisticVariantModel](associations, args.output, args.saveAsText, args.forceSave)
       case "DOMINANT_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, broadPhenotype, "DOMINANT")
+        val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer.phenotypes, "DOMINANT")
         sc.saveVariantModel[LogisticVariantModel](associations, args.output, args.saveAsText, args.forceSave)
     }
   }

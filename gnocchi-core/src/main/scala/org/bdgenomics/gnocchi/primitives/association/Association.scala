@@ -18,6 +18,9 @@
 package org.bdgenomics.gnocchi.primitives.association
 
 trait Association {
-  //  val weights: List[Double]
-  //  val numSamples: Int
+  val uniqueID: String
+  val chromosome: Int
+  val position: Int
+  val numSamples: Int
+  val genotypeStandardError: Double
 }

@@ -51,7 +51,7 @@ case class LogisticVariantModel(uniqueID: String,
    */
   def mergeWith(variantModel: LogisticVariantModel): LogisticVariantModel = {
     val updatedNumSamples = variantModel.association.numSamples + association.numSamples
-    val updatedGeneticParameterStandardError = computeGeneticParameterStandardError(variantModel.association.geneticParameterStandardError, variantModel.association.numSamples)
+    val updatedGeneticParameterStandardError = computeGeneticParameterStandardError(variantModel.association.genotypeStandardError, variantModel.association.numSamples)
     val updatedWeights = variantModel.association.weights
     val updatedWaldStatistic = calculateWaldStatistic(updatedGeneticParameterStandardError, updatedWeights)
     val updatedPValue = calculatePvalue(updatedWaldStatistic)
@@ -74,7 +74,7 @@ case class LogisticVariantModel(uniqueID: String,
    * @param batchNumSamples Number of samples in the update batch
    */
   def computeGeneticParameterStandardError(batchStandardError: Double, batchNumSamples: Int): Double = {
-    (batchStandardError * batchNumSamples.toDouble + association.geneticParameterStandardError * association.numSamples.toDouble) / (batchNumSamples + association.numSamples).toDouble
+    (batchStandardError * batchNumSamples.toDouble + association.genotypeStandardError * association.numSamples.toDouble) / (batchNumSamples + association.numSamples).toDouble
   }
 
   /**
@@ -132,10 +132,13 @@ case class LogisticVariantModel(uniqueID: String,
                                    updatedWeights: List[Double],
                                    updatedNumSamples: Int): LogisticVariantModel = {
 
-    val association = LogisticAssociation(weights = updatedWeights,
-      geneticParameterStandardError = updatedGeneticParameterStandardError,
+    val association = LogisticAssociation(variantId,
+      chromosome,
+      position,
+      numSamples = updatedNumSamples,
       pValue = updatedPValue,
-      numSamples = updatedNumSamples)
+      genotypeStandardError = updatedGeneticParameterStandardError,
+      weights = updatedWeights)
 
     LogisticVariantModel(variantId,
       association,

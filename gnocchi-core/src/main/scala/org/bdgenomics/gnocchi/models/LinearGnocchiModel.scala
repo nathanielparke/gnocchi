@@ -56,36 +56,4 @@ case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
     variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID"))
       .map(x => x._1.mergeWith(x._2))
   }
-
-  //  /**
-  //   * this function can be used in two ways
-  //   *  1. pass in just genotypes and phenotypes -> this assumes that you are just applying this model
-  //   *    to the parameter dataset and nothing else. It will only calculate the significance over that
-  //   *    particular dataset
-  //   *  2. set the additionalNumSamples and the partialSSResiduals to the number of samples and sum of
-  //   *    squared residuals from an existing association which will build an aggregated association over
-  //   *    both the existing association and the new dataset being passed in. This is used for incremental
-  //   *    model building.
-  //   *
-  //   * @param genotypes raw genotypes to calculate the significance of
-  //   * @param phenotypes raw phenotypes to calculate the significance of
-  //   * @param additionalNumSamples
-  //   * @param partialSSResiduals
-  //   * @return
-  //   */
-  //  def calculateSignificance(genotypes: Dataset[CalledVariant],
-  //                            phenotypes: Map[String, Phenotype],
-  //                            additionalNumSamples: Option[Int] = None,
-  //                            partialSSResiduals: Option[Double] = None): Dataset[LinearAssociation] = {
-  //
-  //    require(additionalNumSamples.isDefined == partialSSResiduals.isDefined,
-  //      "You need to either define both partialSSResiduals and additionalNumSamples, or neither.")
-  //
-  //    // todo: broadcast phenotypes
-  //
-  //    variantModels.joinWith(genotypes, variantModels("uniqueID") === genotypes("uniqueID"))
-  //      .map(i => {
-  //
-  //      })
-  //  }
 }
