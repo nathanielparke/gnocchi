@@ -7,18 +7,18 @@ import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.bdgenomics.gnocchi.sql.PhenotypesContainer
+import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 
 import scala.collection.immutable.Map
 
-case class LinearRegressionResults(genotypes: Dataset[CalledVariant],
+case class LinearRegressionResults(genotypes: GenotypeDataset,
                                    phenotypes: PhenotypesContainer,
                                    allelicAssumption: String = "ADDITIVE",
                                    validationStringency: String = "STRICT") {
 
   lazy val (models: Dataset[LinearVariantModel], associations: Dataset[LinearAssociation]) =
     LinearSiteRegression.createModelAndAssociations(
-      genotypes,
+      genotypes.genotypes,
       phenotypes.phenotypes,
       allelicAssumption,
       validationStringency)
@@ -28,6 +28,7 @@ case class LinearRegressionResults(genotypes: Dataset[CalledVariant],
       models,
       phenotypes.phenotypeName,
       phenotypes.covariateNames.getOrElse(List()),
+      genotypes.sampleUIDs.toSet,
       phenotypes.numSamples)
   }
 

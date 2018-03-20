@@ -66,10 +66,11 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
 
   ignore("Verify loadGenotypes makes correct call to Gnocchi Sesssion") {
     val mockGeno = ""
+    val mockDatasetName = ""
 
-    jgs.loadGenotypes(mockGeno)
+    jgs.loadGenotypes(mockGeno, mockDatasetName)
 
-    Mockito.verify(gs).loadGenotypes(mockGeno)
+    Mockito.verify(gs).loadGenotypes(mockGeno, mockDatasetName)
   }
 
   ignore("Verify loadPhenotypes makes correct call to Gnocchi Sesssion") {

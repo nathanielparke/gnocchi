@@ -31,6 +31,7 @@ import scala.collection.immutable.Map
 case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
                               phenotypeNames: String,
                               covariatesNames: List[String],
+                              sampleUIDs: Set[String],
                               numSamples: Int,
                               allelicAssumption: String = "ADDITIVE")
     extends GnocchiModel[LinearVariantModel, LinearGnocchiModel] {
@@ -39,15 +40,17 @@ case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
 
   def mergeGnocchiModel(otherModel: LinearGnocchiModel): LinearGnocchiModel = {
 
-    //    require(otherModel.metaData.modelType == metaData.modelType,
-    //      "Models being merged are not the same type. Type equality is required to merge two models correctly.")
+    require((otherModel.sampleUIDs & sampleUIDs).isEmpty,
+      "There are overlapping samples in the datasets used to build the two models.")
+    require(allelicAssumption == otherModel.allelicAssumption,
+      "The two models are of different allelic assumptions. (additive / dominant / recessive)")
 
     val mergedVMs = mergeVariantModels(otherModel.variantModels)
-
     // ToDo: Ensure that the same phenotypes and covariates are being used
     LinearGnocchiModel(mergedVMs,
       phenotypeNames,
       covariatesNames,
+      otherModel.sampleUIDs.toSet | sampleUIDs.toSet,
       otherModel.numSamples + numSamples,
       allelicAssumption)
   }

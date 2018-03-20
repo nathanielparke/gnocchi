@@ -32,16 +32,16 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   // load Genotypes tests
 
-  sparkTest("sc.loadGenotypes should produce a dataset of CalledVariant objects.") {
+  sparkTest("sc.loadGenotypes should produce a GenotypeDataset.") {
     val genoPath = testFile("small1.vcf")
-    val genotypes = sc.loadGenotypes(genoPath)
-    assert(genotypes.isInstanceOf[Dataset[CalledVariant]], "sc.loadGenotypes does not produce as Dataset[CalledVariant]")
+    val genotypes = sc.loadGenotypes(genoPath, "small1")
+    assert(genotypes.isInstanceOf[GenotypeDataset], "sc.loadGenotypes does not produce as GenotypeDataset")
   }
 
   sparkTest("sc.loadGenotypes should map fields correctly.") {
     val genoPath = testFile("1Sample1Variant.vcf")
-    val genotypes = sc.loadGenotypes(genoPath)
-    val firstCalledVariant = genotypes.head
+    val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant")
+    val firstCalledVariant = genotypes.genotypes.head
 
     assert(firstCalledVariant.uniqueID.equals("rs3131972"))
     assert(firstCalledVariant.chromosome === 1)
@@ -54,7 +54,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.loadGenotypes should gracefully exit when a non-existing file path is passed in.") {
     val fakeFilePath = "fake/file/path.vcf"
     try {
-      sc.loadGenotypes(fakeFilePath)
+      sc.loadGenotypes(fakeFilePath, "fakeDataset")
       fail("sc.loadGenotypes does not fail on a fake file path.")
     } catch {
       case e: java.lang.IllegalArgumentException =>

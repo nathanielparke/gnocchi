@@ -199,9 +199,9 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
    * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
    */
-  def loadGenotypes(genotypesPath: String, parquet: Boolean = false): Dataset[CalledVariant] = {
+  def loadGenotypes(genotypesPath: String, datasetUID: String, parquet: Boolean = false): GenotypeDataset = {
 
-    if (parquet) {
+    val data = if (parquet) {
       if (genotypesPath.split(",").length > 2) {
         sparkSession.read.parquet(genotypesPath.split(","): _*).as[CalledVariant]
       } else {
@@ -232,6 +232,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
           genotypeStates)
       }).toDS.cache()
     }
+
+    GenotypeDataset(data, datasetUID)
   }
 
   /**
@@ -356,15 +358,16 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @param model
    * @return
    */
-  def createLinearAssociationsBuilder(newGenotypeData: Dataset[CalledVariant],
+  def createLinearAssociationsBuilder(newGenotypeData: GenotypeDataset,
                                       newPhenotypeData: PhenotypesContainer,
-                                      model: LinearGnocchiModel): Dataset[LinearAssociationBuilder] = {
-    model.variantModels.joinWith(newGenotypeData, model.variantModels("uniqueID") === newGenotypeData("uniqueID"))
+                                      model: LinearGnocchiModel): LinearAssociationsDatasetBuilder = {
+    val linearAssociationBuilders = model.variantModels.joinWith(newGenotypeData.genotypes, model.variantModels("uniqueID") === newGenotypeData.genotypes("uniqueID"))
       .map {
         case (model, genotype) => {
           LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.phenotypes.value))
         }
       }
+    LinearAssociationsDatasetBuilder(linearAssociationBuilders)
   }
 
   /**

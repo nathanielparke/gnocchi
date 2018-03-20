@@ -27,7 +27,7 @@ import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
-import org.bdgenomics.gnocchi.sql.PhenotypesContainer
+import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 
 import scala.collection.immutable.Map
 
@@ -42,7 +42,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @param validationStringency
    * @return
    */
-  def apply(genotypes: Dataset[CalledVariant],
+  def apply(genotypes: GenotypeDataset,
             phenotypesContainer: PhenotypesContainer,
             allelicAssumption: String = "ADDITIVE",
             validationStringency: String = "STRICT"): LinearRegressionResults = {
