@@ -5,12 +5,15 @@ import org.apache.spark.sql.functions.{ col }
 import org.apache.hadoop.fs.Path
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociationBuilder
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.sql.GnocchiSession._
 
 case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[LinearAssociationBuilder]) {
 
   //  val fullyBuilt = has seen genotypes for all individual ids used to build the model
 
   import linearAssociationBuilders.sparkSession.implicits._
+
+  val sc = linearAssociationBuilders.sparkSession.sparkContext
 
   /**
    * Joins a [[Dataset]] of [[CalledVariant]] with a [[Dataset]] of [[LinearAssociationBuilder]] and updates
@@ -34,29 +37,9 @@ case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[L
 
   def saveAssociations(outPath: String,
                        forceSave: Boolean = false): Unit = {
-
-    // save dataset
-    val associationsFile = new Path(outPath)
-    val fs = associationsFile.getFileSystem(linearAssociationBuilders.sparkSession.sparkContext.hadoopConfiguration)
-    if (fs.exists(associationsFile)) {
-      if (forceSave) {
-        fs.delete(associationsFile)
-      } else {
-        val input = readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
-        if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
-          fs.delete(associationsFile)
-        }
-      }
-    }
-
-    val necessaryFields = List("uniqueID", "chromosome", "position", "tStatistic", "pValue", "GenotypeStandardError").map(col)
-
-    val assoc = linearAssociationBuilders
-      .map(_.association)
-      .select(necessaryFields: _*)
-      .sort($"pValue".asc)
-      .coalesce(1)
-
-    assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
+    sc.saveAssociations(linearAssociationBuilders.map(_.association),
+      outPath,
+      forceSave = forceSave,
+      saveAsText = true)
   }
 }

@@ -398,11 +398,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
     if (fs.exists(associationsFile)) {
       if (forceSave) {
-        fs.delete(associationsFile)
+        fs.delete(associationsFile, true)
       } else {
-        val input = readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
+        val input = scala.io.StdIn.readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
         if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
-          fs.delete(associationsFile)
+          fs.delete(associationsFile, true)
         }
       }
     }
@@ -433,11 +433,11 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
     val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
     if (fs.exists(associationsFile)) {
       if (forceSave) {
-        fs.delete(associationsFile)
+        fs.delete(associationsFile, true)
       } else {
-        val input = readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
+        val input = scala.io.StdIn.readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
         if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
-          fs.delete(associationsFile)
+          fs.delete(associationsFile, true)
         }
       }
     }
