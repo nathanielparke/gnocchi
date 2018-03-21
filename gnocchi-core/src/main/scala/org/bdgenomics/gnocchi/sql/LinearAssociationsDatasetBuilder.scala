@@ -7,7 +7,12 @@ import org.bdgenomics.gnocchi.primitives.association.LinearAssociationBuilder
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 
-case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[LinearAssociationBuilder]) {
+case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[LinearAssociationBuilder],
+                                            phenotypeNames: String,
+                                            covariatesNames: List[String],
+                                            sampleUIDs: Set[String],
+                                            numSamples: Int,
+                                            allelicAssumption: String) {
 
   //  val fullyBuilt = has seen genotypes for all individual ids used to build the model
 
@@ -32,7 +37,12 @@ case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[L
     LinearAssociationsDatasetBuilder(
       linearAssociationBuilders
         .joinWith(newGenotypeData.genotypes, linearAssociationBuilders("model.uniqueID") === newGenotypeData.genotypes("uniqueID"))
-        .map { case (builder, newVariant) => builder.addNewData(newVariant, newPhenotypeData.phenotypes.value) })
+        .map { case (builder, newVariant) => builder.addNewData(newVariant, newPhenotypeData.phenotypes.value, allelicAssumption) },
+      phenotypeNames,
+      covariatesNames,
+      sampleUIDs,
+      numSamples,
+      allelicAssumption)
   }
 
   def saveAssociations(outPath: String,

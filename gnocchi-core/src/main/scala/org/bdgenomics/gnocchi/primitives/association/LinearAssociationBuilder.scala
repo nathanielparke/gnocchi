@@ -20,9 +20,10 @@ case class LinearAssociationBuilder(model: LinearVariantModel,
                                     association: LinearAssociation) {
 
   def addNewData(genotype: CalledVariant,
-                 phenotypes: Map[String, Phenotype]): LinearAssociationBuilder = {
+                 phenotypes: Map[String, Phenotype],
+                 allelicAssumption: String): LinearAssociationBuilder = {
 
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(genotype, phenotypes, "ADDITIVE")
+    val (x, y) = LinearSiteRegression.prepareDesignMatrix(genotype, phenotypes, allelicAssumption)
 
     val xTx_shaped = new DenseMatrix(model.numPredictors, model.numPredictors, model.xTx)
     val beta = new DenseVector(model.weights.toArray)

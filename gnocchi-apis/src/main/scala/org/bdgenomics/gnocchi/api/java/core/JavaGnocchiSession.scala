@@ -98,8 +98,8 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
    * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
    * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
    */
-  def loadGenotypes(genotypesPath: java.lang.String, datasetUID: java.lang.String): GenotypeDataset = {
-    gs.loadGenotypes(genotypesPath, datasetUID)
+  def loadGenotypes(genotypesPath: java.lang.String, datasetUID: java.lang.String, allelicAssumption: java.lang.String): GenotypeDataset = {
+    gs.loadGenotypes(genotypesPath, datasetUID, allelicAssumption)
   }
 
   /**

@@ -44,16 +44,14 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    */
   def apply(genotypes: GenotypeDataset,
             phenotypesContainer: PhenotypesContainer,
-            allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): LinearRegressionResults = {
+            allelicAssumption: String): LinearRegressionResults = {
 
-    LinearRegressionResults(genotypes, phenotypesContainer, allelicAssumption, validationStringency)
+    LinearRegressionResults(genotypes, phenotypesContainer)
   }
 
   def createModelAndAssociations(genotypes: Dataset[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
-                                 allelicAssumption: String = "ADDITIVE",
-                                 validationStringency: String = "STRICT"): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
+                                 allelicAssumption: String): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
 
     import genotypes.sqlContext.implicits._
 
@@ -111,8 +109,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
   def createVariantModelDataset(genotypes: Dataset[CalledVariant],
                                 phenotypes: Broadcast[Map[String, Phenotype]],
-                                allelicAssumption: String = "ADDITIVE",
-                                validationStringency: String = "STRICT"): Dataset[LinearVariantModel] = {
+                                allelicAssumption: String): Dataset[LinearVariantModel] = {
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions
@@ -154,8 +151,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
   def createAssociationsDataset(genotypes: Dataset[CalledVariant],
                                 phenotypes: Broadcast[Map[String, Phenotype]],
-                                allelicAssumption: String = "ADDITIVE",
-                                validationStringency: String = "STRICT"): Dataset[LinearAssociation] = {
+                                allelicAssumption: String): Dataset[LinearAssociation] = {
     import genotypes.sqlContext.implicits._
 
     //ToDo: Singular Matrix Exceptions

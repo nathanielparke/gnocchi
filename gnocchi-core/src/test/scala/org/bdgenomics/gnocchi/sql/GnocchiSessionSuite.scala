@@ -34,13 +34,13 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   sparkTest("sc.loadGenotypes should produce a GenotypeDataset.") {
     val genoPath = testFile("small1.vcf")
-    val genotypes = sc.loadGenotypes(genoPath, "small1")
+    val genotypes = sc.loadGenotypes(genoPath, "small1", "ADDITIVE")
     assert(genotypes.isInstanceOf[GenotypeDataset], "sc.loadGenotypes does not produce as GenotypeDataset")
   }
 
   sparkTest("sc.loadGenotypes should map fields correctly.") {
     val genoPath = testFile("1Sample1Variant.vcf")
-    val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant")
+    val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant", "ADDITIVE")
     val firstCalledVariant = genotypes.genotypes.head
 
     assert(firstCalledVariant.uniqueID.equals("rs3131972"))
@@ -48,13 +48,13 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     assert(firstCalledVariant.position === 752721)
     assert(firstCalledVariant.referenceAllele === "A")
     assert(firstCalledVariant.alternateAllele === "G")
-    assert(firstCalledVariant.samples.equals(List(GenotypeState("sample1", "0/1"))))
+    assert(firstCalledVariant.samples.equals(List(GenotypeState("sample1", 1, 1, 0))))
   }
 
   sparkTest("sc.loadGenotypes should gracefully exit when a non-existing file path is passed in.") {
     val fakeFilePath = "fake/file/path.vcf"
     try {
-      sc.loadGenotypes(fakeFilePath, "fakeDataset")
+      sc.loadGenotypes(fakeFilePath, "fakeDataset", "ADDITIVE")
       fail("sc.loadGenotypes does not fail on a fake file path.")
     } catch {
       case e: java.lang.IllegalArgumentException =>
@@ -65,7 +65,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     "when a non-existing file path is passed in and parquet input is specified.") {
     val fakeFilePath = "fake/file/path.vcf"
     try {
-      sc.loadGenotypes(fakeFilePath, "fakeDataset", parquet = true)
+      sc.loadGenotypes(fakeFilePath, "fakeDataset", "ADDITIVE", parquet = true)
       fail("sc.loadGenotypes does not fail on a fake file path.")
     } catch {
       case e: java.lang.IllegalArgumentException =>

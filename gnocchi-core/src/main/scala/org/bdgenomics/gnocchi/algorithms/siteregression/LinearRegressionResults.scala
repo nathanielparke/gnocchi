@@ -12,16 +12,13 @@ import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 import scala.collection.immutable.Map
 
 case class LinearRegressionResults(genotypes: GenotypeDataset,
-                                   phenotypes: PhenotypesContainer,
-                                   allelicAssumption: String = "ADDITIVE",
-                                   validationStringency: String = "STRICT") {
+                                   phenotypes: PhenotypesContainer) {
 
   lazy val (models: Dataset[LinearVariantModel], associations: Dataset[LinearAssociation]) =
     LinearSiteRegression.createModelAndAssociations(
       genotypes.genotypes,
       phenotypes.phenotypes,
-      allelicAssumption,
-      validationStringency)
+      allelicAssumption = genotypes.allelicAssumption)
 
   lazy val gnocchiModel: LinearGnocchiModel = {
     LinearGnocchiModel(
@@ -29,7 +26,8 @@ case class LinearRegressionResults(genotypes: GenotypeDataset,
       phenotypes.phenotypeName,
       phenotypes.covariateNames.getOrElse(List()),
       genotypes.sampleUIDs.toSet,
-      phenotypes.numSamples)
+      phenotypes.numSamples,
+      genotypes.allelicAssumption)
   }
 
   //  def saveAssociations()

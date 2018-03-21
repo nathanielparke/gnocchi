@@ -13,6 +13,13 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
  *                   dbGaP study accession ID
  */
 case class GenotypeDataset(genotypes: Dataset[CalledVariant],
-                           datasetUID: String) {
+                           datasetUID: String,
+                           allelicAssumption: String) {
   lazy val sampleUIDs: List[String] = genotypes.head.samples.map(f => datasetUID + "_" + f.sampleID)
+
+  //  def tranformAllelicAssumption(newAllelicAssumption: String): GenotypeDataset = {
+  //    genotypes.map(f => {
+  //
+  //    })
+  //  }
 }

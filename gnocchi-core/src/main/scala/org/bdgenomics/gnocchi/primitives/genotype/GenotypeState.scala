@@ -21,7 +21,6 @@ case class GenotypeState(sampleID: String,
                          refs: Byte,
                          alts: Byte,
                          misses: Byte) extends Product {
-
   /**
    * @note This method removes missing values from the sum, so effectively treats them as a zero value.
    * @return a sum of the genotype states stored in the value string, with missing values removed from sum.
@@ -44,16 +43,5 @@ case class GenotypeState(sampleID: String,
 
   def ploidy: Int = {
     refs + alts + misses
-  }
-}
-
-object GenotypeState {
-  /**
-   * Static method to support legacy GenotypeState instantiation, with slash-separated integer values
-   * @return a GenotypeState with values derived from gsStr
-   */
-  def apply(sampleID: String, gsStr: String): GenotypeState = {
-    val alleleLst = gsStr.split("/|\\|")
-    GenotypeState(sampleID, alleleLst.count(_ == "0").toByte, alleleLst.count(_ == "1").toByte, alleleLst.count(_ == ".").toByte)
   }
 }

@@ -233,6 +233,7 @@ class GnocchiSession(@transient val sc: SparkContext)
    */
   def loadGenotypes(genotypesPath: String,
                     datasetUID: String,
+                    allelicAssumption: String,
                     parquet: Boolean = false): GenotypeDataset = {
     val genoFile = new Path(genotypesPath)
     val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
@@ -261,7 +262,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       }).toDS.cache()
     }
 
-    GenotypeDataset(data, datasetUID)
+    GenotypeDataset(data, datasetUID, allelicAssumption)
   }
 
   /**
@@ -395,7 +396,12 @@ class GnocchiSession(@transient val sc: SparkContext)
           LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.phenotypes.value))
         }
       }
-    LinearAssociationsDatasetBuilder(linearAssociationBuilders)
+    LinearAssociationsDatasetBuilder(linearAssociationBuilders,
+      model.phenotypeNames,
+      model.covariatesNames,
+      model.sampleUIDs,
+      model.numSamples,
+      model.allelicAssumption)
   }
 
   /**

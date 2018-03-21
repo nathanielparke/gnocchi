@@ -33,7 +33,7 @@ case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
                               covariatesNames: List[String],
                               sampleUIDs: Set[String],
                               numSamples: Int,
-                              allelicAssumption: String = "ADDITIVE")
+                              allelicAssumption: String)
     extends GnocchiModel[LinearVariantModel, LinearGnocchiModel] {
 
   import variantModels.sqlContext.implicits._
