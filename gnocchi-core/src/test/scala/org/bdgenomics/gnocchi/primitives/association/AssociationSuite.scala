@@ -20,23 +20,23 @@ package org.bdgenomics.gnocchi.primitives.association
 import org.bdgenomics.gnocchi.GnocchiFunSuite
 
 class AssociationSuite extends GnocchiFunSuite {
-  //  sparkTest("LinearAssociation creation works.") {
-  //    val assoc = LinearAssociation(xTx: DenseMatrix[Double],
-  //      xTy: DenseVector[Double],
-  //      residualDegreesOfFreedom: Int,
-  //      weights: List[Double],
-  //      numSamples: Int,
-  //      geneticParameterStandardError: Option[Double] = None,
-  //    tStatistic: Option[Double] = None,
-  //    pValue: Option[Double] = None)
-  //    assert(assoc.isInstanceOf[LinearAssociation], "Cannot create LinearAssociation")
-  //  }
-  //
-  //  sparkTest("LogisticAssociation creation works.") {
-  //    val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
-  //      pValue = 0.5,
-  //      weights = List(0.5, 0.5),
-  //      numSamples = 10)
-  //    assert(assoc.isInstanceOf[LogisticAssociation], "Cannot create LogisticAssociation")
-  //  }
+  ignore("LinearAssociation creation works.") {
+    //      val assoc = LinearAssociation(xTx: DenseMatrix[Double],
+    //        xTy: DenseVector[Double],
+    //        residualDegreesOfFreedom: Int,
+    //        weights: List[Double],
+    //        numSamples: Int,
+    //        geneticParameterStandardError: Option[Double] = None,
+    //      tStatistic: Option[Double] = None,
+    //      pValue: Option[Double] = None)
+    //      assert(assoc.isInstanceOf[LinearAssociation], "Cannot create LinearAssociation")
+  }
+
+  ignore("LogisticAssociation creation works.") {
+    //      val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
+    //        pValue = 0.5,
+    //        weights = List(0.5, 0.5),
+    //        numSamples = 10)
+    //      assert(assoc.isInstanceOf[LogisticAssociation], "Cannot create LogisticAssociation")
+  }
 }

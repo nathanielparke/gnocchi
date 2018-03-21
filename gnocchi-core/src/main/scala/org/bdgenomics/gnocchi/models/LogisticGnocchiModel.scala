@@ -123,12 +123,7 @@ case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
     variants1.joinWith(variants2, variants1("uniqueID") === variants2("uniqueID"))
       .as[(CalledVariant, CalledVariant)]
       .map(x =>
-        CalledVariant(x._1.chromosome,
-          x._1.position,
-          x._1.uniqueID,
-          x._1.referenceAllele,
-          x._1.alternateAllele,
-          x._1.samples ++ x._2.samples))
+        CalledVariant(x._1.uniqueID, x._1.chromosome, x._1.position, x._1.referenceAllele, x._1.alternateAllele, x._1.samples ++ x._2.samples))
   }
 
   /**

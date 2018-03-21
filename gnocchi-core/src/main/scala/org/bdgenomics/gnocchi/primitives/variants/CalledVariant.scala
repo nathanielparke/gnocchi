@@ -19,9 +19,9 @@ package org.bdgenomics.gnocchi.primitives.variants
 
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 
-case class CalledVariant(chromosome: Int,
+case class CalledVariant(uniqueID: String,
+                         chromosome: Int,
                          position: Int,
-                         uniqueID: String,
                          referenceAllele: String,
                          alternateAllele: String,
                          samples: List[GenotypeState]) extends Product {

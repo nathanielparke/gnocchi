@@ -61,6 +61,17 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     }
   }
 
+  sparkTest("sc.loadGenotypes should gracefully exit " +
+    "when a non-existing file path is passed in and parquet input is specified.") {
+    val fakeFilePath = "fake/file/path.vcf"
+    try {
+      sc.loadGenotypes(fakeFilePath, "fakeDataset", parquet = true)
+      fail("sc.loadGenotypes does not fail on a fake file path.")
+    } catch {
+      case e: java.lang.IllegalArgumentException =>
+    }
+  }
+
   ignore("sc.loadGenotypes should have no overlapping values in the `uniqueID` field.") {
 
   }
@@ -196,7 +207,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   private def makeCalledVariant(uid: Int, sampleIds: List[String], genotypeStates: List[String]): CalledVariant = {
     val samples = sampleIds.zip(genotypeStates).map(idGs => makeGenotypeState(idGs._1, idGs._2))
-    CalledVariant(1, 1234, uid.toString(), "A", "G", samples)
+    CalledVariant(uid.toString(), 1, 1234, "A", "G", samples)
   }
 
   private def makeCalledVariantDS(variants: List[CalledVariant]): Dataset[CalledVariant] = {

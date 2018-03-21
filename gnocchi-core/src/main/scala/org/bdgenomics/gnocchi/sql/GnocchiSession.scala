@@ -17,34 +17,37 @@
  */
 package org.bdgenomics.gnocchi.sql
 
-import java.io.{ FileInputStream, ObjectInputStream, Serializable }
+import java.io.Serializable
 
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.functions.{ array, col, lit, udf }
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{ Column, Dataset, SparkSession }
+import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.formats.avro.GenotypeAllele
+import org.bdgenomics.gnocchi.models.LinearGnocchiModel
+import org.bdgenomics.gnocchi.models.variant.VariantModel
+import org.bdgenomics.gnocchi.primitives.association.{
+  Association,
+  LinearAssociationBuilder
+}
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, col, lit, udf, when }
-import org.apache.spark.sql.{ Column, Dataset, SparkSession }
-import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.utils.misc.Logging
-import java.nio.file.{ Files, Paths }
-
-import org.apache.hadoop.fs.Path
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.types.StructType
-import org.bdgenomics.gnocchi.models.{ GnocchiModel, GnocchiModelMetaData, LinearGnocchiModel, LogisticGnocchiModel }
-import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, QualityControlVariantModel, VariantModel }
-import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.io.StdIn.readLine
-import scala.io.Source.fromFile
 
 object GnocchiSession {
 
-  // Add GnocchiContext methods
+  /**
+   * Implicitly convert a [[SparkContext]] object to a [[GnocchiSession]] object
+   *
+   * @param sc existing [[SparkContext]]
+   * @return [[GnocchiSession]] which includes much of the core functions
+   */
   implicit def sparkContextToGnocchiSession(sc: SparkContext): GnocchiSession =
     new GnocchiSession(sc)
 
@@ -64,12 +67,13 @@ object GnocchiSession {
 }
 
 /**
- * The GnocchiSession provides functions on top of a SparkContext for loading and
- * analyzing genome data.
+ * The GnocchiSession provides functions on top of a SparkContext for loading
+ * and analyzing genome data.
  *
  * @param sc The SparkContext to wrap.
  */
-class GnocchiSession(@transient val sc: SparkContext) extends Serializable with Logging {
+class GnocchiSession(@transient val sc: SparkContext)
+    extends Serializable with Logging {
 
   val sparkSession = SparkSession.builder().getOrCreate()
   import sparkSession.implicits._
@@ -86,33 +90,50 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @return Returns an updated Dataset with values removed, as specified by the
    *         filtering
    */
-  def filterSamples(genotypes: Dataset[CalledVariant], mind: Double, ploidy: Double): Dataset[CalledVariant] = {
-    require(mind >= 0.0 && mind <= 1.0, "`mind` value must be between 0.0 to 1.0 inclusive.")
-    val x = genotypes.rdd.flatMap(f => { f.samples.map(g => { (g.sampleID, g.misses.toInt) }) })
+  def filterSamples(genotypes: Dataset[CalledVariant],
+                    mind: Double,
+                    ploidy: Double): Dataset[CalledVariant] = {
+
+    require(mind >= 0.0 && mind <= 1.0,
+      "`mind` value must be between 0.0 to 1.0 inclusive.")
+
+    val x = genotypes.rdd.flatMap(
+      f => {
+        f.samples.map(
+          g => { (g.sampleID, g.misses.toInt) })
+      })
     val summed = x.reduceByKey(_ + _)
 
     val count = genotypes.count()
-    val samplesWithMissingness = summed.map { case (a, b) => (a, b / (ploidy * count)) }
+    val samplesWithMissingness =
+      summed.map {
+        case (a, b) => (a, b / (ploidy * count))
+      }
 
-    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1).collect
+    val keepers =
+      samplesWithMissingness
+        .filter(x => x._2 <= mind)
+        .map(x => x._1).collect
 
     createCalledVariant(genotypes,
       f => f.filter(g => keepers.contains(g.sampleID)))
   }
 
   /**
-   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]] [[Dataset]].
+   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]]
+   * [[Dataset]] through transforming sample data with a supplied function.
    *
-   * @param genotypes
-   * @param samplesFn
-   * @return
+   * @param genotypes the original [[CalledVariant]] [[Dataset]] that will be
+   *                  transformed
+   * @param samplesFn the transform function for genotypic information
+   * @return a transformed [[Dataset]] of [[CalledVariant]] objects
    */
   def createCalledVariant(genotypes: Dataset[CalledVariant],
                           samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
     genotypes.map(f => {
-      CalledVariant(f.chromosome,
+      CalledVariant(f.uniqueID,
+        f.chromosome,
         f.position,
-        f.uniqueID,
         f.referenceAllele,
         f.alternateAllele,
         samplesFn(f.samples))
@@ -120,19 +141,19 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   }
 
   /**
-   * Split the genotyping data into two datasets based off of present phenotypes
+   * Split the genotypic data into two datasets based off of present phenotypes.
    *
-   * @param genotypes
-   * @param phenotypes
-   * @param trainPath
-   * @param testPath
-   * @param percentTest
+   * @param genotypes Input [[Dataset]] of [[CalledVariant]] objects
+   * @param phenotypes Input [[Map]] of [[String]] to [[Phenotype]]
+   * @param trainPath Output path to place the training partition
+   * @param testPath Output path to place the test partition
+   * @param percentTest Percentage of the data to place into the test partition
    */
   def trainAndTestPartition(genotypes: Dataset[CalledVariant],
                             phenotypes: Map[String, Phenotype],
                             trainPath: String,
                             testPath: String,
-                            percentTest: Double = 0.1) = {
+                            percentTest: Double = 0.1): Unit = {
 
     val numTest = math.round(phenotypes.size * percentTest).toInt
 
@@ -150,27 +171,34 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   }
 
   /**
-   * Returns a filtered Dataset of CalledVariant objects, where all variants with
-   * values less than the specified geno or maf threshold are filtered out.
+   * Returns a filtered [[Dataset]] of [[CalledVariant]] objects, where all
+   * variants with values less than the specified geno or maf threshold are
+   * filtered out.
    *
-   * @param genotypes The Dataset of CalledVariant objects to filter on
-   * @param geno The percentage threshold for geno values for each CalledVariant
-   *             object
-   * @param maf The percentage threshold for Minor Allele Frequency for each
-   *            CalledVariant object
+   * @param genotypes The [[Dataset]] of [[CalledVariant]] objects to filter
+   * @param geno Fractional threshold for missingness in each genotype, where if
+   *             the missingness fraction is larger than this threshold the
+   *             variant will be filtered out of the association
+   * @param maf Fractional threshold for Minor Allele Frequency, where if the
+   *            MAF for a variant, or (1 - MAF for a variant) is less than this
+   *            threshold the sample will be filtered out
    *
    * @return Returns an updated Dataset with values removed, as specified by the
    *         filtering
    */
-  def filterVariants(genotypes: Dataset[CalledVariant], geno: Double, maf: Double): Dataset[CalledVariant] = {
-    require(maf >= 0.0 && maf <= 1.0, "`maf` value must be between 0.0 to 1.0 inclusive.")
-    require(geno >= 0.0 && geno <= 1.0, "`geno` value must be between 0.0 to 1.0 inclusive.")
+  def filterVariants(genotypes: Dataset[CalledVariant],
+                     geno: Double,
+                     maf: Double): Dataset[CalledVariant] = {
+    require(maf >= 0.0 && maf <= 1.0,
+      "`maf` value must be between 0.0 to 1.0 inclusive.")
+    require(geno >= 0.0 && geno <= 1.0,
+      "`geno` value must be between 0.0 to 1.0 inclusive.")
     genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
   /**
    * Returns a modified Dataset of CalledVariant objects, where any value with a
-   * maf > 0.5 is recoded. The recoding is specified as flipping the referenceAllele
+   * maf > 0.5 is recoded. The recoding is done by flipping the referenceAllele
    * and alternateAllele when the frequency of alt is greater than that of ref.
    *
    * @param genotypes The Dataset of CalledVariant objects to recode
@@ -180,12 +208,16 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
     genotypes.map(f => {
       if (f.maf > 0.5) {
-        CalledVariant(f.chromosome,
+        CalledVariant(f.uniqueID,
+          f.chromosome,
           f.position,
-          f.uniqueID,
           f.alternateAllele,
           f.referenceAllele,
-          f.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses)))
+          f.samples.map(geno =>
+            GenotypeState(geno.sampleID,
+              geno.alts,
+              geno.refs,
+              geno.misses)))
       } else {
         f
       }
@@ -193,13 +225,18 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
   }
 
   /**
-   * @note currently this does not enforce that the uniqueID is, in fact, unique across the dataset. Checking uniqueness
+   * @note currently this does not enforce that the uniqueID is unique across the dataset. Checking uniqueness
    *       would require a shuffle, which adds overhead that might not be necessary right now.
    *
    * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
    * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
    */
-  def loadGenotypes(genotypesPath: String, datasetUID: String, parquet: Boolean = false): GenotypeDataset = {
+  def loadGenotypes(genotypesPath: String,
+                    datasetUID: String,
+                    parquet: Boolean = false): GenotypeDataset = {
+    val genoFile = new Path(genotypesPath)
+    val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
+    require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
 
     val data = if (parquet) {
       if (genotypesPath.split(",").length > 2) {
@@ -208,10 +245,6 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
         sparkSession.read.parquet(genotypesPath).as[CalledVariant]
       }
     } else {
-      val genoFile = new Path(genotypesPath)
-      val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
-      require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
-
       val vcRdd = sc.loadVcf(genotypesPath)
       vcRdd.rdd.map(vc => {
         val variant = vc.variant.variant
@@ -224,12 +257,7 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
             geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList
 
-        CalledVariant(contigName,
-          variant.getEnd.intValue(),
-          rs_id,
-          variant.getReferenceAllele,
-          variant.getAlternateAllele,
-          genotypeStates)
+        CalledVariant(rs_id, contigName, variant.getEnd.intValue(), variant.getReferenceAllele, variant.getAlternateAllele, genotypeStates)
       }).toDS.cache()
     }
 
@@ -378,7 +406,8 @@ class GnocchiSession(@transient val sc: SparkContext) extends Serializable with 
    * @param prefix
    * @return
    */
-  def flattenSchema(schema: StructType, prefix: String = null): Array[Column] = {
+  def flattenSchema(schema: StructType,
+                    prefix: String = null): Array[Column] = {
     schema.fields.flatMap(f => {
       val colName = if (prefix == null) f.name else (prefix + "." + f.name)
 
