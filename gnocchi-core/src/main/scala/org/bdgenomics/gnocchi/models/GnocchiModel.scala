@@ -17,20 +17,11 @@
  */
 package org.bdgenomics.gnocchi.models
 
-import java.io.{ File, PrintWriter }
-
-import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.apache.spark.sql.Dataset
-import java.io.FileOutputStream
 import java.io.ObjectOutputStream
 
-import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.apache.hadoop.fs.Path
-import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.apache.spark.sql.functions.col
-
-import scala.collection.immutable.Map
+import org.apache.spark.sql.Dataset
+import org.bdgenomics.gnocchi.models.variant.VariantModel
 
 trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 
@@ -40,4 +31,16 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
   val sampleUIDs: Set[String]
   val numSamples: Int
   val allelicAssumption: String
+
+  def save(saveTo: String): Unit = {
+    val metadataPath = new Path(saveTo + "/metaData")
+
+    val metadata_fs = metadataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
+
+    metadata_oos.writeObject(this)
+    metadata_oos.close
+
+    variantModels.write.parquet(saveTo + "/variantModels")
+  }
 }

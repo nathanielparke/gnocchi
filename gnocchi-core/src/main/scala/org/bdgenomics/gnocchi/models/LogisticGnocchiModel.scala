@@ -26,29 +26,4 @@ case class LogisticGnocchiModel(variantModels: Dataset[LogisticVariantModel],
                                 sampleUIDs: Set[String],
                                 numSamples: Int,
                                 allelicAssumption: String)
-    extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] {
-
-  /**
-   * Saves Gnocchi model by saving GnocchiModelMetaData as Java object,
-   * variantModels as parquet, and comparisonVariantModels as parquet.
-   */
-  def save(saveTo: String): Unit = {
-    //    variantModels.write.parquet(saveTo + "/variantModels")
-    //    QCVariantModels.write.parquet(saveTo + "/qcModels")
-    //
-    //    val qcPhenoPath = new Path(saveTo + "/qcPhenotypes")
-    //    val metaDataPath = new Path(saveTo + "/metaData")
-    //
-    //    val path_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
-    //    val path_oos = new ObjectOutputStream(path_fs.create(qcPhenoPath))
-    //
-    //    path_oos.writeObject(QCPhenotypes)
-    //    path_oos.close
-    //
-    //    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
-    //    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
-    //
-    //    metaData_oos.writeObject(metaData)
-    //    metaData_oos.close
-  }
-}
+    extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel]

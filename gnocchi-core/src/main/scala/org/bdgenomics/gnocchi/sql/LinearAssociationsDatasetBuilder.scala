@@ -1,8 +1,10 @@
 package org.bdgenomics.gnocchi.sql
 
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.functions.{ col }
+import org.apache.spark.sql.functions.col
 import org.apache.hadoop.fs.Path
+import org.bdgenomics.gnocchi.algorithms.siteregression.LinearRegressionResults
+import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociationBuilder
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
@@ -17,8 +19,6 @@ case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[L
   //  val fullyBuilt = has seen genotypes for all individual ids used to build the model
 
   import linearAssociationBuilders.sparkSession.implicits._
-
-  val sc = linearAssociationBuilders.sparkSession.sparkContext
 
   /**
    * Joins a [[Dataset]] of [[CalledVariant]] with a [[Dataset]] of [[LinearAssociationBuilder]] and updates
@@ -47,9 +47,32 @@ case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[L
 
   def saveAssociations(outPath: String,
                        forceSave: Boolean = false): Unit = {
+    val sc = linearAssociationBuilders.sparkSession.sparkContext
     sc.saveAssociations(linearAssociationBuilders.map(_.association),
       outPath,
       forceSave = forceSave,
       saveAsText = true)
+  }
+}
+
+object LinearAssociationsDatasetBuilder {
+  def apply(model: LinearGnocchiModel,
+            genotypeData: GenotypeDataset,
+            phenotypeData: PhenotypesContainer): LinearAssociationsDatasetBuilder = {
+
+    import model.variantModels.sparkSession.implicits._
+
+    val linearAssociationBuilders = model.variantModels.joinWith(genotypeData.genotypes, model.variantModels("uniqueID") === genotypeData.genotypes("uniqueID"))
+      .map {
+        case (model, genotype) => {
+          LinearAssociationBuilder(model, model.createAssociation(genotype, phenotypeData.phenotypes.value))
+        }
+      }
+    LinearAssociationsDatasetBuilder(linearAssociationBuilders,
+      model.phenotypeNames,
+      model.covariatesNames,
+      model.sampleUIDs,
+      model.numSamples,
+      model.allelicAssumption)
   }
 }

@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.sql
 
-import java.io.Serializable
+import java.io.{ ObjectInputStream, Serializable }
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -28,10 +28,7 @@ import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.formats.avro.GenotypeAllele
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.primitives.association.{
-  Association,
-  LinearAssociationBuilder
-}
+import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
@@ -123,7 +120,7 @@ class GnocchiSession(@transient val sc: SparkContext)
                     mind: Double,
                     ploidy: Double): GenotypeDataset = {
     val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
   }
 
   /**
@@ -207,7 +204,7 @@ class GnocchiSession(@transient val sc: SparkContext)
                      geno: Double,
                      maf: Double): GenotypeDataset = {
     val newGenotypes = filterVariants(genotypes.genotypes, geno, maf)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
   }
 
   /**
@@ -240,7 +237,7 @@ class GnocchiSession(@transient val sc: SparkContext)
 
   def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
     val newGenotypes = recodeMajorAllele(genotypes.genotypes)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
   }
 
   /**
@@ -256,32 +253,53 @@ class GnocchiSession(@transient val sc: SparkContext)
                     parquet: Boolean = false): GenotypeDataset = {
     val genoFile = new Path(genotypesPath)
     val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
+    require(List("ADDITIVE", "DOMINANT", "RECESSIVE").contains(allelicAssumption.toUpperCase),
+      s"Allelic assumption ${allelicAssumption} not supported! Choose one of: ADDITIVE / DOMINANT / RECESSIVE")
     require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
+    if (datasetUID == "") logWarning("datasetUID is null. This is dangerous if you plan on merging models!")
 
-    val data = if (parquet) {
-      if (genotypesPath.split(",").length > 2) {
-        sparkSession.read.parquet(genotypesPath.split(","): _*).as[CalledVariant]
+    if (parquet) {
+      // todo: how should we deal with conflict between parameters and what is in the serialized
+      // model? What happens if the passed datasetUID is different than the serialized UID?
+      val metaDataPath = new Path(genotypesPath + "/metaData")
+
+      val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+      val ois = new ObjectInputStream(path_fs.open(metaDataPath))
+      val metaData = ois.readObject.asInstanceOf[GenotypeDataset]
+      ois.close
+
+      val data = if (genotypesPath.split(",").length > 2) {
+        sparkSession.read.parquet(genotypesPath.split(",").map(_ + "/genotypes"): _*).as[CalledVariant]
       } else {
-        sparkSession.read.parquet(genotypesPath).as[CalledVariant]
+        sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant]
       }
+
+      GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
     } else {
       val vcRdd = sc.loadVcf(genotypesPath)
-      vcRdd.rdd.map(vc => {
+
+      val data = vcRdd.rdd.map(vc => {
         val variant = vc.variant.variant
         val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
         val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
-
-        val genotypeStates = vc.genotypes.map(geno =>
-          GenotypeState(geno.getSampleId,
+        val packed = vc.genotypes.map(geno => {
+          val sampleID = geno.getSampleId
+          (GenotypeState(sampleID,
             geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)).toList
-
-        CalledVariant(rs_id, contigName, variant.getEnd.intValue(), variant.getReferenceAllele, variant.getAlternateAllele, genotypeStates)
-      }).toDS.cache()
+            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte),
+            sampleID)
+        })
+        (CalledVariant(rs_id,
+          contigName,
+          variant.getEnd.intValue(),
+          variant.getReferenceAllele,
+          variant.getAlternateAllele,
+          packed.map(_._1).toList),
+          packed.map(_._2).toSet)
+      })
+      GenotypeDataset(data.map(_._1).toDS.cache(), datasetUID, allelicAssumption, data.map(_._2).reduce((a, b) => a ++ b))
     }
-
-    GenotypeDataset(data, datasetUID, allelicAssumption)
   }
 
   /**
@@ -399,31 +417,6 @@ class GnocchiSession(@transient val sc: SparkContext)
   }
 
   /**
-   *
-   *
-   * @param newGenotypeData
-   * @param newPhenotypeData
-   * @param model
-   * @return
-   */
-  def createLinearAssociationsBuilder(newGenotypeData: GenotypeDataset,
-                                      newPhenotypeData: PhenotypesContainer,
-                                      model: LinearGnocchiModel): LinearAssociationsDatasetBuilder = {
-    val linearAssociationBuilders = model.variantModels.joinWith(newGenotypeData.genotypes, model.variantModels("uniqueID") === newGenotypeData.genotypes("uniqueID"))
-      .map {
-        case (model, genotype) => {
-          LinearAssociationBuilder(model, model.createAssociation(genotype, newPhenotypeData.phenotypes.value))
-        }
-      }
-    LinearAssociationsDatasetBuilder(linearAssociationBuilders,
-      model.phenotypeNames,
-      model.covariatesNames,
-      model.sampleUIDs,
-      model.numSamples,
-      model.allelicAssumption)
-  }
-
-  /**
    * shamelessly lifted from here:
    * https://stackoverflow.com/questions/37471346/automatically-and-elegantly-flatten-dataframe-in-spark-sql
    *
@@ -512,43 +505,43 @@ class GnocchiSession(@transient val sc: SparkContext)
     }
   }
 
-  //  /**
-  //   * see https://stackoverflow.com/questions/16386252/scala-deserialization-class-not-found for the object input stream
-  //   * fix on qcPhenotypes
-  //   *
-  //   * @param path
-  //   * @return
-  //   */
-  //  def loadGnocchiModel(path: String): GnocchiModel[_, _] = {
-  //    val metaDataPath = new Path(path + "/metaData")
+  //    /**
+  //     * see https://stackoverflow.com/questions/16386252/scala-deserialization-class-not-found for the object input stream
+  //     * fix on qcPhenotypes
+  //     *
+  //     * @param path
+  //     * @return
+  //     */
+  //    def loadGnocchiModel(path: String): GnocchiModel[_, _] = {
+  //      val metaDataPath = new Path(path + "/metaData")
   //
-  //    val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
-  //    val ois = new ObjectInputStream(path_fs.open(metaDataPath))
-  //    val metaData = ois.readObject.asInstanceOf[GnocchiModelMetaData]
-  //    ois.close
+  //      val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+  //      val ois = new ObjectInputStream(path_fs.open(metaDataPath))
+  //      val metaData = ois.readObject.asInstanceOf[GnocchiModelMetaData]
+  //      ois.close
   //
-  //    val qcPhenotypesPath = new Path(path + "/qcPhenotypes")
-  //    val qcPhenotypes_fs = qcPhenotypesPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
-  //    val ois_2 = new ObjectInputStream(qcPhenotypes_fs.open(qcPhenotypesPath)) {
-  //      override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
-  //        try { Class.forName(desc.getName, false, getClass.getClassLoader) }
-  //        catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+  //      val qcPhenotypesPath = new Path(path + "/qcPhenotypes")
+  //      val qcPhenotypes_fs = qcPhenotypesPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+  //      val ois_2 = new ObjectInputStream(qcPhenotypes_fs.open(qcPhenotypesPath)) {
+  //        override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+  //          try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+  //          catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+  //        }
+  //      }
+  //
+  //      val qcPhenotypes = ois_2.readObject.asInstanceOf[Map[String, Phenotype]]
+  //      ois_2.close
+  //
+  //      if (metaData.modelType == "LinearRegression") {
+  //        val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LinearVariantModel]
+  //        val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LinearVariantModel]]
+  //
+  //        LinearGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
+  //      } else {
+  //        val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LogisticVariantModel]
+  //        val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LogisticVariantModel]]
+  //
+  //        LogisticGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
   //      }
   //    }
-  //
-  //    val qcPhenotypes = ois_2.readObject.asInstanceOf[Map[String, Phenotype]]
-  //    ois_2.close
-  //
-  //    if (metaData.modelType == "LinearRegression") {
-  //      val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LinearVariantModel]
-  //      val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LinearVariantModel]]
-  //
-  //      LinearGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
-  //    } else {
-  //      val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LogisticVariantModel]
-  //      val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LogisticVariantModel]]
-  //
-  //      LogisticGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
-  //    }
-  //  }
 }

@@ -79,7 +79,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
     val cv = createSampleCalledVariant(samples = Option(gs))
 
     val cvDS = sparkSession.createDataset(List(cv))
-    val genotypeDataset = GenotypeDataset(cvDS, "", "ADDITIVE")
+    val genotypeDataset = GenotypeDataset(cvDS, "", "ADDITIVE", Set.empty)
     val phenos = sc.broadcast(createSamplePhenotype(calledVariant = Option(cv), phenoName = "pheno"))
     val phenotypesContainer = PhenotypesContainer(phenos, "pheno", None)
 
@@ -100,7 +100,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
     val cv = createSampleCalledVariant(samples = Option(gs))
 
     val cvDS = sparkSession.createDataset(List(cv))
-    val genotypeDataset = GenotypeDataset(cvDS, "", "DOMINANT")
+    val genotypeDataset = GenotypeDataset(cvDS, "", "DOMINANT", Set.empty)
     val phenos = sc.broadcast(createSamplePhenotype(calledVariant = Option(cv), phenoName = "pheno"))
     val phenotypesContainer = PhenotypesContainer(phenos, "pheno", None)
 
@@ -128,7 +128,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
     val cv = createSampleCalledVariant(samples = Option(gs))
 
     val cvDS = sparkSession.createDataset(List(cv))
-    val genotypeDataset = GenotypeDataset(cvDS, "", "ADDITIVE")
+    val genotypeDataset = GenotypeDataset(cvDS, "", "ADDITIVE", Set.empty)
     val phenos = sc.broadcast(createSamplePhenotype(calledVariant = Option(cv), phenoName = "pheno", numCovariate = 0))
     val phenotypesContainer = PhenotypesContainer(phenos, "pheno", None)
 
