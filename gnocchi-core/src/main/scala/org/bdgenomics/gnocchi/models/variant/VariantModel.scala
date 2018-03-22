@@ -19,7 +19,6 @@ package org.bdgenomics.gnocchi.models.variant
 
 trait VariantModel[VM <: VariantModel[VM]] {
   val uniqueID: String
-  val modelType: String
   val chromosome: Int
   val position: Int
   val referenceAllele: String

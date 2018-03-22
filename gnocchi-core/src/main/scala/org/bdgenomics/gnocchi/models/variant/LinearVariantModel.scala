@@ -28,19 +28,17 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import scala.collection.immutable.Map
 
 case class LinearVariantModel(uniqueID: String,
-                              xTx: Array[Double],
-                              xTy: Array[Double],
-                              residualDegreesOfFreedom: Int,
-                              weights: List[Double],
-                              numSamples: Int,
-                              numPredictors: Int,
                               chromosome: Int,
                               position: Int,
                               referenceAllele: String,
-                              alternateAllele: String) extends VariantModel[LinearVariantModel] with LinearSiteRegression {
-
-  val modelType: String = "Linear Variant Model"
-  val regressionName = "Linear Regression"
+                              alternateAllele: String,
+                              numSamples: Int,
+                              numPredictors: Int,
+                              xTx: Array[Double],
+                              xTy: Array[Double],
+                              residualDegreesOfFreedom: Int,
+                              weights: List[Double])
+    extends VariantModel[LinearVariantModel] with LinearSiteRegression {
 
   /**
    * Given an individual's genotype state and covariates predict the primary phenotype value.
@@ -98,16 +96,6 @@ case class LinearVariantModel(uniqueID: String,
     val newResidualDegreesOfFreedom = newNumSamples - this.numPredictors
     val newWeights = newXtX \ newXtY
 
-    LinearVariantModel(uniqueID,
-      newXtXList.toArray,
-      newXtYList.toArray,
-      newResidualDegreesOfFreedom,
-      newWeights.toArray.toList,
-      newNumSamples,
-      numPredictors,
-      chromosome,
-      position,
-      referenceAllele,
-      alternateAllele)
+    LinearVariantModel(uniqueID, chromosome, position, referenceAllele, alternateAllele, newNumSamples, numPredictors, newXtXList.toArray, newXtYList.toArray, newResidualDegreesOfFreedom, newWeights.toArray.toList)
   }
 }

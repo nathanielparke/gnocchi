@@ -22,5 +22,4 @@ case class LogisticAssociation(uniqueID: String,
                                position: Int,
                                numSamples: Int,
                                pValue: Double,
-                               genotypeStandardError: Double,
-                               weights: List[Double]) extends Association
+                               genotypeStandardError: Double) extends Association

@@ -119,6 +119,13 @@ class GnocchiSession(@transient val sc: SparkContext)
       f => f.filter(g => keepers.contains(g.sampleID)))
   }
 
+  def filterSamples(genotypes: GenotypeDataset,
+                    mind: Double,
+                    ploidy: Double): GenotypeDataset = {
+    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
+  }
+
   /**
    * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]]
    * [[Dataset]] through transforming sample data with a supplied function.
@@ -196,6 +203,13 @@ class GnocchiSession(@transient val sc: SparkContext)
     genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
+  def filterVariants(genotypes: GenotypeDataset,
+                     geno: Double,
+                     maf: Double): GenotypeDataset = {
+    val newGenotypes = filterVariants(genotypes.genotypes, geno, maf)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
+  }
+
   /**
    * Returns a modified Dataset of CalledVariant objects, where any value with a
    * maf > 0.5 is recoded. The recoding is done by flipping the referenceAllele
@@ -222,6 +236,11 @@ class GnocchiSession(@transient val sc: SparkContext)
         f
       }
     })
+  }
+
+  def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
+    val newGenotypes = recodeMajorAllele(genotypes.genotypes)
+    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption)
   }
 
   /**
@@ -443,17 +462,15 @@ class GnocchiSession(@transient val sc: SparkContext)
     }
 
     val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
-    val necessaryFields = List("uniqueID", "chromosome", "position", "tStatistic", "pValue", "GenotypeStandardError").map(col)
+    val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "GenotypeStandardError").map(col)
     //    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
 
     val assoc = associations
       .select(necessaryFields: _*).sort($"pValue".asc)
-      .coalesce(1)
-      .cache()
 
     // enables saving as parquet or human readable text files
     if (saveAsText) {
-      assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
+      assoc.coalesce(1).write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
     } else {
       associations.write.parquet(outPath)
     }

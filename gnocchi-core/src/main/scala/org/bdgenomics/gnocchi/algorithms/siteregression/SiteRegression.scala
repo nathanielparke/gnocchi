@@ -29,7 +29,7 @@ import scala.collection.immutable.Map
 
 trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializable with Logging {
 
-  val regressionName: String
+  //  val regressionName: String
 
   //  def apply(genotypes: Dataset[CalledVariant],
   //            phenotypes: Broadcast[Map[String, Phenotype]],

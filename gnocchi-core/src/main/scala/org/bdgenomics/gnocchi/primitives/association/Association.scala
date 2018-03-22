@@ -22,5 +22,6 @@ trait Association {
   val chromosome: Int
   val position: Int
   val numSamples: Int
+  val pValue: Double
   val genotypeStandardError: Double
 }

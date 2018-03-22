@@ -19,30 +19,40 @@ package org.bdgenomics.gnocchi.algorithms.siteregression
 
 import breeze.linalg._
 import breeze.numerics._
+import org.apache.commons.math3.distribution.ChiSquaredDistribution
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.sql.Dataset
+import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.apache.commons.math3.distribution.ChiSquaredDistribution
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.{ Dataset, SparkSession }
-import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
+import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Map
 
 trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, LogisticAssociation] {
 
-  def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
-            allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): Dataset[LogisticVariantModel] = {
+  /**
+   *
+   * @param genotypes
+   * @param phenotypesContainer
+   * @return
+   */
+  def apply(genotypes: GenotypeDataset,
+            phenotypesContainer: PhenotypesContainer): LogisticRegressionResults = {
+    LogisticRegressionResults(genotypes, phenotypesContainer)
+  }
 
+  def createModelAndAssociations(genotypes: Dataset[CalledVariant],
+                                 phenotypes: Broadcast[Map[String, Phenotype]],
+                                 allelicAssumption: String): (Dataset[LogisticVariantModel], Dataset[LogisticAssociation]) = {
     import genotypes.sqlContext.implicits._
 
-    genotypes.flatMap((genos: CalledVariant) => {
+    val results = genotypes.flatMap((genos: CalledVariant) => {
       try {
-        val association = applyToSite(phenotypes.value, genos, allelicAssumption)
-        Some(constructVM(genos, phenotypes.value.head._2, association, allelicAssumption))
+        val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
+        Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => {
           logError(e.toString)
@@ -54,11 +64,13 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
         }
       }
     })
+
+    (results.map(_._1), results.map(_._2))
   }
 
   def applyToSite(phenotypes: Map[String, Phenotype],
                   genotypes: CalledVariant,
-                  allelicAssumption: String): LogisticAssociation = {
+                  allelicAssumption: String): (LogisticVariantModel, LogisticAssociation) = {
 
     // ToDo: Orthogonalize the matrix so we dont get singular matrices
     val (data, labels) = prepareDesignMatrix(phenotypes, genotypes, allelicAssumption)
@@ -85,13 +97,23 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
 
     val waldTests = 1d - probs
 
-    LogisticAssociation(genotypes.uniqueID,
+    val association = LogisticAssociation(
+      genotypes.uniqueID,
       genotypes.chromosome,
       genotypes.position,
       data.rows,
       waldTests(1),
-      genoStandardError,
+      genoStandardError)
+
+    val model = LogisticVariantModel(
+      genotypes.uniqueID,
+      genotypes.chromosome,
+      genotypes.position,
+      genotypes.referenceAllele,
+      genotypes.alternateAllele,
       beta.toList)
+
+    (model, association)
   }
 
   /**
@@ -172,23 +194,6 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     val Y = DenseVector(XandY.map { case (sampleVector, sampleLabel) => sampleLabel }: _*)
     (X, Y)
   }
-
-  def constructVM(variant: CalledVariant,
-                  phenotype: Phenotype,
-                  association: LogisticAssociation,
-                  allelicAssumption: String): LogisticVariantModel = {
-    LogisticVariantModel(variant.uniqueID,
-      association,
-      phenotype.phenoName,
-      variant.chromosome,
-      variant.position,
-      variant.referenceAllele,
-      variant.alternateAllele,
-      allelicAssumption,
-      phaseSetId = 0)
-  }
 }
 
-object LogisticSiteRegression extends LogisticSiteRegression {
-  val regressionName = "LogisticSiteRegression"
-}
+object LogisticSiteRegression extends LogisticSiteRegression

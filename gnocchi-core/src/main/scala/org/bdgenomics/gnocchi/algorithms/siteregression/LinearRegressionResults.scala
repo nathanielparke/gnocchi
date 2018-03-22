@@ -1,15 +1,10 @@
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
-import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
-
-import scala.collection.immutable.Map
 
 case class LinearRegressionResults(genotypes: GenotypeDataset,
                                    phenotypes: PhenotypesContainer) {

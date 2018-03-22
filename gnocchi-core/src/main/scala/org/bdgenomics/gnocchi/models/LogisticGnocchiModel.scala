@@ -17,136 +17,38 @@
  */
 package org.bdgenomics.gnocchi.models
 
-import java.io.ObjectOutputStream
+import org.apache.spark.sql.Dataset
+import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 
-import breeze.linalg.{ DenseMatrix, DenseVector }
-import org.apache.hadoop.fs.Path
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.{ Dataset, SparkSession }
-import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
-import org.bdgenomics.gnocchi.models.variant.{ LogisticVariantModel, QualityControlVariantModel }
-import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-
-import scala.collection.immutable.Map
-
-object LogisticGnocchiModelFactory {
-
-  val regressionName = "additiveLinearRegression"
-
-  def apply(genotypes: Dataset[CalledVariant],
-            phenotypes: Broadcast[Map[String, Phenotype]],
-            phenotypeNames: Option[List[String]],
-            QCVariantIDs: Option[Set[String]] = None,
-            QCVariantSamplingRate: Double = 0.1,
-            allelicAssumption: String = "ADDITIVE",
-            validationStringency: String = "STRICT"): LogisticGnocchiModel = {
-
-    import genotypes.sqlContext.implicits._
-
-    genotypes.cache()
-
-    // ToDo: sampling QC Variants better.
-    val variantModels = LogisticSiteRegression(genotypes, phenotypes, allelicAssumption = allelicAssumption, validationStringency = validationStringency)
-
-    // Create QCVariantModels
-    val comparisonVariants = if (QCVariantIDs.isEmpty) {
-      genotypes.sample(withReplacement = false, fraction = 0.1)
-    } else {
-      genotypes.filter(x => QCVariantIDs.get.contains(x.uniqueID))
-    }
-
-    val QCVariantModels = variantModels
-      .joinWith(comparisonVariants, variantModels("uniqueID") === comparisonVariants("uniqueID"), "inner")
-      .withColumnRenamed("_1", "variantModel")
-      .withColumnRenamed("_2", "variant")
-      .as[QualityControlVariantModel[LogisticVariantModel]]
-
-    val phenoNames = if (phenotypeNames.isEmpty) {
-      List(phenotypes.value.head._2.phenoName) ++ (1 to phenotypes.value.head._2.covariates.length).map(x => "covar_" + x)
-    } else {
-      phenotypeNames.get
-    }
-
-    // Create metadata
-    val metadata = GnocchiModelMetaData(regressionName,
-      phenoNames.head,
-      phenoNames.tail.mkString(","),
-      genotypes.count().toInt,
-      flaggedVariantModels = Option(QCVariantModels.select("variant.uniqueID").as[String].collect().toList))
-
-    LogisticGnocchiModel(metaData = metadata,
-      variantModels = variantModels,
-      QCVariantModels = QCVariantModels,
-      QCPhenotypes = phenotypes.value)
-  }
-}
-
-case class LogisticGnocchiModel(metaData: GnocchiModelMetaData,
-                                variantModels: Dataset[LogisticVariantModel],
-                                QCVariantModels: Dataset[QualityControlVariantModel[LogisticVariantModel]],
-                                QCPhenotypes: Map[String, Phenotype])
+case class LogisticGnocchiModel(variantModels: Dataset[LogisticVariantModel],
+                                phenotypeNames: String,
+                                covariatesNames: List[String],
+                                sampleUIDs: Set[String],
+                                numSamples: Int,
+                                allelicAssumption: String)
     extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] {
-
-  import variantModels.sqlContext.implicits._
-
-  def mergeGnocchiModel(otherModel: LogisticGnocchiModel): GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] = {
-
-    require(otherModel.metaData.modelType == metaData.modelType,
-      "Models being merged are not the same type. Type equality is required to merge two models correctly.")
-
-    val mergedVMs = mergeVariantModels(otherModel.variantModels)
-
-    // ToDo: 1. [DONE] make sure models are of same type 2. [DONE] find intersection of QCVariants and use those as the gnocchiModel
-    // ToDo: QCVariants 3. Make sure the phenotype of the models are the same 4. Make sure the covariates of the model
-    // ToDo: are the same (currently broken because covariates stored in [[Phenotype]] object are the values not names)
-    val updatedMetaData = updateMetaData(otherModel.metaData.numSamples, metaData)
-
-    val mergedQCVariants = mergeQCVariants(otherModel.QCVariantModels)
-    val mergedQCVariantModels = mergedVMs.joinWith(mergedQCVariants, mergedVMs("uniqueID") === mergedQCVariants("uniqueID"), "inner")
-      .withColumnRenamed("_1", "variantModel")
-      .withColumnRenamed("_2", "variant")
-      .as[QualityControlVariantModel[LogisticVariantModel]]
-    val mergedQCPhenotypes = QCPhenotypes ++ otherModel.QCPhenotypes
-
-    LogisticGnocchiModel(updatedMetaData, mergedVMs, mergedQCVariantModels, mergedQCPhenotypes)
-  }
-
-  def mergeVariantModels(newVariantModels: Dataset[LogisticVariantModel]): Dataset[LogisticVariantModel] = {
-    variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID")).map(x => x._1.mergeWith(x._2))
-  }
-
-  def mergeQCVariants(newQCVariantModels: Dataset[QualityControlVariantModel[LogisticVariantModel]]): Dataset[CalledVariant] = {
-    val variants1 = QCVariantModels.map(_.variant)
-    val variants2 = newQCVariantModels.map(_.variant)
-
-    variants1.joinWith(variants2, variants1("uniqueID") === variants2("uniqueID"))
-      .as[(CalledVariant, CalledVariant)]
-      .map(x =>
-        CalledVariant(x._1.uniqueID, x._1.chromosome, x._1.position, x._1.referenceAllele, x._1.alternateAllele, x._1.samples ++ x._2.samples))
-  }
 
   /**
    * Saves Gnocchi model by saving GnocchiModelMetaData as Java object,
    * variantModels as parquet, and comparisonVariantModels as parquet.
    */
   def save(saveTo: String): Unit = {
-    variantModels.write.parquet(saveTo + "/variantModels")
-    QCVariantModels.write.parquet(saveTo + "/qcModels")
-
-    val qcPhenoPath = new Path(saveTo + "/qcPhenotypes")
-    val metaDataPath = new Path(saveTo + "/metaData")
-
-    val path_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
-    val path_oos = new ObjectOutputStream(path_fs.create(qcPhenoPath))
-
-    path_oos.writeObject(QCPhenotypes)
-    path_oos.close
-
-    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
-    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
-
-    metaData_oos.writeObject(metaData)
-    metaData_oos.close
+    //    variantModels.write.parquet(saveTo + "/variantModels")
+    //    QCVariantModels.write.parquet(saveTo + "/qcModels")
+    //
+    //    val qcPhenoPath = new Path(saveTo + "/qcPhenotypes")
+    //    val metaDataPath = new Path(saveTo + "/metaData")
+    //
+    //    val path_fs = qcPhenoPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    //    val path_oos = new ObjectOutputStream(path_fs.create(qcPhenoPath))
+    //
+    //    path_oos.writeObject(QCPhenotypes)
+    //    path_oos.close
+    //
+    //    val metaData_fs = metaDataPath.getFileSystem(variantModels.sparkSession.sparkContext.hadoopConfiguration)
+    //    val metaData_oos = new ObjectOutputStream(metaData_fs.create(metaDataPath))
+    //
+    //    metaData_oos.writeObject(metaData)
+    //    metaData_oos.close
   }
 }

@@ -60,10 +60,6 @@ trait GnocchiFunSuite extends SparkFunSuite {
     val uid = if (uniqueID.isEmpty) "rs" + (random.nextInt(1000000) + 10000) else uniqueID.get
     val ref = if (referenceAllele.isEmpty) random.shuffle(List("A", "C", "T", "G")).head else referenceAllele.get
     val alt = if (alternateAllele.isEmpty) random.shuffle(List("A", "C", "T", "G").filter(_ != ref)).head else alternateAllele.get
-    val qs = if (qualityScore.isEmpty) "." else qualityScore.get
-    val fil = if (filter.isEmpty) "." else filter.get
-    val inf = if (info.isEmpty) "." else info.get
-    val form = if (format.isEmpty) "." else format.get
     val sam = if (samples.isEmpty) createSampleGenotypeStates(num = 50) else samples.get
 
     CalledVariant(uid, chrom, pos, ref, alt, sam)

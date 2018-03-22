@@ -15,6 +15,8 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 case class GenotypeDataset(genotypes: Dataset[CalledVariant],
                            datasetUID: String,
                            allelicAssumption: String) {
+
+  // This might not accurately get all the sample UIDs because the head might not contain all samples...
   lazy val sampleUIDs: List[String] = genotypes.head.samples.map(f => datasetUID + "_" + f.sampleID)
 
   //  def tranformAllelicAssumption(newAllelicAssumption: String): GenotypeDataset = {

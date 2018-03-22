@@ -25,6 +25,10 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.scalactic.Tolerance._
 
 class LinearSiteRegressionSuite extends GnocchiFunSuite {
+
+  ignore("LinearSiteRegression.applyToSite should match plink: Additive") {}
+  ignore("LinearSiteRegression.applyToSite should match plink: Dominant") {}
+
   // LinearSiteRegression.applyToSite correctness tests
   /* generate Anscombe's quartet for linear regression
       the quartet data is as follows:
@@ -460,14 +464,14 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     assert(x(::, 2 until 4).toArray.grouped(5).toArray.transpose === phenotypes.map(_.slice(1, 3)))
   }
 
+  ignore("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Additive") {}
+
+  ignore("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Dominant") {}
+
   // AdditiveLinearRegression tests
 
   ignore("AdditiveLinearRegression.constructVM should call the clip or keep state from the `Additive` trait.") {
 
-  }
-
-  sparkTest("LinearSiteRegression should have regressionName set to `LinearSiteRegression`") {
-    assert(LinearSiteRegression.regressionName === "LinearSiteRegression")
   }
 
   // DominantLinearRegression tests
