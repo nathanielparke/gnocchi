@@ -18,13 +18,13 @@
 
 package org.bdgenomics.gnocchi.sql
 
-import org.bdgenomics.gnocchi.GnocchiFunSuite
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.sql.{ Dataset, SparkSession }
+import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 
 import scala.util.Random
 
@@ -240,6 +240,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val toFilterDS = makeCalledVariantDS(filterVariants)
     val filteredSamples = sc.filterSamples(toFilterDS, .3, 2)
 
+    // construct the target dataset that should be result of filtering `filterVariants` dataset
     val targetFilteredSamples = List("sample3", "sample4")
     val targetvariant1Genotypes = List("./.", "1/1")
     val targetvariant2Genotypes = List("1/1", "1/1")
@@ -254,6 +255,8 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
     val targetcalledVariantsDS = makeCalledVariantDS(List(targetvariant1CalledVariant, targetvariant2CalledVariant,
       targetvariant3CalledVariant, targetvariant4CalledVariant, targetvariant5CalledVariant))
+
+    // Assert that the filtered dataset equals what we expect.
     assert(filteredSamples.collect.forall(targetcalledVariantsDS.collect().contains(_)), "Filtered dataset did not match expected dataset.")
   }
 

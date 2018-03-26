@@ -34,7 +34,7 @@ case class GenotypeState(sampleID: String,
   }
 
   def dominant: Double = {
-    if (toDouble == 0.0) 0.0 else 1.0
+    if (alts >= 1.0) 1.0 else 0.0
   }
 
   def recessive: Double = {

@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
-import org.bdgenomics.gnocchi.GnocchiFunSuite
+import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 
 class AssociationSuite extends GnocchiFunSuite {
   ignore("LinearAssociation creation works.") {

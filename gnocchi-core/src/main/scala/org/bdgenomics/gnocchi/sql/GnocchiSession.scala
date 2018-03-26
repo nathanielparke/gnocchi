@@ -120,7 +120,11 @@ class GnocchiSession(@transient val sc: SparkContext)
                     mind: Double,
                     ploidy: Double): GenotypeDataset = {
     val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
+    GenotypeDataset(
+      newGenotypes,
+      genotypes.datasetUID,
+      genotypes.allelicAssumption,
+      genotypes.sampleUIDs)
   }
 
   /**
@@ -204,7 +208,11 @@ class GnocchiSession(@transient val sc: SparkContext)
                      geno: Double,
                      maf: Double): GenotypeDataset = {
     val newGenotypes = filterVariants(genotypes.genotypes, geno, maf)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
+    GenotypeDataset(
+      newGenotypes,
+      genotypes.datasetUID,
+      genotypes.allelicAssumption,
+      genotypes.sampleUIDs)
   }
 
   /**
@@ -455,7 +463,7 @@ class GnocchiSession(@transient val sc: SparkContext)
     }
 
     val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
-    val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "GenotypeStandardError").map(col)
+    val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
     //    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
 
     val assoc = associations

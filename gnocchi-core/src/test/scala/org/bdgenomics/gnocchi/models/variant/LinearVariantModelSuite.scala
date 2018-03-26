@@ -17,8 +17,8 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
-import org.bdgenomics.gnocchi.GnocchiFunSuite
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
+import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 import org.scalactic.Tolerance._
 
 class LinearVariantModelSuite extends GnocchiFunSuite {

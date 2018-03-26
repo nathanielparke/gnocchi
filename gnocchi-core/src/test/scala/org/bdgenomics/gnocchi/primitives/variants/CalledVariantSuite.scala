@@ -18,7 +18,7 @@
 package org.bdgenomics.gnocchi.primitives.variants
 
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
-import org.bdgenomics.gnocchi.GnocchiFunSuite
+import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 
 class CalledVariantSuite extends GnocchiFunSuite {
 
