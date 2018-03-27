@@ -286,27 +286,27 @@ class GnocchiSession(@transient val sc: SparkContext)
     } else {
       val vcRdd = sc.loadVcf(genotypesPath)
 
+      val sampleIDs = vcRdd.samples.map(_.getSampleId).toSet
+
       val data = vcRdd.rdd.map(vc => {
         val variant = vc.variant.variant
         val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
         val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
-        val packed = vc.genotypes.map(geno => {
-          val sampleID = geno.getSampleId
-          (GenotypeState(sampleID,
+        val genotypeState = vc.genotypes.map(geno => {
+          GenotypeState(geno.getSampleId(),
             geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte),
-            sampleID)
-        })
-        (CalledVariant(rs_id,
+            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
+        }).toList
+        CalledVariant(
+          rs_id,
           contigName,
           variant.getEnd.intValue(),
           variant.getReferenceAllele,
           variant.getAlternateAllele,
-          packed.map(_._1).toList),
-          packed.map(_._2).toSet)
+          genotypeState)
       })
-      GenotypeDataset(data.map(_._1).toDS.cache(), datasetUID, allelicAssumption, data.map(_._2).reduce((a, b) => a ++ b))
+      GenotypeDataset(data.toDS.cache(), datasetUID, allelicAssumption, sampleIDs)
     }
   }
 

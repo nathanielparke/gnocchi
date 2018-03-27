@@ -30,8 +30,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
         Array(94.0, 110.0, 3271.4475914762697, 2302.674589586702, 110.0, 174.0, 3842.5031357490566, 2780.151112084831, 3271.4475914762697, 3842.5031357490566, 115884.84629517219, 80189.97753758742, 2302.674589586702, 2780.151112084831, 80189.97753758742, 58587.956330169975),
         Array(5617.461892639065, 6558.44291966915, 194976.5580018678, 137567.54574942816),
         90,
-        List(69.07776644363027, -0.24898087761360677, -0.2572711819891003, -0.0029578942161391356)
-      )
+        List(69.07776644363027, -0.24898087761360677, -0.2572711819891003, -0.0029578942161391356))
 
     val variantModel2 =
       LinearVariantModel(
@@ -45,8 +44,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
         Array(96.0, 105.0, 3307.425151547912, 2395.4060317079206, 105.0, 163.0, 3592.261274997086, 2611.324498197782, 3307.425151547912, 3592.261274997086, 116417.75823673896, 82347.61698038159, 2395.4060317079206, 2611.324498197782, 82347.61698038159, 62444.74412145208),
         Array(5797.654008575947, 6300.23670069193, 199946.87776767055, 145067.2821012401),
         92,
-        List(54.43723939165843, -0.7775917571858606, 0.0859282586467727, 0.1540969976355187)
-      )
+        List(54.43723939165843, -0.7775917571858606, 0.0859282586467727, 0.1540969976355187))
 
     val mergedVariantModel =
       LinearVariantModel(
@@ -60,8 +58,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
         Array(190.0, 215.0, 6578.872743024182, 4698.080621294623, 215.0, 337.0, 7434.764410746142, 5391.475610282612, 6578.872743024182, 7434.764410746142, 232302.60453191114, 162537.594517969, 4698.080621294623, 5391.475610282612, 162537.594517969, 121032.70045162205),
         Array(11415.115901215013, 12858.67962036108, 394923.43576953834, 282634.8278506682),
         186,
-        List(61.258606850236056, -0.7001667498483775, -0.07267615668330284, 0.08612956434272387)
-      )
+        List(61.258606850236056, -0.7001667498483775, -0.07267615668330284, 0.08612956434272387))
 
     val linearGnocchiModel = mock(classOf[LinearGnocchiModel])
     val spyVar1 = spy(variantModel1)
@@ -81,7 +78,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     assert(mergedInGM.numSamples == mergedVariantModel.numSamples, "numSamples in hand merged Variant Model different than numSamples from the gnocchiModel merge.")
     assert(mergedInGM.numPredictors == mergedVariantModel.numPredictors, "numPredictors in hand merged Variant Model different than numPredictors from the gnocchiModel merge.")
     assert(mergedInGM.xTx.toList == mergedVariantModel.xTx.toList, "xTx in hand merged Variant Model different than xTx from the gnocchiModel merge.")
-    assert(mergedInGM.xTy.toList  == mergedVariantModel.xTy.toList, "xTy in hand merged Variant Model different than xTy from the gnocchiModel merge.")
+    assert(mergedInGM.xTy.toList == mergedVariantModel.xTy.toList, "xTy in hand merged Variant Model different than xTy from the gnocchiModel merge.")
     assert(mergedInGM.residualDegreesOfFreedom == mergedVariantModel.residualDegreesOfFreedom, "residualDegreesOfFreedom in hand merged Variant Model different than residualDegreesOfFreedom from the gnocchiModel merge.")
     assert(mergedInGM.weights == mergedVariantModel.weights, "weights in hand merged Variant Model different than weights from the gnocchiModel merge.")
   }
@@ -178,7 +175,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel correctly merges model metadata"){
+  sparkTest("LinearGnocchiModel.mergeGnocchiModel correctly merges model metadata") {
     val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
     val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
     val phenotypeName = "pheno_1"
