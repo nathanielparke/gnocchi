@@ -31,7 +31,16 @@ case class LinearAssociationBuilder(model: LinearVariantModel,
     val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(x, y, beta, xTx_shaped, Option(association.ssResiduals), Option(association.numSamples))
 
     // I don't like having the num samples updated here...
-    val newAssociation = LinearAssociation(model.uniqueID, model.chromosome, model.position, model.numSamples + x.rows, pValue, genoSE, ssResiduals, t)
+    val newAssociation =
+      LinearAssociation(
+        model.uniqueID,
+        model.chromosome,
+        model.position,
+        model.numSamples + x.rows,
+        pValue,
+        genoSE,
+        ssResiduals,
+        t)
 
     LinearAssociationBuilder(model, newAssociation)
   }

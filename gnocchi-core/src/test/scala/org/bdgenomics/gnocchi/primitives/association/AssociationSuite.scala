@@ -17,26 +17,51 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
+import breeze.linalg.{ DenseMatrix, DenseVector }
 import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 
 class AssociationSuite extends GnocchiFunSuite {
-  ignore("LinearAssociation creation works.") {
-    //      val assoc = LinearAssociation(xTx: DenseMatrix[Double],
-    //        xTy: DenseVector[Double],
-    //        residualDegreesOfFreedom: Int,
-    //        weights: List[Double],
-    //        numSamples: Int,
-    //        geneticParameterStandardError: Option[Double] = None,
-    //      tStatistic: Option[Double] = None,
-    //      pValue: Option[Double] = None)
-    //      assert(assoc.isInstanceOf[LinearAssociation], "Cannot create LinearAssociation")
+  sparkTest("LinearAssociation creation works.") {
+    val uniqueID = "rs123456"
+    val chromosome = 10
+    val position = 12345667
+    val numSamples = 23
+    val genotypeStandardError = 5.12
+    val pValue = 0.001
+    val ssResiduals = 1234.21
+    val tStatistic = 2.123
+
+    val assoc = LinearAssociation(
+      uniqueID,
+      chromosome,
+      position,
+      numSamples,
+      pValue,
+      genotypeStandardError,
+      ssResiduals,
+      tStatistic)
+
+    assert(assoc.isInstanceOf[LinearAssociation], "Cannot create LinearAssociation")
   }
 
-  ignore("LogisticAssociation creation works.") {
-    //      val assoc = LogisticAssociation(geneticParameterStandardError = 0.5,
-    //        pValue = 0.5,
-    //        weights = List(0.5, 0.5),
-    //        numSamples = 10)
-    //      assert(assoc.isInstanceOf[LogisticAssociation], "Cannot create LogisticAssociation")
+  sparkTest("LogisticAssociation creation works.") {
+    val uniqueID = "rs123456"
+    val chromosome = 10
+    val position = 12345667
+    val numSamples = 23
+    val genotypeStandardError = 5.12
+    val pValue = 0.001
+    val ssResiduals = 1234.21
+    val tStatistic = 2.123
+
+    val assoc = LogisticAssociation(
+      uniqueID,
+      chromosome,
+      position,
+      numSamples,
+      pValue,
+      genotypeStandardError)
+
+    assert(assoc.isInstanceOf[LogisticAssociation], "Cannot create LogisticAssociation")
   }
 }

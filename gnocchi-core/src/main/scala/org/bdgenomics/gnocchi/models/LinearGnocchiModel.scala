@@ -30,16 +30,24 @@ case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
 
   import variantModels.sqlContext.implicits._
 
-  def mergeGnocchiModel(otherModel: LinearGnocchiModel): LinearGnocchiModel = {
+  def mergeGnocchiModel(otherModel: LinearGnocchiModel,
+                        allowDifferentPhenotype: Boolean = false): LinearGnocchiModel = {
 
     require((otherModel.sampleUIDs & sampleUIDs).isEmpty,
       "There are overlapping samples in the datasets used to build the two models.")
     require(allelicAssumption == otherModel.allelicAssumption,
       "The two models are of different allelic assumptions. (additive / dominant / recessive)")
+    if (!allowDifferentPhenotype) {
+      require(otherModel.phenotypeNames == phenotypeNames,
+        "The two models have different primary phenotypes.")
+      require(otherModel.covariatesNames == covariatesNames,
+        "The two models have different primary phenotypes.")
+    }
 
     val mergedVMs = mergeVariantModels(otherModel.variantModels)
     // ToDo: Ensure that the same phenotypes and covariates are being used
-    LinearGnocchiModel(mergedVMs,
+    LinearGnocchiModel(
+      mergedVMs,
       phenotypeNames,
       covariatesNames,
       otherModel.sampleUIDs.toSet | sampleUIDs.toSet,
