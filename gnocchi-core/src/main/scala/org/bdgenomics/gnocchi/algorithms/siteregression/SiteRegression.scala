@@ -44,5 +44,6 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
   //                  phenotype: Phenotype,
   //                  association: A,
   //                  allelicAssumption: String): VM
+
 }
 

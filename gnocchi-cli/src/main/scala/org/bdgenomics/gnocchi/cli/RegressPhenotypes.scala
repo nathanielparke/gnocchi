@@ -54,7 +54,7 @@ class RegressPhenotypesArgs extends Args4jBase {
   var output: String = _
 
   @Args4jOption(required = false, name = "-sampleIDName", usage = "The name of the column containing unique ID's for samples")
-  var sampleUID: String = _
+  var sampleUID: String = "IID"
 
   @Args4jOption(required = false, name = "-phenoName", usage = "The phenotype to regress.")
   var phenoName: String = _

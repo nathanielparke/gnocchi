@@ -292,19 +292,21 @@ class GnocchiSession(@transient val sc: SparkContext)
         val variant = vc.variant.variant
         val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
         val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
-        val genotypeState = vc.genotypes.map(geno => {
+
+        val genotypeStates = vc.genotypes.map(geno => {
           GenotypeState(geno.getSampleId(),
             geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
             geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
             geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
         }).toList
+
         CalledVariant(
           rs_id,
           contigName,
           variant.getEnd.intValue(),
           variant.getReferenceAllele,
           variant.getAlternateAllele,
-          genotypeState)
+          genotypeStates)
       })
       GenotypeDataset(data.toDS.cache(), datasetUID, allelicAssumption, sampleIDs)
     }

@@ -38,7 +38,6 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    *
    * @param genotypes
    * @param phenotypesContainer
-   * @param allelicAssumption
    * @return
    */
   def apply(genotypes: GenotypeDataset,
@@ -79,10 +78,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
 
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
 
-    val xTx = x.t * x // p x p matrix
-    val xTy = x.t * y // p x 1 vector
-
-    val beta = xTx \ xTy
+    val (xTx, xTy, beta) = solveRegression(x, y)
 
     val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
 
@@ -110,6 +106,25 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       beta.data.toList)
 
     (model, association)
+  }
+
+  /**
+   * This function solves the equation Y = Xβ for β and gives back relevant matrices in a tuple.
+   * Places the actual regression solution in a separate function for testing reasons.
+   *
+   * @param x formatted x matrix
+   * @param y formatted y vector
+   * @return (xTx matrix, xTy vector, weights vector)
+   */
+  def solveRegression(x: DenseMatrix[Double],
+                      y: DenseVector[Double]): (DenseMatrix[Double], DenseVector[Double], DenseVector[Double]) = {
+    val xTx = x.t * x // p x p matrix
+    val xTy = x.t * y // p x 1 vector
+
+    // This line is the breeze notation for the equation xTx*beta = xTy, solve for beta
+    val beta = xTx \ xTy
+
+    (xTx, xTy, beta)
   }
 
   /**

@@ -40,33 +40,21 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
       val phenos: Array[Double] = Array(row(3)) ++ covars
       (geno, phenos)
     }).collect()
-    val altAllele = "No allele"
-    val phenotype = "acceptance"
-    //      val locus = ReferenceRegion("Name", 1, 2)
-    //      val scOption = Option(sc)
-    //      val variant = new Variant
-    //      //    val contig = new Contig()
-    //      //    contig.setContigName(locus.referenceName)
-    //      variant.setContigName(locus.referenceName)
-    //      variant.setStart(locus.start)
-    //      variant.setEnd(locus.end)
-    //      variant.setAlternateAllele(altAllele)
-    //      val phaseSetId = 0
+
+    //    // feed it into logisitic regression and compare the Wald Chi Squared tests
+    //    val (beta, hessian) = findBeta(data, labels, initBeta, maxIter = maxIter, tolerance = tolerance)
     //
-    //      // feed it into logisitic regression and compare the Wald Chi Squared tests
-    //      val regressionResult = AdditiveLogisticRegression.applyToSite(observations, variant, phenotype, phaseSetId)
-    //
-    //      // Assert that the weights are correct within a threshold.
-    //      val estWeights: Array[Double] = regressionResult.statistics("weights").asInstanceOf[Array[Double]] :+ regressionResult.statistics("intercept").asInstanceOf[Double]
-    //      val compWeights = Array(-3.4495484, .0022939, .77701357, -0.5600314)
-    //      for (i <- 0 until 3) {
-    //        assert(estWeights(i) <= (compWeights(i) + 1), s"Weight $i incorrect")
-    //        assert(estWeights(i) >= (compWeights(i) - 1), s"Weight $i incorrect")
-    //      }
-    //      //Assert that the Wald chi squared value is in the right threshold. Answer should be 0.0385
-    //      val pval: Array[Double] = regressionResult.statistics("'P Values' aka Wald Tests").asInstanceOf[DenseVector[Double]].toArray
-    //      assert(pval(1) <= 0.0385 + 0.01, "'P Values' aka Wald Tests = " + pval)
-    //      assert(pval(1) >= 0.0385 - 0.01, "'P Values' aka Wald Tests = " + pval)
+    //    // Assert that the weights are correct within a threshold.
+    //    val estWeights: Array[Double] = regressionResult.statistics("weights").asInstanceOf[Array[Double]] :+ regressionResult.statistics("intercept").asInstanceOf[Double]
+    //    val compWeights = Array(-3.4495484, .0022939, .77701357, -0.5600314)
+    //    for (i <- 0 until 3) {
+    //      assert(estWeights(i) <= (compWeights(i) + 1), s"Weight $i incorrect")
+    //      assert(estWeights(i) >= (compWeights(i) - 1), s"Weight $i incorrect")
+    //    }
+    //    //Assert that the Wald chi squared value is in the right threshold. Answer should be 0.0385
+    //    val pval: Array[Double] = regressionResult.statistics("'P Values' aka Wald Tests").asInstanceOf[DenseVector[Double]].toArray
+    //    assert(pval(1) <= 0.0385 + 0.01, "'P Values' aka Wald Tests = " + pval)
+    //    assert(pval(1) >= 0.0385 - 0.01, "'P Values' aka Wald Tests = " + pval)
   }
 
   // LogisticSiteRegression Correctness tests
