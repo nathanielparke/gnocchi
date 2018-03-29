@@ -39,36 +39,6 @@ case class LinearVariantModel(uniqueID: String,
                               residualDegreesOfFreedom: Int,
                               weights: List[Double])
     extends VariantModel[LinearVariantModel] with LinearSiteRegression {
-
-  /**
-   * Given an individual's genotype state and covariates predict the primary phenotype value.
-   *
-   * @param genotype the genotype state of the individual being predicted
-   * @param covariates the covariates, a [[List<Double>]] that contain the covariates.
-   * @return the prediction for the particular individual
-   */
-  def predict(genotype: GenotypeState, covariates: List[Double]): Double = {
-    val weights = DenseVector(this.weights: _*)
-    val predictors = DenseVector(1.0 :: genotype.alts.toDouble :: covariates: _*)
-    predictors dot weights
-  }
-
-  /**
-   * Given an individual's genotype state and covariates predict the primary phenotype value.
-   *
-   * @param genotypes the genotype state of the individual being predicted
-   * @param covariates the covariates, a [[List<Double>]] that contain the covariates.
-   * @return the prediction for the particular individual
-   */
-  def predict(genotypes: CalledVariant,
-              covariates: Map[String, List[Double]]): List[Double] = {
-    val genotypeStates = genotypes.samples.map(x => (x.sampleID, x.alts.toDouble))
-    val predictorsMatrix = DenseMatrix(genotypeStates.map { case (id, geno) => 1.0 :: geno :: covariates(id) }: _*)
-
-    val weights = DenseVector(this.weights: _*)
-    (predictorsMatrix * weights).toArray.toList
-  }
-
   def createAssociation(genotypes: CalledVariant,
                         phenotypes: Map[String, Phenotype]): LinearAssociation = {
     // toDo: fix allelic assumption

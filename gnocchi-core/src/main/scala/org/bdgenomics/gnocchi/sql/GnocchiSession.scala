@@ -150,36 +150,6 @@ class GnocchiSession(@transient val sc: SparkContext)
   }
 
   /**
-   * Split the genotypic data into two datasets based off of present phenotypes.
-   *
-   * @param genotypes Input [[Dataset]] of [[CalledVariant]] objects
-   * @param phenotypes Input [[Map]] of [[String]] to [[Phenotype]]
-   * @param trainPath Output path to place the training partition
-   * @param testPath Output path to place the test partition
-   * @param percentTest Percentage of the data to place into the test partition
-   */
-  def trainAndTestPartition(genotypes: Dataset[CalledVariant],
-                            phenotypes: Map[String, Phenotype],
-                            trainPath: String,
-                            testPath: String,
-                            percentTest: Double = 0.1): Unit = {
-
-    val numTest = math.round(phenotypes.size * percentTest).toInt
-
-    val trainIDs = phenotypes.keys.take(phenotypes.size - numTest)
-    val testIDs = phenotypes.keys.takeRight(numTest)
-
-    val test = createCalledVariant(genotypes,
-      f => f.filter(g => testIDs.contains(g.sampleID)))
-
-    val train = createCalledVariant(genotypes,
-      f => f.filter(g => trainIDs.contains(g.sampleID)))
-
-    test.write.parquet(testPath + "/parquet")
-    train.write.parquet(trainPath + "/parquet")
-  }
-
-  /**
    * Returns a filtered [[Dataset]] of [[CalledVariant]] objects, where all
    * variants with values less than the specified geno or maf threshold are
    * filtered out.
