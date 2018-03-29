@@ -331,7 +331,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
   /**
    * plink --vcf gnocchi/gnocchi-core/src/test/resources/10Variants.vcf --make-bed --out 10Variants
-   * plink --bfile 10Variants --pheno 10Phenotypes.txt --pheno-name pheno_1 --linear --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
+   * plink --bfile 10Variants --pheno 10PhenotypesLinear.txt --pheno-name pheno_1 --linear --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
    */
   sparkTest("LinearSiteRegression.applyToSite should match plink: Additive") {
     val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",
@@ -364,7 +364,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
 
   /**
    * plink --vcf gnocchi/gnocchi-core/src/test/resources/10Variants.vcf --make-bed --out 10Variants
-   * plink --bfile 10Variants --pheno 10Phenotypes.txt --pheno-name pheno_1 --linear dominant --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
+   * plink --bfile 10Variants --pheno 10PhenotypesLinear.txt --pheno-name pheno_1 --linear dominant --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
    */
   sparkTest("LinearSiteRegression.applyToSite should match plink: Dominant") {
     val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",

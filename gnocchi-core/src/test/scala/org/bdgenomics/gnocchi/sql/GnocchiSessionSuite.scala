@@ -61,21 +61,6 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("sc.loadGenotypes should gracefully exit " +
-    "when a non-existing file path is passed in and parquet input is specified.") {
-    val fakeFilePath = "fake/file/path.vcf"
-    try {
-      sc.loadGenotypes(fakeFilePath, "fakeDataset", "ADDITIVE", parquet = true)
-      fail("sc.loadGenotypes does not fail on a fake file path.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  ignore("sc.loadGenotypes should have no overlapping values in the `uniqueID` field.") {
-
-  }
-
   ignore("sc.loadGenotypes should be able to take in ADAM formatted parquet files with genotype states.") {
 
   }
@@ -363,10 +348,6 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     }
   }
 
-  ignore("sc.filterVariants should maf correct") {
-
-  }
-
   ignore("sc.filterVariants should work correctly when an entire row is missing") {
 
   }
@@ -540,7 +521,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   // phenotype missing tests
 
-  ignore("sc.loadPhenotypes should filter out phenotypes coded as -9 by default.") {
+  ignore("sc.loadPhenotypes should filter out phenotypes coded as `NA` by default.") {
 
   }
 

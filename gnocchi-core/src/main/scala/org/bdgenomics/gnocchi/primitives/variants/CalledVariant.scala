@@ -35,7 +35,7 @@ case class CalledVariant(uniqueID: String,
     val missingCount = samples.map(_.misses.toInt).sum
     val alleleCount = samples.map(_.alts.toInt).sum
 
-    // assert(sampleValues.length > missingCount, s"Variant, ${uniqueID}, has entirely missing row. Fix by filtering variants with geno = 1.0")
+    assert(samples.length * ploidy > missingCount, s"Variant, ${uniqueID}, has entirely missing row.")
 
     if (samples.length * ploidy > missingCount) {
       alleleCount.toDouble / (samples.length * ploidy - missingCount).toDouble

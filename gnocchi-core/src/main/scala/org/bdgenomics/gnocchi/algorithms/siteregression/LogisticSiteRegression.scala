@@ -73,37 +73,19 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
                   allelicAssumption: String): (LogisticVariantModel, LogisticAssociation) = {
 
     // ToDo: Orthogonalize the matrix so we dont get singular matrices
-    val (data, labels) = prepareDesignMatrix(phenotypes, genotypes, allelicAssumption)
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
 
-    val maxIter = 1000
-    val tolerance = 1e-6
-    val initBeta = DenseVector.zeros[Double](data.cols)
+    val (beta, hessian) = solveRegression(x, y)
 
-    val (beta, hessian) = findBeta(data, labels, initBeta, maxIter = maxIter, tolerance = tolerance)
-
-    // Use Hessian and weights to calculate the Wald Statistic, or p-value
-    val fisherInfo = -hessian
-    val fishInv = inv(fisherInfo)
-    val standardErrors = sqrt(abs(diag(fishInv)))
-    val genoStandardError = standardErrors(1)
-
-    // calculate Wald statistic for each parameter in the regression model
-    val zScores: DenseVector[Double] = DenseVector(beta) /:/ standardErrors
-    val waldStats = zScores *:* zScores
-
-    // calculate cumulative probs
-    val chiDist = new ChiSquaredDistribution(1) // 1 degree of freedom
-    val probs = waldStats.map(zi => chiDist.cumulativeProbability(zi))
-
-    val waldTests = 1d - probs
+    val (genoSE, pValue) = calculateSignificance(x, y, beta, hessian)
 
     val association = LogisticAssociation(
       genotypes.uniqueID,
       genotypes.chromosome,
       genotypes.position,
-      data.rows,
-      waldTests(1),
-      genoStandardError)
+      x.rows,
+      pValue,
+      genoSE)
 
     val model = LogisticVariantModel(
       genotypes.uniqueID,
@@ -111,9 +93,19 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
       genotypes.position,
       genotypes.referenceAllele,
       genotypes.alternateAllele,
-      beta.toList)
+      beta.toArray.toList)
 
     (model, association)
+  }
+
+  def solveRegression(x: DenseMatrix[Double],
+                      y: DenseVector[Double]): (DenseVector[Double], DenseMatrix[Double]) = {
+    val maxIter = 1000
+    val tolerance = 1e-6
+    val initBeta = DenseVector.zeros[Double](x.cols)
+
+    val (beta, hessian) = findBeta(x, y, initBeta, maxIter = maxIter, tolerance = tolerance)
+    (DenseVector(beta), hessian)
   }
 
   /**
@@ -164,35 +156,25 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     findBeta(X, Y, updatedBeta, iter = iter + 1, maxIter = maxIter, tolerance = tolerance)
   }
 
-  /**
-   * Data preparation function that converts the gnocchi models into breeze linear algebra primitives BLAS/LAPACK
-   * optimizations.
-   *
-   * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
-   *                  (covariates)
-   * @param genotypes [[CalledVariant]] object to convert into a breeze design matrix
-   * @return tuple where first element is the [[DenseMatrix]] design matrix and second element
-   *         is [[DenseVector]] of labels
-   */
-  def prepareDesignMatrix(phenotypes: Map[String, Phenotype],
-                          genotypes: CalledVariant,
-                          allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
+  def calculateSignificance(x: DenseMatrix[Double],
+                            y: DenseVector[Double],
+                            beta: DenseVector[Double],
+                            hessian: DenseMatrix[Double]): (Double, Double) = {
+    val fisherInfo = -hessian
+    val fishInv = inv(fisherInfo)
+    val standardErrors = sqrt(abs(diag(fishInv)))
+    val genoStandardError = standardErrors(1)
 
-    val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
+    // calculate Wald statistic for each parameter in the regression model
+    val zScores: DenseVector[Double] = beta /:/ standardErrors
+    val waldStats = zScores *:* zScores
 
-    val samplesGenotypes = allelicAssumption.toUpperCase match {
-      case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.additive)))
-      case "DOMINANT"  => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.dominant)))
-      case "RECESSIVE" => validGenos.map(genotypeState => (genotypeState.sampleID, List(genotypeState.recessive)))
-    }
+    // calculate cumulative probs
+    val chiDist = new ChiSquaredDistribution(1) // 1 degree of freedom
+    val probs = waldStats.map(zi => chiDist.cumulativeProbability(zi))
 
-    val cleanedSampleVector = samplesGenotypes
-      .map { case (sampleID, genotype) => (sampleID, (genotype ++ phenotypes(sampleID).covariates).toList) }
-
-    val XandY = cleanedSampleVector.map { case (sampleID, sampleVector) => (DenseVector(1.0 +: sampleVector.toArray), phenotypes(sampleID).phenotype) }
-    val X = DenseMatrix(XandY.map { case (sampleVector, sampleLabel) => sampleVector }: _*)
-    val Y = DenseVector(XandY.map { case (sampleVector, sampleLabel) => sampleLabel }: _*)
-    (X, Y)
+    val waldTests = 1d - probs
+    (genoStandardError, waldTests(1))
   }
 }
 

@@ -25,6 +25,7 @@ import org.apache.spark.sql.functions.{ array, col, lit, udf }
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
+import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, VariantRDD }
 import org.bdgenomics.formats.avro.GenotypeAllele
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.VariantModel
@@ -249,6 +250,16 @@ class GnocchiSession(@transient val sc: SparkContext)
   }
 
   /**
+   * @param pathName The path name to match.
+   * @return Returns true if the path name matches a VCF format file extension.
+   */
+  def isVcfExt(pathName: String): Boolean = {
+    pathName.endsWith(".vcf") ||
+      pathName.endsWith(".vcf.gz") ||
+      pathName.endsWith(".vcf.bgz")
+  }
+
+  /**
    * @note currently this does not enforce that the uniqueID is unique across the dataset. Checking uniqueness
    *       would require a shuffle, which adds overhead that might not be necessary right now.
    *
@@ -258,17 +269,25 @@ class GnocchiSession(@transient val sc: SparkContext)
   def loadGenotypes(genotypesPath: String,
                     datasetUID: String,
                     allelicAssumption: String,
-                    parquet: Boolean = false): GenotypeDataset = {
+                    adamFormat: Boolean = false): GenotypeDataset = {
     val genoFile = new Path(genotypesPath)
     val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
     require(List("ADDITIVE", "DOMINANT", "RECESSIVE").contains(allelicAssumption.toUpperCase),
       s"Allelic assumption ${allelicAssumption} not supported! Choose one of: ADDITIVE / DOMINANT / RECESSIVE")
     require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
+
     if (datasetUID == "") logWarning("datasetUID is null. This is dangerous if you plan on merging models!")
 
-    if (parquet) {
+    if (adamFormat) {
+      loadAdamGenotypeRDD(genotypesPath, datasetUID, allelicAssumption)
+    } else if (isVcfExt(genotypesPath)) {
+      val vcRdd = sc.loadVcf(genotypesPath)
+      val sampleIDs = vcRdd.samples.map(_.getSampleId).toSet
+      val data = loadCalledVariantDSFromVariantContextRDD(vcRdd)
+      GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
+    } else {
       // todo: how should we deal with conflict between parameters and what is in the serialized
-      // model? What happens if the passed datasetUID is different than the serialized UID?
+      // todo: model? What happens if the passed datasetUID is different than the serialized UID?
       val metaDataPath = new Path(genotypesPath + "/metaData")
 
       val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
@@ -283,33 +302,40 @@ class GnocchiSession(@transient val sc: SparkContext)
       }
 
       GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
-    } else {
-      val vcRdd = sc.loadVcf(genotypesPath)
-
-      val sampleIDs = vcRdd.samples.map(_.getSampleId).toSet
-
-      val data = vcRdd.rdd.map(vc => {
-        val variant = vc.variant.variant
-        val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
-        val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
-
-        val genotypeStates = vc.genotypes.map(geno => {
-          GenotypeState(geno.getSampleId(),
-            geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
-            geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-            geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
-        }).toList
-
-        CalledVariant(
-          rs_id,
-          contigName,
-          variant.getEnd.intValue(),
-          variant.getReferenceAllele,
-          variant.getAlternateAllele,
-          genotypeStates)
-      })
-      GenotypeDataset(data.toDS.cache(), datasetUID, allelicAssumption, sampleIDs)
     }
+  }
+
+  def loadAdamGenotypeRDD(genotypesPath: String,
+                          datasetUID: String,
+                          allelicAssumption: String): GenotypeDataset = {
+    val genotypesRDD: GenotypeRDD = sc.loadParquetGenotypes(genotypesPath)
+    val variantContextRDD: VariantContextRDD = genotypesRDD.toVariantContexts()
+    val sampleIDs = variantContextRDD.samples.map(_.getSampleId).toSet
+    val data = loadCalledVariantDSFromVariantContextRDD(variantContextRDD)
+    GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
+  }
+
+  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
+    vcRDD.rdd.map(vc => {
+      val variant = vc.variant.variant
+      val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
+      val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
+
+      val genotypeStates = vc.genotypes.map(geno => {
+        GenotypeState(geno.getSampleId(),
+          geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
+          geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
+          geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
+      }).toList
+
+      CalledVariant(
+        rs_id,
+        contigName,
+        variant.getEnd.intValue(),
+        variant.getReferenceAllele,
+        variant.getAlternateAllele,
+        genotypeStates)
+    }).toDS()
   }
 
   /**

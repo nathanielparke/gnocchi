@@ -62,10 +62,7 @@ class RegressPhenotypesArgs extends Args4jBase {
   @Args4jOption(required = false, name = "-phenoSpaceDelimited", usage = "Set flag if phenotypes file is space delimited, otherwise tab delimited is assumed.")
   var phenoSpaceDelimiter = false
 
-  @Args4jOption(required = false, name = "-covar", usage = "Whether to include covariates.")
-  var includeCovariates = false
-
-  @Args4jOption(required = false, name = "-covarFile", usage = "The covariates file path")
+  @Args4jOption(required = false, name = "-covar", usage = "The covariates file path")
   var covarFile: String = _
 
   @Args4jOption(required = false, name = "-covarNames", usage = "The covariates to include in the analysis") // this will be used to construct the original phenotypes array in LoadPhenotypes. Will need to throw out samples that don't have all of the right fields.
@@ -101,8 +98,8 @@ class RegressPhenotypesArgs extends Args4jBase {
   @Args4jOption(required = false, name = "-missingPhenoChar", usage = "Comma delimited set of strings used to denote a missing phenotype.")
   var missingPhenoChars: String = _
 
-  @Args4jOption(required = false, name = "-parquetInput", usage = "Genotypes are parquet formatted.")
-  var parquetInput: Boolean = false
+  @Args4jOption(required = false, name = "-ADAMformat", usage = "Genotypes are ADAM formatted GenotypeRDDs.")
+  var adamFormat: Boolean = false
 }
 
 class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSparkCommand[RegressPhenotypesArgs] {
@@ -128,7 +125,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     }
 
     // the ordering of calls below is important
-    val rawGenotypes = sc.loadGenotypes(args.genotypes, "", args.associationType.split("_").head, parquet = args.parquetInput)
+    val rawGenotypes = sc.loadGenotypes(args.genotypes, "", args.associationType.split("_").head, adamFormat = args.adamFormat)
     val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
     val recoded = sc.recodeMajorAllele(sampleFiltered)
     val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)

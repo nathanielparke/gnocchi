@@ -171,47 +171,6 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     val pValue = 2 * tDist.cdf(-math.abs(t))
     (genoSE, t, pValue, ssResiduals)
   }
-
-  /**
-   * Take a CalledVariant and turn it into a Breeze Matrix and DenseVector.
-   *
-   * @param genotypes
-   * @param phenotypes
-   * @param allelicAssumption
-   * @return
-   */
-  //  private[algorithms] def prepareDesignMatrix_covar(genotypes: CalledVariant,
-  def prepareDesignMatrix(genotypes: CalledVariant,
-                          phenotypes: Map[String, Phenotype],
-                          allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
-
-    val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
-
-    val samplesGenotypes = allelicAssumption.toUpperCase match {
-      case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.additive))
-      case "DOMINANT"  => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.dominant))
-      case "RECESSIVE" => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.recessive))
-    }
-
-    val (primitiveX, primitiveY) = samplesGenotypes.flatMap({
-      case (sampleID, genotype) if phenotypes.contains(sampleID) => {
-        Some(1.0 +: genotype +: phenotypes(sampleID).covariates.toArray, phenotypes(sampleID).phenotype)
-      }
-      case _ => None
-    }).toArray.unzip
-
-    if (primitiveX.length == 0) {
-      // TODO: Determine what to do when the design matrix is empty (i.e. no overlap btwn geno and pheno sampleIDs, etc.)
-      throw new IllegalArgumentException("No overlap between phenotype and genotype state sample IDs.")
-    }
-
-    // NOTE: This may cause problems in the future depending on JVM max varargs, use one of these instead if it breaks:
-    // val x = new DenseMatrix(x(0).length, x.length, x.flatten).t
-    // val x = new DenseMatrix(x.length, x(0).length, x.flatten, 0, x(0).length, isTranspose = true)
-    // val x = new DenseMatrix(x :_*)
-
-    (new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten), new DenseVector(primitiveY))
-  }
 }
 
 object LinearSiteRegression extends LinearSiteRegression
