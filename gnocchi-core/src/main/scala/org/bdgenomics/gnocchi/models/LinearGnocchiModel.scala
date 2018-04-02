@@ -17,16 +17,21 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import java.io.ObjectOutputStream
+
+import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
+import org.bdgenomics.gnocchi.utils.ModelType._
 
-case class LinearGnocchiModel(variantModels: Dataset[LinearVariantModel],
+case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantModel],
                               phenotypeNames: String,
                               covariatesNames: List[String],
                               sampleUIDs: Set[String],
                               numSamples: Int,
                               allelicAssumption: String)
     extends GnocchiModel[LinearVariantModel, LinearGnocchiModel] {
+  val modelType: ModelType = Linear
 
   import variantModels.sqlContext.implicits._
 

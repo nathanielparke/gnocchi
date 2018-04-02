@@ -27,12 +27,13 @@ import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, VariantRDD }
 import org.bdgenomics.formats.avro.GenotypeAllele
-import org.bdgenomics.gnocchi.models.LinearGnocchiModel
-import org.bdgenomics.gnocchi.models.variant.VariantModel
+import org.bdgenomics.gnocchi.models.{ GnocchiModel, LinearGnocchiModel, LogisticGnocchiModel }
+import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, VariantModel }
 import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.utils.ModelType._
 import org.bdgenomics.utils.misc.Logging
 
 import scala.collection.JavaConversions._
@@ -256,28 +257,40 @@ class GnocchiSession(@transient val sc: SparkContext)
       val data = loadCalledVariantDSFromVariantContextRDD(vcRdd)
       GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
     } else {
-      // todo: how should we deal with conflict between parameters and what is in the serialized
-      // todo: model? What happens if the passed datasetUID is different than the serialized UID?
-      val metaDataPath = new Path(genotypesPath + "/metaData")
+      val genotypeDataset = loadGnocchiGenotypes(genotypesPath)
 
-      val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
-      val ois = new ObjectInputStream(path_fs.open(metaDataPath))
-      val metaData = ois.readObject.asInstanceOf[GenotypeDataset]
-      ois.close
-
-      val data = if (genotypesPath.split(",").length > 2) {
-        sparkSession.read.parquet(genotypesPath.split(",").map(_ + "/genotypes"): _*).as[CalledVariant]
-      } else {
-        sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant]
-      }
-
-      GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
+      require(genotypeDataset.datasetUID != datasetUID, s"Passed datasetUID `$datasetUID` does not equal the saved model's UID `${genotypeDataset.datasetUID}")
+      require(genotypeDataset.allelicAssumption != allelicAssumption, s"Passed datasetUID `$allelicAssumption` does not equal the saved model's UID `${genotypeDataset.allelicAssumption}")
+      genotypeDataset
     }
   }
 
-  def loadAdamGenotypeRDD(genotypesPath: String,
-                          datasetUID: String,
-                          allelicAssumption: String): GenotypeDataset = {
+  def loadGnocchiGenotypes(genotypesPath: String): GenotypeDataset = {
+    val genoFile = new Path(genotypesPath)
+    val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
+    require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
+
+    // todo: how should we deal with conflict between parameters and what is in the serialized
+    // todo: model? What happens if the passed datasetUID is different than the serialized UID?
+    val metaDataPath = new Path(genotypesPath + "/metaData")
+
+    val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois = new ObjectInputStream(path_fs.open(metaDataPath))
+    val metaData = ois.readObject.asInstanceOf[GenotypeDataset]
+    ois.close
+
+    val data = if (genotypesPath.split(",").length > 2) {
+      sparkSession.read.parquet(genotypesPath.split(",").map(_ + "/genotypes"): _*).as[CalledVariant]
+    } else {
+      sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant]
+    }
+
+    GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
+  }
+
+  private def loadAdamGenotypeRDD(genotypesPath: String,
+                                  datasetUID: String,
+                                  allelicAssumption: String): GenotypeDataset = {
     val genotypesRDD: GenotypeRDD = sc.loadParquetGenotypes(genotypesPath)
     val variantContextRDD: VariantContextRDD = genotypesRDD.toVariantContexts()
     val sampleIDs = variantContextRDD.samples.map(_.getSampleId).toSet
@@ -285,14 +298,14 @@ class GnocchiSession(@transient val sc: SparkContext)
     GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
   }
 
-  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
+  private def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
     vcRDD.rdd.map(vc => {
       val variant = vc.variant.variant
       val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
       val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
 
       val genotypeStates = vc.genotypes.map(geno => {
-        GenotypeState(geno.getSampleId(),
+        GenotypeState(geno.getSampleId,
           geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
           geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
           geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
@@ -475,39 +488,49 @@ class GnocchiSession(@transient val sc: SparkContext)
     }
   }
 
-  def saveVariantModel[A <: VariantModel[A]](associations: Dataset[A],
-                                             outPath: String,
-                                             forceSave: Boolean,
-                                             saveAsText: Boolean = false) = {
-    // save dataset
-    val associationsFile = new Path(outPath)
-    val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
-    if (fs.exists(associationsFile)) {
-      if (forceSave) {
-        fs.delete(associationsFile, true)
-      } else {
-        val input = scala.io.StdIn.readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
-        if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
-          fs.delete(associationsFile, true)
-        }
-      }
-    }
-
-    val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
-    val necessaryFields = List("uniqueID", "chromosome", "position", "referenceAllele", "alternateAllele", "association.pValue", "association.numSamples", "association.weights").map(col(_))
-    //    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
-
-    val assoc = associations
-      .select(necessaryFields: _*).sort($"pValue".asc)
-      .withColumn("weights", stringify($"weights"))
-      .coalesce(1)
-      .cache()
-
-    // enables saving as parquet or human readable text files
-    if (saveAsText) {
-      assoc.write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
+  implicit def stringToModelType(input: String): ModelType = {
+    if (input.toUpperCase() == "LOGISTIC") {
+      Logistic
+    } else if (input.toUpperCase() == "LINEAR") {
+      Linear
     } else {
-      associations.write.parquet(outPath)
+      throw new IllegalArgumentException(s"Unable to convert $input to a model type.")
+    }
+  }
+
+  def loadGnocchiModel(modelPath: String,
+                       modelType: ModelType) = {
+
+    val modelFile = new Path(modelPath)
+    val fs = modelFile.getFileSystem(sc.hadoopConfiguration)
+    require(fs.exists(modelFile), s"Specified genotypes file path does not exist: $modelPath")
+
+    // todo: how should we deal with conflict between parameters and what is in the serialized
+    // todo: model? What happens if the passed datasetUID is different than the serialized UID?
+    val metaDataPath = new Path(modelPath + "/metaData")
+
+    val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
+    val ois = new ObjectInputStream(path_fs.open(metaDataPath))
+    // below is a hack so that we can read the metadata separately to determine what type of model it is.
+    val metaData = ois.readObject.asInstanceOf[LinearGnocchiModel]
+    ois.close()
+
+    if (metaData.modelType == Linear) {
+      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LinearVariantModel]
+      LinearGnocchiModel(data,
+        metaData.phenotypeNames,
+        metaData.covariatesNames,
+        metaData.sampleUIDs,
+        metaData.numSamples,
+        metaData.allelicAssumption)
+    } else {
+      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LogisticVariantModel]
+      LogisticGnocchiModel(data,
+        metaData.phenotypeNames,
+        metaData.covariatesNames,
+        metaData.sampleUIDs,
+        metaData.numSamples,
+        metaData.allelicAssumption)
     }
   }
 

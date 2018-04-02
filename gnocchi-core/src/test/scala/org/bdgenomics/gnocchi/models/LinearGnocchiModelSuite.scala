@@ -130,7 +130,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks, by default, if the phenotype used in each model is different ") {
+  sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks by default if the phenotype used in each model is different.") {
     val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
     val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
     val covariateNames = List("covar_1", "covar_2")
@@ -209,5 +209,9 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     assert(merged.allelicAssumption == "ADDITIVE", "Merging gnocchi models incorrectly merges number of samples")
     assert(merged.phenotypeNames == "pheno_1", "Merging gnocchi models incorrectly merges phenotype name")
     assert(merged.covariatesNames == List("covar_1", "covar_2"))
+  }
+
+  sparkTest("LinearGnocchiModel.save correctly saves a LinearGnocchiModel") {
+
   }
 }

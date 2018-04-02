@@ -39,14 +39,15 @@ case class LinearVariantModel(uniqueID: String,
                               residualDegreesOfFreedom: Int,
                               weights: List[Double])
     extends VariantModel[LinearVariantModel] with LinearSiteRegression {
+
   def createAssociation(genotypes: CalledVariant,
-                        phenotypes: Map[String, Phenotype]): LinearAssociation = {
-    // toDo: fix allelic assumption
-    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, "ADDITIVE")
+                        phenotypes: Map[String, Phenotype],
+                        allelicAssumption: String): LinearAssociation = {
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
     val breezeXtX = new DenseMatrix(numPredictors, numPredictors, xTx)
     val beta = new DenseVector(weights.toArray)
 
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(x, y, beta, breezeXtX)
+    val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, breezeXtX)
 
     LinearAssociation(uniqueID, chromosome, position, x.rows, pValue, genoSE, ssResiduals, t)
   }
@@ -66,6 +67,17 @@ case class LinearVariantModel(uniqueID: String,
     val newResidualDegreesOfFreedom = newNumSamples - this.numPredictors
     val newWeights = newXtX \ newXtY
 
-    LinearVariantModel(uniqueID, chromosome, position, referenceAllele, alternateAllele, newNumSamples, numPredictors, newXtXList.toArray, newXtYList.toArray, newResidualDegreesOfFreedom, newWeights.toArray.toList)
+    LinearVariantModel(
+      uniqueID,
+      chromosome,
+      position,
+      referenceAllele,
+      alternateAllele,
+      newNumSamples,
+      numPredictors,
+      newXtXList.toArray,
+      newXtYList.toArray,
+      newResidualDegreesOfFreedom,
+      newWeights.toArray.toList)
   }
 }

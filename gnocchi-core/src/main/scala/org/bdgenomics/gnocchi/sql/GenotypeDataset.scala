@@ -20,7 +20,7 @@ case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
                            allelicAssumption: String,
                            sampleUIDs: Set[String]) {
 
-  def tranformAllelicAssumption(newAllelicAssumption: String): GenotypeDataset = {
+  def transformAllelicAssumption(newAllelicAssumption: String): GenotypeDataset = {
     GenotypeDataset(genotypes, datasetUID, newAllelicAssumption, sampleUIDs)
   }
 
@@ -31,7 +31,7 @@ case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
     val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
 
     metadata_oos.writeObject(this)
-    metadata_oos.close
+    metadata_oos.close()
 
     genotypes.write.parquet(saveTo + "/genotypes")
   }

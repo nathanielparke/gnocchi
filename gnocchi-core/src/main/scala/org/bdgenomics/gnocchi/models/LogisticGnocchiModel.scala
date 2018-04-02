@@ -19,11 +19,14 @@ package org.bdgenomics.gnocchi.models
 
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
+import org.bdgenomics.gnocchi.utils.ModelType._
 
-case class LogisticGnocchiModel(variantModels: Dataset[LogisticVariantModel],
+case class LogisticGnocchiModel(@transient variantModels: Dataset[LogisticVariantModel],
                                 phenotypeNames: String,
                                 covariatesNames: List[String],
                                 sampleUIDs: Set[String],
                                 numSamples: Int,
                                 allelicAssumption: String)
-    extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel]
+    extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] {
+  val modelType: ModelType = Logistic
+}

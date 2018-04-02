@@ -65,7 +65,7 @@ object LinearAssociationsDatasetBuilder {
     val linearAssociationBuilders = model.variantModels.joinWith(genotypeData.genotypes, model.variantModels("uniqueID") === genotypeData.genotypes("uniqueID"))
       .map {
         case (model, genotype) => {
-          LinearAssociationBuilder(model, model.createAssociation(genotype, phenotypeData.phenotypes.value))
+          LinearAssociationBuilder(model, model.createAssociation(genotype, phenotypeData.phenotypes.value, genotypeData.allelicAssumption))
         }
       }
     LinearAssociationsDatasetBuilder(linearAssociationBuilders,

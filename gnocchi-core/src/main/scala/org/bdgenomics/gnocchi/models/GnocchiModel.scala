@@ -22,15 +22,17 @@ import java.io.ObjectOutputStream
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.VariantModel
+import org.bdgenomics.gnocchi.utils.ModelType.ModelType
 
 trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 
-  val variantModels: Dataset[VM]
+  @transient val variantModels: Dataset[VM]
   val phenotypeNames: String
   val covariatesNames: List[String]
   val sampleUIDs: Set[String]
   val numSamples: Int
   val allelicAssumption: String
+  val modelType: ModelType
 
   def save(saveTo: String): Unit = {
     val metadataPath = new Path(saveTo + "/metaData")
@@ -39,7 +41,7 @@ trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
     val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
 
     metadata_oos.writeObject(this)
-    metadata_oos.close
+    metadata_oos.close()
 
     variantModels.write.parquet(saveTo + "/variantModels")
   }
