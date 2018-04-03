@@ -107,6 +107,21 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
   def run(sc: SparkContext) {
 
+    val outputLoc = new Path(args.output)
+    val fs = outputLoc.getFileSystem(sc.hadoopConfiguration)
+    if (fs.exists(outputLoc)) {
+      if (args.forceSave) {
+        fs.delete(outputLoc, true)
+      } else {
+        val input = scala.io.StdIn.readLine(s"Specified output file ${args.output} already exists. Overwrite? (y/n)> ")
+        if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
+          fs.delete(outputLoc, true)
+        } else {
+          throw new IllegalArgumentException(s"File already exists at ${args.output}")
+        }
+      }
+    }
+
     val phenoDelimiter = if (args.phenoSpaceDelimiter) { " " } else { "\t" }
     val covarDelimiter = if (args.covarSpaceDelimiter) { " " } else { "\t" }
     val missingPhenos = if (args.missingPhenoChars == null) List("-9") else args.missingPhenoChars.split(",").toList
@@ -133,16 +148,16 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
         val associations = LinearSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.forceSave, args.saveAsText)
+        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
       case "DOMINANT_LINEAR" =>
         val associations = LinearSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.forceSave, args.saveAsText)
+        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
       case "ADDITIVE_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.forceSave, args.saveAsText)
+        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
       case "DOMINANT_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.forceSave, args.saveAsText)
+        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
     }
   }
 }

@@ -45,12 +45,10 @@ case class LinearAssociationsDatasetBuilder(linearAssociationBuilders: Dataset[L
       allelicAssumption)
   }
 
-  def saveAssociations(outPath: String,
-                       forceSave: Boolean = false): Unit = {
+  def saveAssociations(outPath: String): Unit = {
     val sc = linearAssociationBuilders.sparkSession.sparkContext
     sc.saveAssociations(linearAssociationBuilders.map(_.association),
       outPath,
-      forceSave = forceSave,
       saveAsText = true)
   }
 }

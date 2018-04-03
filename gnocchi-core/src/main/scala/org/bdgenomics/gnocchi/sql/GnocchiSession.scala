@@ -42,7 +42,8 @@ import scala.collection.mutable
 object GnocchiSession {
 
   /**
-   * Implicitly convert a [[SparkContext]] object to a [[GnocchiSession]] object
+   * Implicitly convert a [[SparkContext]] object to a [[GnocchiSession]] object in order to wrap
+   * functionality of gnocchi into the existing spark context.
    *
    * @param sc existing [[SparkContext]]
    * @return [[GnocchiSession]] which includes much of the core functions
@@ -54,9 +55,8 @@ object GnocchiSession {
    * Creates a GnocchiSession from SparkSession. Sets the active session to the
    * input session.
    *
-   *
-   * @param ss SparkSession
-   * @return GnocchiSession
+   * @param ss SparkSession existing [[SparkSession]]
+   * @return GnocchiSession resulting [[GnocchiSession]]
    */
   def GnocchiSessionFromSession(ss: SparkSession): GnocchiSession = {
     SparkSession.setActiveSession(ss)
@@ -78,16 +78,17 @@ class GnocchiSession(@transient val sc: SparkContext)
   import sparkSession.implicits._
 
   /**
-   * Returns a filtered Dataset of CalledVariant objects, where all values with
-   * fewer samples than the mind threshold are filtered out.
+   * Filters a [[Dataset]] of [[CalledVariant]] objects by finding the missingness fraction
+   * (fraction of genotype calls that are missing for a sample) for a sample (one column of a vcf)
+   * and removing the sample if the missingness exceeds a specified threshold.
    *
-   * @param genotypes The Dataset of CalledVariant objects to filter on
-   * @param mind The percentage threshold of samples to have filled in; values
-   *             with fewer samples will be removed in this operation.
+   * @param genotypes The [[Dataset]] of [[CalledVariant]] objects to filter
+   * @param mind The maximum fractional threshold of missingness that samples can have and will be
+   *             kept; samples with greater missingness will be removed in the returned [[Dataset]]
+   *             of [[CalledVariant]]s
    * @param ploidy The number of sets of chromosomes
-   *
-   * @return Returns an updated Dataset with values removed, as specified by the
-   *         filtering
+   * @return Returns a filtered [[Dataset]] of [[CalledVariant]] with samples that have missingness
+   *         greater than threshold removed
    */
   def filterSamples(genotypes: Dataset[CalledVariant],
                     mind: Double,
@@ -118,6 +119,17 @@ class GnocchiSession(@transient val sc: SparkContext)
       f => f.filter(g => keepers.contains(g.sampleID)))
   }
 
+  /**
+   * Wrapper around the [[filterSamples()]] method that takes in [[GenotypeDataset]] instead of the
+   * [[Dataset]] of [[CalledVariant]]
+   *
+   * @param genotypes [[GenotypeDataset]] to filter
+   * @param mind The maximum fractional threshold of missingness that samples can have and be
+   *             kept; any sample with greater missingness will be filtered out.
+   * @param ploidy The number of sets of chromosomes
+   * @return Returns a [[GenotypeDataset]] with samples that have greater missigness than the `mind`
+   *         parameter filtered out.
+   */
   def filterSamples(genotypes: GenotypeDataset,
                     mind: Double,
                     ploidy: Double): GenotypeDataset = {
@@ -135,7 +147,8 @@ class GnocchiSession(@transient val sc: SparkContext)
    *
    * @param genotypes the original [[CalledVariant]] [[Dataset]] that will be
    *                  transformed
-   * @param samplesFn the transform function for genotypic information
+   * @param samplesFn the transform function for the [[List]] of [[GenotypeState]] objects stored in
+   *                  a [[CalledVariant]] object
    * @return a transformed [[Dataset]] of [[CalledVariant]] objects
    */
   def createCalledVariant(genotypes: Dataset[CalledVariant],
@@ -156,15 +169,13 @@ class GnocchiSession(@transient val sc: SparkContext)
    * filtered out.
    *
    * @param genotypes The [[Dataset]] of [[CalledVariant]] objects to filter
-   * @param geno Fractional threshold for missingness in each genotype, where if
-   *             the missingness fraction is larger than this threshold the
-   *             variant will be filtered out of the association
-   * @param maf Fractional threshold for Minor Allele Frequency, where if the
-   *            MAF for a variant, or (1 - MAF for a variant) is less than this
-   *            threshold the sample will be filtered out
-   *
-   * @return Returns an updated Dataset with values removed, as specified by the
-   *         filtering
+   * @param geno The maximum fractional threshold of missingness that variants can have and be
+   *             kept; any variant with greater missingness will be filtered out. This value must
+   *             be between 0.0 and 1.0 because it represents a percentage
+   * @param maf Fractional threshold for Minor Allele Frequency (MAF), where variants with
+   *            MAF, or (1 - MAF) less than this threshold will be filtered out. This value must
+   *            be between 0.0 and 1.0 because it represents a percentage.
+   * @return Filtered [[Dataset]] of [[CalledVariant]] objects
    */
   def filterVariants(genotypes: Dataset[CalledVariant],
                      geno: Double,
@@ -176,6 +187,19 @@ class GnocchiSession(@transient val sc: SparkContext)
     genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
+  /**
+   * Wrapper around the [[filterVariants()]] method that takes in [[GenotypeDataset]] instead of the
+   * [[Dataset]] of [[CalledVariant]]
+   *
+   * @param genotypes [[GenotypeDataset]] to filter
+   * @param geno The maximum fractional threshold of missingness that variants can have and be
+   *             kept; any variant with greater missingness will be filtered out. This value must
+   *             be between 0.0 and 1.0 because it represents a percentage
+   * @param maf Fractional threshold for Minor Allele Frequency (MAF), where variants with
+   *            MAF, or (1 - MAF) less than this threshold will be filtered out. This value must
+   *            be between 0.0 and 1.0 because it represents a percentage.
+   * @return Filtered [[GenotypeDataset]]
+   */
   def filterVariants(genotypes: GenotypeDataset,
                      geno: Double,
                      maf: Double): GenotypeDataset = {
@@ -189,12 +213,12 @@ class GnocchiSession(@transient val sc: SparkContext)
 
   /**
    * Returns a modified Dataset of CalledVariant objects, where any value with a
-   * maf > 0.5 is recoded. The recoding is done by flipping the referenceAllele
-   * and alternateAllele when the frequency of alt is greater than that of ref.
+   * maf > 0.5 is recoded such that the minor minor allele becomes the major allele. The recoding is
+   * done by flipping the referenceAllele and alternateAllele when the frequency of alt is greater
+   * than that of ref.
    *
-   * @param genotypes The Dataset of CalledVariant objects to recode
-   *
-   * @return Returns an updated Dataset that has been recoded
+   * @param genotypes The [[CalledVariant]] [[Dataset]] to recode
+   * @return Returns an updated [[CalledVariant]] [[Dataset]] that has been recoded
    */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
     genotypes.map(f => {
@@ -215,6 +239,13 @@ class GnocchiSession(@transient val sc: SparkContext)
     })
   }
 
+  /**
+   * Wrapper around [[recodeMajorAllele()]] that take in [[GenotypeDataset]] instead of the
+   * [[Dataset]] of [[CalledVariant]]
+   *
+   * @param genotypes [[GenotypeDataset]] to recode
+   * @return recoded [[GenotypeDataset]]
+   */
   def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
     val newGenotypes = recodeMajorAllele(genotypes.genotypes)
     GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
@@ -224,18 +255,42 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @param pathName The path name to match.
    * @return Returns true if the path name matches a VCF format file extension.
    */
-  def isVcfExt(pathName: String): Boolean = {
+  private[gnocchi] def isVcfExt(pathName: String): Boolean = {
     pathName.endsWith(".vcf") ||
       pathName.endsWith(".vcf.gz") ||
       pathName.endsWith(".vcf.bgz")
   }
 
   /**
-   * @note currently this does not enforce that the uniqueID is unique across the dataset. Checking uniqueness
-   *       would require a shuffle, which adds overhead that might not be necessary right now.
+   * Loads a [[GenotypeDataset]] from a VCF file or from ADAM formatted parquet [[GenotypeRDD]]
    *
-   * @param genotypesPath A string specifying the location in the file system of the genotypes file to load in.
-   * @return a [[Dataset]] of [[CalledVariant]] objects loaded from a vcf file
+   * @note currently this does not enforce that the uniqueID is unique across the dataset.
+   *       Checking uniqueness would require a shuffle, which adds overhead that might not be
+   *       necessary right now.
+   *
+   * @param genotypesPath a [[String]] specifying the location in the file system of the genotypes
+   *                      file to load in.
+   * @param datasetUID a [[String]] that is used to uniquely identify the dataset being loaded in.
+   *                   This tag is useful for identifying which datasets have been used to create
+   *                   an incrementally built [[GnocchiModel]]. The closest analog to this identifier
+   *                   might be a dbGaP unique accession identifier. If there is no need to merge
+   *                   models together it is okay to leave this as an empty String. From dbGaP:
+   *
+   *                   "Each study is assigned a unique, stable, and versioned identifier prefixed
+   *                   by ‘phs,’ indicating a phenotype study. The ID is suffixed by both a version
+   *                   number (.v#) that increases when changes occur to data columns (phenotype
+   *                   values) and a participant set number (.p#) that increases when the number of
+   *                   individuals in a set changes due to alterations in informed consent status.
+   *                   An example of a study accession in dbGaP is phs000001.v1.p1, where v1
+   *                   indicates the data version and p1 indicates the participant set version."
+   *
+   *                   from: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2031016/
+   *
+   * @param allelicAssumption a [[String]] that denotes the allelic assumption (Additive / Dominant
+   *                          / Recessive) that will be attached to this dataset
+   * @param adamFormat a [[Boolean]] denoting if the specified path is an ADAM formatted parquet
+   *                   [[GenotypeRDD]]
+   * @return [[GenotypeDataset]] loaded from the specified file
    */
   def loadGenotypes(genotypesPath: String,
                     datasetUID: String,
@@ -244,7 +299,8 @@ class GnocchiSession(@transient val sc: SparkContext)
     val genoFile = new Path(genotypesPath)
     val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
     require(List("ADDITIVE", "DOMINANT", "RECESSIVE").contains(allelicAssumption.toUpperCase),
-      s"Allelic assumption ${allelicAssumption} not supported! Choose one of: ADDITIVE / DOMINANT / RECESSIVE")
+      s"Allelic assumption ${allelicAssumption} not supported! " +
+        s"Choose one of: ADDITIVE / DOMINANT / RECESSIVE")
     require(fs.exists(genoFile), s"Specified genotypes file path does not exist: $genotypesPath")
 
     if (datasetUID == "") logWarning("datasetUID is null. This is dangerous if you plan on merging models!")
@@ -259,12 +315,23 @@ class GnocchiSession(@transient val sc: SparkContext)
     } else {
       val genotypeDataset = loadGnocchiGenotypes(genotypesPath)
 
-      require(genotypeDataset.datasetUID != datasetUID, s"Passed datasetUID `$datasetUID` does not equal the saved model's UID `${genotypeDataset.datasetUID}")
-      require(genotypeDataset.allelicAssumption != allelicAssumption, s"Passed datasetUID `$allelicAssumption` does not equal the saved model's UID `${genotypeDataset.allelicAssumption}")
+      require(genotypeDataset.datasetUID != datasetUID,
+        s"Passed datasetUID `$datasetUID` " +
+          s"does not equal the saved model's UID `${genotypeDataset.datasetUID}")
+      require(genotypeDataset.allelicAssumption != allelicAssumption,
+        s"Passed datasetUID `$allelicAssumption` " +
+          s"does not equal the saved model's UID `${genotypeDataset.allelicAssumption}")
       genotypeDataset
     }
   }
 
+  /**
+   * Load a [[GenotypeDataset]] from a specified location that contains a Gnocchi formatted parquet
+   * [[GenotypeDataset]].
+   *
+   * @param genotypesPath a [[String]] containing the path to the saved [[GenotypeDataset]]
+   * @return the [[GenotypeDataset]] stored at the location specified by genotypesPath
+   */
   def loadGnocchiGenotypes(genotypesPath: String): GenotypeDataset = {
     val genoFile = new Path(genotypesPath)
     val fs = genoFile.getFileSystem(sc.hadoopConfiguration)
@@ -288,6 +355,16 @@ class GnocchiSession(@transient val sc: SparkContext)
     GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
   }
 
+  /**
+   * Loads a ADAM formatted Parquet [[GenotypeRDD]] located at a specified path and converts it
+   * into a Gnocchi formatted [[GenotypeDataset]]
+   *
+   * @param genotypesPath Path to the ADAM formatted Parquet [[GenotypeRDD]]
+   * @param datasetUID see [[loadGenotypes]] for description of Dataset Unique ID
+   * @param allelicAssumption a [[String]] that denotes the allelic assumption (Additive / Dominant
+   *                          / Recessive) that will be attached to this dataset
+   * @return [[GenotypeDataset]] of variants contained in the ADAM formatted Parquet [[GenotypeRDD]]
+   */
   private def loadAdamGenotypeRDD(genotypesPath: String,
                                   datasetUID: String,
                                   allelicAssumption: String): GenotypeDataset = {
@@ -325,8 +402,8 @@ class GnocchiSession(@transient val sc: SparkContext)
    * Returns a map of phenotype name to phenotype object, which is loaded from
    * a file, specified by phenotypesPath
    *
-   * @todo Eventually this should be reimplemented without spark. The dataframe abstraction is nice, but there are
-   *      limitations. Data manipulations we want to support. We want a pandas like object
+   * @todo Eventually this should be reimplemented without spark. The dataframe abstraction is nice,
+   *       but there are limitations. We want a pandas like object. Manipulations we want to support
    *      - automatic detection of missing values
    *      - converting categorical data into dummy variables
    *      - indexed columns that can be accessed by phenotype name
@@ -344,6 +421,7 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @param covarNames Optional paramter specifying the names of the covariants
    *                   detailed in the covariants file
    * @param covarDelimiter The delimiter used in the covariants file
+   * @param missing the [[List]] of [[String]] that are considered missing characters.
    *
    * @return A Map of phenotype name to Phenotype object
    */
@@ -394,13 +472,17 @@ class GnocchiSession(@transient val sc: SparkContext)
       val covarHeader = prelimCovarDF.schema.fields.map(_.name)
 
       require(covarHeader.length > 1,
-        s"The specified delimiter '$covarDelimiter' does not separate fields in the specified file, '${covarPath.get}'")
+        s"The specified delimiter '$covarDelimiter' " +
+          s"does not separate fields in the specified file, '${covarPath.get}'")
       require(covarNames.get.forall(covarHeader.contains(_)),
-        s"One of the covariates, '%s' does not exist in the specified file, '%s'".format(covarNames.get.toString(), covarPath.get))
+        s"One of the covariates, '%s' does not exist in the specified file, '%s'"
+          .format(covarNames.get.toString(), covarPath.get))
       require(covarHeader.contains(primaryID),
-        s"The primary sample ID, '$primaryID' does not exist in the specified file, '%s'".format(covarPath.get))
+        s"The primary sample ID, '$primaryID' does not exist in the specified file, '%s'"
+          .format(covarPath.get))
       require(!covarNames.get.contains(phenoName),
-        s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'".format(covarNames.get.toString()))
+        s"The primary phenotype, '$phenoName' cannot be listed as a covariate. '%s'"
+          .format(covarNames.get.toString()))
 
       Option(prelimCovarDF
         .select(primaryID, covarNames.get: _*)
@@ -436,17 +518,19 @@ class GnocchiSession(@transient val sc: SparkContext)
   }
 
   /**
-   * shamelessly lifted from here:
+   * Recursively flattens a [[Dataset]] schema for easy programmatic access to nested schemas.
+   *
+   * Taken from:
    * https://stackoverflow.com/questions/37471346/automatically-and-elegantly-flatten-dataframe-in-spark-sql
    *
-   * @param schema
-   * @param prefix
-   * @return
+   * @param schema a [[StructType]] schema obtained from calling [[Dataset.schema]]
+   * @param prefix a [[String]] that is the name of a nested [[StructType]] in a schema
+   * @return the fully qualified schema that can be used in a single select statement on a [[Dataset]]
    */
   def flattenSchema(schema: StructType,
                     prefix: String = null): Array[Column] = {
     schema.fields.flatMap(f => {
-      val colName = if (prefix == null) f.name else (prefix + "." + f.name)
+      val colName = if (prefix == null) f.name else prefix + "." + f.name
 
       f.dataType match {
         case st: StructType => flattenSchema(st, colName)
@@ -455,51 +539,40 @@ class GnocchiSession(@transient val sc: SparkContext)
     })
   }
 
+  /**
+   * Save's a [[Dataset]] of [[Association]] objects to the specified location as either parquet, or
+   * text.
+   *
+   * @param associations [[Dataset]] of [[Association]] to be saved
+   * @param outPath path to save the [[Dataset]] of [[Association]] top
+   * @param saveAsText save these associations as text files?
+   * @tparam A type of association
+   */
   def saveAssociations[A <: Association](associations: Dataset[A],
                                          outPath: String,
-                                         forceSave: Boolean,
-                                         saveAsText: Boolean = false) = {
-    // save dataset
-    val associationsFile = new Path(outPath)
-    val fs = associationsFile.getFileSystem(sc.hadoopConfiguration)
-    if (fs.exists(associationsFile)) {
-      if (forceSave) {
-        fs.delete(associationsFile, true)
-      } else {
-        val input = scala.io.StdIn.readLine(s"Specified output file ${outPath} already exists. Overwrite? (y/n)> ")
-        if (input.equalsIgnoreCase("y") || input.equalsIgnoreCase("yes")) {
-          fs.delete(associationsFile, true)
-        }
-      }
-    }
-
-    val stringify = udf((vs: Seq[String]) => s"""[${vs.mkString(",")}]""")
-    val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
-    //    val fields = flattenSchema(associations.schema).filterNot(necessaryFields.contains(_)).toList
-
-    val assoc = associations
-      .select(necessaryFields: _*).sort($"pValue".asc)
-
-    // enables saving as parquet or human readable text files
+                                         saveAsText: Boolean = false): Unit = {
     if (saveAsText) {
-      assoc.coalesce(1).write.format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").save(outPath)
+      val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
+      val assoc = associations.select(necessaryFields: _*).sort($"pValue".asc)
+      assoc.write
+        .format("com.databricks.spark.csv")
+        .option("header", "true")
+        .option("delimiter", "\t")
+        .save(outPath)
     } else {
       associations.write.parquet(outPath)
     }
   }
 
-  implicit def stringToModelType(input: String): ModelType = {
-    if (input.toUpperCase() == "LOGISTIC") {
-      Logistic
-    } else if (input.toUpperCase() == "LINEAR") {
-      Linear
-    } else {
-      throw new IllegalArgumentException(s"Unable to convert $input to a model type.")
-    }
-  }
-
-  def loadGnocchiModel(modelPath: String,
-                       modelType: ModelType) = {
+  /**
+   * Load a Gnocchi model from a specified path and return a GnocchiModel
+   *
+   * @param modelPath path to the [[GnocchiModel]]
+   * @param modelType the type of [[GnocchiModel]] to be loaded (Logistic / Linear)
+   * @return A typed [[GnocchiModel]] loaded from the specified location
+   */
+  private def loadGnocchiModel(modelPath: String,
+                               modelType: ModelType) = {
 
     val modelFile = new Path(modelPath)
     val fs = modelFile.getFileSystem(sc.hadoopConfiguration)
@@ -511,11 +584,11 @@ class GnocchiSession(@transient val sc: SparkContext)
 
     val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
     val ois = new ObjectInputStream(path_fs.open(metaDataPath))
-    // below is a hack so that we can read the metadata separately to determine what type of model it is.
-    val metaData = ois.readObject.asInstanceOf[LinearGnocchiModel]
-    ois.close()
 
-    if (metaData.modelType == Linear) {
+    if (modelType == Linear) {
+      val metaData = ois.readObject.asInstanceOf[LinearGnocchiModel]
+      ois.close()
+      require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
       val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LinearVariantModel]
       LinearGnocchiModel(data,
         metaData.phenotypeNames,
@@ -524,6 +597,9 @@ class GnocchiSession(@transient val sc: SparkContext)
         metaData.numSamples,
         metaData.allelicAssumption)
     } else {
+      val metaData = ois.readObject.asInstanceOf[LogisticGnocchiModel]
+      ois.close()
+      require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
       val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LogisticVariantModel]
       LogisticGnocchiModel(data,
         metaData.phenotypeNames,
@@ -534,43 +610,23 @@ class GnocchiSession(@transient val sc: SparkContext)
     }
   }
 
-  //    /**
-  //     * see https://stackoverflow.com/questions/16386252/scala-deserialization-class-not-found for the object input stream
-  //     * fix on qcPhenotypes
-  //     *
-  //     * @param path
-  //     * @return
-  //     */
-  //    def loadGnocchiModel(path: String): GnocchiModel[_, _] = {
-  //      val metaDataPath = new Path(path + "/metaData")
-  //
-  //      val path_fs = metaDataPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
-  //      val ois = new ObjectInputStream(path_fs.open(metaDataPath))
-  //      val metaData = ois.readObject.asInstanceOf[GnocchiModelMetaData]
-  //      ois.close
-  //
-  //      val qcPhenotypesPath = new Path(path + "/qcPhenotypes")
-  //      val qcPhenotypes_fs = qcPhenotypesPath.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
-  //      val ois_2 = new ObjectInputStream(qcPhenotypes_fs.open(qcPhenotypesPath)) {
-  //        override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
-  //          try { Class.forName(desc.getName, false, getClass.getClassLoader) }
-  //          catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
-  //        }
-  //      }
-  //
-  //      val qcPhenotypes = ois_2.readObject.asInstanceOf[Map[String, Phenotype]]
-  //      ois_2.close
-  //
-  //      if (metaData.modelType == "LinearRegression") {
-  //        val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LinearVariantModel]
-  //        val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LinearVariantModel]]
-  //
-  //        LinearGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
-  //      } else {
-  //        val variantModels = sparkSession.read.parquet(path + "/variantModels").as[LogisticVariantModel]
-  //        val qcVariantModels = sparkSession.read.parquet(path + "/qcModels").as[QualityControlVariantModel[LogisticVariantModel]]
-  //
-  //        LogisticGnocchiModel(metaData, variantModels, qcVariantModels, qcPhenotypes)
-  //      }
-  //    }
+  /**
+   * Load in a [[LinearGnocchiModel]] from the specified location.
+   *
+   * @param modelPath The path to the parquet formatted [[LinearGnocchiModel]]
+   * @return a [[LinearGnocchiModel]] loaded from the specified path
+   */
+  def loadLinearGnocchiModel(modelPath: String): LinearGnocchiModel = {
+    loadGnocchiModel(modelPath, Linear).asInstanceOf[LinearGnocchiModel]
+  }
+
+  /**
+   * Load in a [[LogisticGnocchiModel]] from the specified location.
+   *
+   * @param modelPath The path to the parquet formatted [[LogisticGnocchiModel]]
+   * @return a [[LogisticGnocchiModel]] loaded from the specified path
+   */
+  def loadLogisticGnocchiModel(modelPath: String): LinearGnocchiModel = {
+    loadGnocchiModel(modelPath, Logistic).asInstanceOf[LinearGnocchiModel]
+  }
 }
