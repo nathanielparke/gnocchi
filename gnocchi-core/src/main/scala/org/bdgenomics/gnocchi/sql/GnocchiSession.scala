@@ -591,7 +591,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
       val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LinearVariantModel]
       LinearGnocchiModel(data,
-        metaData.phenotypeNames,
+        metaData.phenotypeName,
         metaData.covariatesNames,
         metaData.sampleUIDs,
         metaData.numSamples,
@@ -602,7 +602,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
       val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LogisticVariantModel]
       LogisticGnocchiModel(data,
-        metaData.phenotypeNames,
+        metaData.phenotypeName,
         metaData.covariatesNames,
         metaData.sampleUIDs,
         metaData.numSamples,

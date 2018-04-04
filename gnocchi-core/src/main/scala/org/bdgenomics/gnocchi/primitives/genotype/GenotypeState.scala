@@ -17,6 +17,14 @@
  */
 package org.bdgenomics.gnocchi.primitives.genotype
 
+/**
+ * Data storage primitive for a single subject's genotypic variant information at a single location
+ *
+ * @param sampleID the sampleID of the subject
+ * @param refs count of reference alleles at this location
+ * @param alts count of alternate alleles at this location
+ * @param misses count of misses at this location
+ */
 case class GenotypeState(sampleID: String,
                          refs: Byte,
                          alts: Byte,

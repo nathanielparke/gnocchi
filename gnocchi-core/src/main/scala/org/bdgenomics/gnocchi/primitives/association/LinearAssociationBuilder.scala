@@ -26,16 +26,32 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import scala.collection.immutable.Map
 
 /**
- * An object used to store the incremental results of applying a pre-built model to a number of datasets. This object
- * both stores the model that will be applied to each constituent dataset, and the partially built associations of all
- * datasets that the model has been applied to up to this point.
+ * An object used to store the incremental results of applying a pre-built model to a number of
+ * datasets. This object both stores the model that will be applied to each constituent dataset, and
+ * the partially built associations of all datasets that the model has been applied to up to this
+ * point.
  *
- * @param model a fixed pre-built model that does not change over the course of adding new data to this builder
- * @param association the current state of the association in its incrementally applied form
+ * @param model a fixed pre-built model that does not change over the course of adding new data to
+ *              this builder
+ * @param association the current state of the association in its partially-built form
  */
 case class LinearAssociationBuilder(model: LinearVariantModel,
                                     association: LinearAssociation) {
 
+  /**
+   * Applies the model to a [[CalledVariant]] and merges the resulting new association with the
+   * existing association stored in this object, then returns a new [[LinearAssociationBuilder]]
+   * with the updated [[LinearAssociation]]
+   *
+   * @todo Make this method private and only accessible to the
+   *       [[org.bdgenomics.gnocchi.sql.LinearAssociationsDatasetBuilder]] object. We shouldn't need
+   *       to add data outside of that object.
+   *
+   * @param genotype The [[CalledVariant]] holding the genotype data to add to the association
+   * @param phenotypes The phenotype data corresponding to the genotype data
+   * @param allelicAssumption the allelic assumption to use in this association
+   * @return
+   */
   def addNewData(genotype: CalledVariant,
                  phenotypes: Map[String, Phenotype],
                  allelicAssumption: String): LinearAssociationBuilder = {
@@ -45,7 +61,15 @@ case class LinearAssociationBuilder(model: LinearVariantModel,
     val xTx_shaped = new DenseMatrix(model.numPredictors, model.numPredictors, model.xTx)
     val beta = new DenseVector(model.weights.toArray)
 
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(x, y, beta, xTx_shaped, Option(association.ssResiduals), Option(association.numSamples))
+    val (genoSE, t, pValue, ssResiduals) =
+      LinearSiteRegression.calculateSignificance(
+        x,
+        y,
+        beta,
+        xTx_shaped,
+        Option(association.ssResiduals),
+        Option(association.numSamples)
+      )
 
     // I don't like having the num samples updated here...
     val newAssociation =

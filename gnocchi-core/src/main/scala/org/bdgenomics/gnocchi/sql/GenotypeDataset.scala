@@ -24,23 +24,34 @@ import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.hadoop.fs.Path
 
 /**
- * Use this object as a container for genomic data stored in [[CalledVariant]] objects. This object is meant to
- * correspond directly to a genomic dataset that exists in a single location. Building joint models over multiple
- * instances of this object should be possible.
+ * Use this object as a container for genomic data stored in [[CalledVariant]] objects. This object
+ * is meant to correspond directly to a genomic dataset that exists in a single location. Building
+ * joint models over multiple instances of this object should be possible.
  *
  * @param genotypes the dataset of CalledVariant objects associated with this dataset
- * @param datasetUID Unique Identifier for this dataset of genomic variants. A good example for this would be the
- *                   dbGaP study accession ID
+ * @param datasetUID Unique Identifier for this dataset of genomic variants. A good example for this
+ *                   would be the dbGaP study accession ID
  */
 case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
                            datasetUID: String,
                            allelicAssumption: String,
                            sampleUIDs: Set[String]) {
 
+  /**
+   * Transform the allelic assumption of this GenotypeDataset to a newly specified allelic assumption
+   *
+   * @param newAllelicAssumption The new allelic assumption of the resulting [[GenotypeDataset]]
+   * @return the new [[GenotypeDataset]]
+   */
   def transformAllelicAssumption(newAllelicAssumption: String): GenotypeDataset = {
     GenotypeDataset(genotypes, datasetUID, newAllelicAssumption, sampleUIDs)
   }
 
+  /**
+   * Save this object to a specified location.
+   *
+   * @param saveTo the path to save this object to
+   */
   def save(saveTo: String): Unit = {
     val metadataPath = new Path(saveTo + "/metaData")
 

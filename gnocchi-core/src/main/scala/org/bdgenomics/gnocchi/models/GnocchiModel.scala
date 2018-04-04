@@ -27,7 +27,7 @@ import org.bdgenomics.gnocchi.utils.ModelType.ModelType
 trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 
   @transient val variantModels: Dataset[VM]
-  val phenotypeNames: String
+  val phenotypeName: String
   val covariatesNames: List[String]
   val sampleUIDs: Set[String]
   val numSamples: Int

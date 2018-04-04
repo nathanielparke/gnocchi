@@ -17,6 +17,21 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
+/**
+ * Storage object for Linear Regression results. This object is the result of applying a
+ * [[org.bdgenomics.gnocchi.models.variant.LinearVariantModel]] to a
+ * [[org.bdgenomics.gnocchi.primitives.variants.CalledVariant]] and obtaining the relevant
+ * statistics that are listed below.
+ *
+ * @param uniqueID Unique Identifier of the variant this association references
+ * @param chromosome Chromosome of the variant this association references
+ * @param position Position of the variant this association references
+ * @param numSamples Number of samples used to create this association
+ * @param pValue pValue of this association
+ * @param genotypeStandardError Standard error of the genotype parameter in this association's model
+ * @param ssResiduals Sum of squared residuals of this associaition's corresponding model
+ * @param tStatistic Student's tStatistic of the genotype parameter in this association's model
+ */
 case class LinearAssociation(uniqueID: String,
                              chromosome: Int,
                              position: Int,

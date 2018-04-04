@@ -40,7 +40,7 @@ class JavaLinearGnocchiModel(val lgm: LinearGnocchiModel) {
   }
 
   def getPhenotype(): java.lang.String = {
-    lgm.phenotypeNames
+    lgm.phenotypeName
   }
 
   def getCovariates(): java.lang.String = {

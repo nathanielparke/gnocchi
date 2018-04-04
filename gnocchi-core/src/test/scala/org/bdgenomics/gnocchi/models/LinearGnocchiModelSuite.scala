@@ -211,7 +211,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     when(mockedLinearGnocchiModel.mergeGnocchiModel(any[LinearGnocchiModel], anyBoolean())).thenCallRealMethod()
 
     when(mockedLinearGnocchiModel.variantModels).thenReturn(variantModels1)
-    when(mockedLinearGnocchiModel.phenotypeNames).thenReturn(phenotypeName)
+    when(mockedLinearGnocchiModel.phenotypeName).thenReturn(phenotypeName)
     when(mockedLinearGnocchiModel.covariatesNames).thenReturn(covariateNames)
     when(mockedLinearGnocchiModel.sampleUIDs).thenReturn(sampleUIDs1)
     when(mockedLinearGnocchiModel.numSamples).thenReturn(numSamples)
@@ -224,7 +224,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     assert(merged.sampleUIDs == Set("1", "2", "3", "4", "5", "6", "7", "8"), "Merging gnocchi models incorrectly merges sampleIDs")
     assert(merged.numSamples == 8, "Merging gnocchi models incorrectly merges number of samples")
     assert(merged.allelicAssumption == "ADDITIVE", "Merging gnocchi models incorrectly merges number of samples")
-    assert(merged.phenotypeNames == "pheno_1", "Merging gnocchi models incorrectly merges phenotype name")
+    assert(merged.phenotypeName == "pheno_1", "Merging gnocchi models incorrectly merges phenotype name")
     assert(merged.covariatesNames == List("covar_1", "covar_2"))
   }
 

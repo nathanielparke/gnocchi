@@ -17,6 +17,19 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
+/**
+ * Storage object for Logistic regression results. This object is the result of applying a
+ * [[org.bdgenomics.gnocchi.models.variant.LogisticVariantModel]] to a
+ * [[org.bdgenomics.gnocchi.primitives.variants.CalledVariant]] and obtaining the relevant
+ * statistics that are listed below.
+ *
+ * @param uniqueID the UID for the variant that this object stores statistics on
+ * @param chromosome Chromosome of variant
+ * @param position Position of variant
+ * @param numSamples number of samples used to create this association
+ * @param pValue pValue of this variant
+ * @param genotypeStandardError Standard error of this variant
+ */
 case class LogisticAssociation(uniqueID: String,
                                chromosome: Int,
                                position: Int,

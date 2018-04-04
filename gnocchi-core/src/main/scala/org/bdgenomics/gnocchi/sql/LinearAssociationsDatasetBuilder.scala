@@ -149,7 +149,7 @@ object LinearAssociationsDatasetBuilder {
         }
       }
     LinearAssociationsDatasetBuilder(linearAssociationBuilders,
-      model.phenotypeNames,
+      model.phenotypeName,
       model.covariatesNames,
       model.sampleUIDs,
       model.numSamples,

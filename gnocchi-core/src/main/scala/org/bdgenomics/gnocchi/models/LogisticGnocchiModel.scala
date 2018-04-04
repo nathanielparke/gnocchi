@@ -21,8 +21,23 @@ import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 import org.bdgenomics.gnocchi.utils.ModelType._
 
+/**
+ * Data container for [[LogisticVariantModel]] and the associated metadata that is shared between
+ * the independent variant models in an association study.
+ *
+ * @param variantModels Dataset of [[LogisticVariantModel]], each of which store the variant level
+ *                      statistical model for the study
+ * @param phenotypeName The names of the primary phenotype for the study being conducted. This
+ *                      phenotype acts as the label or Y of a sample when building each variant model.
+ * @param covariatesNames The names of the covariates used in for the study being conducted. These
+ *                        variable are the variables that are being controlled for, when building each
+ *                        variant model
+ * @param sampleUIDs The unique identifiers for the subjects used in this study, to build this model
+ * @param numSamples the number of subjects used in this study, to build this model
+ * @param allelicAssumption The allelic assumption used in this study, to build this model
+ */
 case class LogisticGnocchiModel(@transient variantModels: Dataset[LogisticVariantModel],
-                                phenotypeNames: String,
+                                phenotypeName: String,
                                 covariatesNames: List[String],
                                 sampleUIDs: Set[String],
                                 numSamples: Int,
