@@ -40,7 +40,7 @@ case class LinearAssociationBuilder(model: LinearVariantModel,
 
   /**
    * Applies the model to a [[CalledVariant]] and merges the resulting new association with the
-   * existing association stored in this object, then returns a new [[LinearAssociationBuilder]]
+   * existing association stored in this object. Then it returns a new [[LinearAssociationBuilder]]
    * with the updated [[LinearAssociation]]
    *
    * @todo Make this method private and only accessible to the

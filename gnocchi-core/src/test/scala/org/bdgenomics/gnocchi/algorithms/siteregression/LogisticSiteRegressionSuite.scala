@@ -153,7 +153,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
         "1615" -> Phenotype("1615", "pheno_1", 1.0, List(36.086511107929894, 26.646338451664146)),
         "7677" -> Phenotype("7677", "pheno_1", 0.0, List(41.934512951913796, 28.422437596286894)))
 
-    val (model, association) = LogisticSiteRegression.applyToSite(phenotypes, variant, "ADDITIVE")
+    val (model, association) = LogisticSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
     assert(association.pValue === 0.7090 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
   }
 
@@ -197,7 +197,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
         "1615" -> Phenotype("1615", "pheno_1", 1.0, List(36.086511107929894, 26.646338451664146)),
         "7677" -> Phenotype("7677", "pheno_1", 0.0, List(41.934512951913796, 28.422437596286894)))
 
-    val (model, association) = LogisticSiteRegression.applyToSite(phenotypes, variant, "DOMINANT")
+    val (model, association) = LogisticSiteRegression.applyToSite(variant, phenotypes, "DOMINANT")
     assert(association.pValue === 0.5010 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
   }
 
@@ -227,7 +227,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
         "7677" -> Phenotype("7677", "pheno_1", 0.0, List(41.934512951913796, 28.422437596286894)))
 
     try {
-      LogisticSiteRegression.applyToSite(phenotypes, variant, "ADDITIVE")
+      LogisticSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
       fail("No overlap between phenotype sample IDs and genotype sample IDs did not cause a break.")
     } catch {
       case _: IllegalArgumentException =>
@@ -260,7 +260,7 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
         "7677" -> Phenotype("7677", "pheno_1", 0.0, List()))
 
     try {
-      LogisticSiteRegression.applyToSite(phenotypes, variant, "ADDITIVE")
+      LogisticSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
     } catch {
       case e: Throwable => { print(e); fail("exception thrown") }
     }

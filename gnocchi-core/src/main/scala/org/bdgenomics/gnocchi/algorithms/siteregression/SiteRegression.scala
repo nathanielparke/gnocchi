@@ -50,6 +50,9 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
    * Data preparation function that converts the gnocchi models into breeze linear algebra primitives BLAS/LAPACK
    * optimizations.
    *
+   * @todo Move the allelic assumption [[String]] to
+   *       [[org.bdgenomics.gnocchi.utils.AllelicAssumption.AllelicAssumption]] type.
+   *
    * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
    *                  (covariates)
    * @param genotypes [[CalledVariant]] object to convert into a breeze design matrix

@@ -34,8 +34,9 @@ import scala.collection.immutable.Map
 trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, LogisticAssociation] {
 
   /**
+   * Return a [[LogisticRegressionResults]] object for the passed genotypes and phenotypesContainer
    *
-   * @param genotypes
+   * @param genotypes [[GenotypeDataset]] that
    * @param phenotypesContainer
    * @return
    */
@@ -44,6 +45,18 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     LogisticRegressionResults(genotypes, phenotypesContainer)
   }
 
+  /**
+   * Run Logistic Regression over a [[Dataset]] of [[CalledVariant]] objects and return a tuple that
+   * contains a [[Dataset]] of the resulting [[LogisticVariantModel]] and a [[Dataset]] of the
+   * [[LogisticAssociation]]
+   *
+   * @param genotypes [[Dataset]] of [[CalledVariant]]s for which to compute Logistic models and
+   *                 associations
+   * @param phenotypes Phenotype data corresponding to the [[Dataset]] of [[CalledVariant]] objects
+   * @param allelicAssumption Allelic assumption to use for this analysis
+   * @return Tuple of two [[Dataset]] objects. First is [[LogisticVariantModel]], second is
+   *         [[LogisticAssociation]] objects
+   */
   def createModelAndAssociations(genotypes: Dataset[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
                                  allelicAssumption: String): (Dataset[LogisticVariantModel], Dataset[LogisticAssociation]) = {
@@ -51,7 +64,7 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
 
     val results = genotypes.flatMap((genos: CalledVariant) => {
       try {
-        val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
+        val (model, association) = applyToSite(genos, phenotypes.value, allelicAssumption)
         Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => {
@@ -68,8 +81,17 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     (results.map(_._1), results.map(_._2))
   }
 
-  def applyToSite(phenotypes: Map[String, Phenotype],
-                  genotypes: CalledVariant,
+  /**
+   * Solve the Logistic Regression problem for a single variant site.
+   *
+   * @param genotypes a single [[CalledVariant]] object to solve Logistic Regression for
+   * @param phenotypes Phenotypes corresponding to the gentoype data
+   * @param allelicAssumption Allelic assumption to use for the genotype encoding
+   * @return a tuple of [[LogisticVariantModel]] and [[LogisticAssociation]] containing the relevant
+   *         statistics for the Logistic Regression solution
+   */
+  def applyToSite(genotypes: CalledVariant,
+                  phenotypes: Map[String, Phenotype],
                   allelicAssumption: String): (LogisticVariantModel, LogisticAssociation) = {
 
     // ToDo: Orthogonalize the matrix so we dont get singular matrices
@@ -98,6 +120,16 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     (model, association)
   }
 
+  /**
+   * Given and X and Y, solve for beta using Logistic Regression.
+   *
+   * @param x [[DenseMatrix]] of Doubles that is the design matrix in the typical Logistic Regression
+   *         formulation
+   * @param y [[DenseVector]] of Doubles that is the target vector in the typical Logistic Regression
+   *         formulation
+   * @return A tuple where the first element is the weights vector and the second element is the
+   *         hessian matrix (square matrix of second order partial derivatives)
+   */
   def solveRegression(x: DenseMatrix[Double],
                       y: DenseVector[Double]): (DenseVector[Double], DenseMatrix[Double]) = {
     val maxIter = 1000
@@ -156,6 +188,17 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
     findBeta(X, Y, updatedBeta, iter = iter + 1, maxIter = maxIter, tolerance = tolerance)
   }
 
+  /**
+   * Given a weight vector, and input X and Y, solve for the significance value of the genotype
+   * parameter.
+   *
+   * @param x [[DenseMatrix]] of Doubles that is the design matrix
+   * @param y [[DenseVector]] that is the target vector corresponding to the design matrix
+   * @param beta Solved vector of weights
+   * @param hessian Square matrix of second order partial derivatives of the log likelihood function
+   *                by the variable beta
+   * @return tuple of (genotypeStandardError, pValue)
+   */
   def calculateSignificance(x: DenseMatrix[Double],
                             y: DenseVector[Double],
                             beta: DenseVector[Double],

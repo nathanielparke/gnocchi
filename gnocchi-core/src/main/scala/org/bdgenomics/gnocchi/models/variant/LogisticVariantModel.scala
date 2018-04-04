@@ -17,15 +17,20 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
-import org.apache.commons.math3.distribution.ChiSquaredDistribution
-import org.apache.commons.math3.linear.SingularMatrixException
 import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
-import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
-import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
-import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
-import scala.collection.immutable.Map
-
+/**
+ * Data container for the statistical model produced by running [[LogisticSiteRegression]] on a
+ * single variant.
+ *
+ * @param uniqueID Unique identifier of the variant this model is associated with
+ * @param chromosome Chromosome of the variant this model is associated with
+ * @param position Position of the variant this model is associated with
+ * @param referenceAllele Refrerence allele of the variant this model is associated with
+ * @param alternateAllele Alternate allele of the variant this model is associated with
+ * @param weights the weights of the Logistic model that were found through training in
+ *                [[LogisticSiteRegression]]
+ */
 case class LogisticVariantModel(uniqueID: String,
                                 chromosome: Int,
                                 position: Int,

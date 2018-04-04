@@ -17,16 +17,36 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
-import breeze.linalg.{ DenseMatrix, DenseVector }
-import org.apache.commons.math3.distribution.TDistribution
+import breeze.linalg.{DenseMatrix, DenseVector}
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
-import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 
 import scala.collection.immutable.Map
 
+/**
+ * Data container for the statistical model produced by running [[LinearSiteRegression]] on a single
+ * variant. This model can be merged with another [[LinearVariantModel]] that was built over
+ * separate data, to produce a model that is analytically equivalent to building a single model over
+ * the union of the two datasets.
+ *
+ * @param uniqueID Unique identifier of the variant this model is associated with
+ * @param chromosome Chromosome of the variant this model is associated with
+ * @param position Position of the variant this model is associated with
+ * @param referenceAllele Reference allele of the variant this model is associated with
+ * @param alternateAllele Alternate allele of the variant this model is associated with
+ * @param numSamples Number of samples used to build this model
+ * @param numPredictors Number of variables in the statistical model
+ * @param xTx a numPredictors x numPredictors sized matrix (stored as an array for serialization)
+ *            that is an smaller representation of the original design matrix used in the regression
+ * @param xTy a numPredictor length vector that is a smaller representation of the original labels
+ *            vector used in the regression
+ * @param residualDegreesOfFreedom The degrees of freedom of the Linear model. This is calculated as
+ *                                 the number of samples minus the number of predictors (bias term
+ *                                 included)
+ * @param weights The weights of the resulting Linear model
+ */
 case class LinearVariantModel(uniqueID: String,
                               chromosome: Int,
                               position: Int,
@@ -40,6 +60,16 @@ case class LinearVariantModel(uniqueID: String,
                               weights: List[Double])
     extends VariantModel[LinearVariantModel] with LinearSiteRegression {
 
+  /**
+   * Apply the model to a [[CalledVariant]] and return the resulting statistics wrapped in a
+   * [[LinearAssociation]] object.
+   *
+   * @param genotypes [[CalledVariant]] to produce and association for
+   * @param phenotypes Phentoypic information stored as a map of sampleIDs to [[Phenotype]] objects
+   *                   that correspond to the genotypic data passed in
+   * @param allelicAssumption Allelic assumption to use for the association (ADDITIVE / DOMINANT)
+   * @return [[LinearAssociation]] that stores all the relevant assciation statistics
+   */
   def createAssociation(genotypes: CalledVariant,
                         phenotypes: Map[String, Phenotype],
                         allelicAssumption: String): LinearAssociation = {
