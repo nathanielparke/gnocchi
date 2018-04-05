@@ -68,8 +68,7 @@ case class LinearAssociationBuilder(model: LinearVariantModel,
         beta,
         xTx_shaped,
         Option(association.ssResiduals),
-        Option(association.numSamples)
-      )
+        Option(association.numSamples))
 
     // I don't like having the num samples updated here...
     val newAssociation =

@@ -36,9 +36,10 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
   /**
    * Return a [[LogisticRegressionResults]] object for the passed genotypes and phenotypesContainer
    *
-   * @param genotypes [[GenotypeDataset]] that
-   * @param phenotypesContainer
-   * @return
+   * @param genotypes [[GenotypeDataset]] to be analyzed in this study
+   * @param phenotypesContainer [[PhenotypesContainer]] corresponding to the genotype data
+   * @return [[LogisticRegressionResults]] storing access to the models, associations or a
+   *        [[org.bdgenomics.gnocchi.models.LogisticGnocchiModel]]
    */
   def apply(genotypes: GenotypeDataset,
             phenotypesContainer: PhenotypesContainer): LogisticRegressionResults = {
@@ -68,10 +69,6 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
         Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => {
-          logError(e.toString)
-          None
-        }
-        case e: org.apache.commons.math3.exception.ConvergenceException => {
           logError(e.toString)
           None
         }

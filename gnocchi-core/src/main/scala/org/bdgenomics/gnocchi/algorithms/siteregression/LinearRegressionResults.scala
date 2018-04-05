@@ -23,6 +23,12 @@ import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 
+/**
+ * Results container for results from a [[LinearSiteRegression]] Analysis
+ *
+ * @param genotypes [[GenotypeDataset]] used to generate the results
+ * @param phenotypes [[PhenotypesContainer]] corresponding to the genotype data
+ */
 case class LinearRegressionResults(genotypes: GenotypeDataset,
                                    phenotypes: PhenotypesContainer) {
 

@@ -358,7 +358,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
         "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
         "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
 
-    val (model, association) = LinearSiteRegression.applyToSite(phenotypes, variant, "ADDITIVE")
+    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
     assert(association.pValue === 0.05148 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
   }
 
@@ -392,7 +392,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
         "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
         "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
 
-    val (model, association) = LinearSiteRegression.applyToSite(phenotypes, variant, "DOMINANT")
+    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "DOMINANT")
     assert(association.pValue === 0.1265 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
   }
 
@@ -404,7 +404,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     val phenoMap = Map("sample1" -> Phenotype("sample1", "pheno1", 1))
 
     intercept[MatrixSingularException] {
-      LinearSiteRegression.applyToSite(phenoMap, cv, "ADDITIVE")
+      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
     }
   }
 
@@ -415,7 +415,7 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
     val phenoMap = Map("sample2" -> Phenotype("sample2", "pheno1", 1))
 
     intercept[IllegalArgumentException] {
-      LinearSiteRegression.applyToSite(phenoMap, cv, "ADDITIVE")
+      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
     }
   }
 

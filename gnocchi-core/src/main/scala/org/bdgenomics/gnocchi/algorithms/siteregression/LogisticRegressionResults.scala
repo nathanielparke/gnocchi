@@ -23,6 +23,12 @@ import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 
+/**
+ * Results container for results from a [[LogisticSiteRegression]] Analysis
+ *
+ * @param genotypes [[GenotypeDataset]] used to generate the results
+ * @param phenotypes [[PhenotypesContainer]] corresponding to the genotype data
+ */
 case class LogisticRegressionResults(genotypes: GenotypeDataset,
                                      phenotypes: PhenotypesContainer) {
   lazy val (models: Dataset[LogisticVariantModel], associations: Dataset[LogisticAssociation]) =

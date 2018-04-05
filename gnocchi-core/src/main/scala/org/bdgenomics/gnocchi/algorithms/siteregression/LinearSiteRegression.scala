@@ -34,17 +34,30 @@ import scala.collection.immutable.Map
 trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAssociation] {
 
   /**
-   * Default apply which creates two datasets, one for the model, one for the results
+   * Return a [[LinearRegressionResults]] object for the passed genotypes and phenotypesContainer
    *
-   * @param genotypes
-   * @param phenotypesContainer
-   * @return
+   * @param genotypes [[GenotypeDataset]] to be analyzed in this study
+   * @param phenotypesContainer [[PhenotypesContainer]] corresponding to the genotype data
+   * @return [[LinearRegressionResults]] storing access to the models, associations or a
+   *        [[org.bdgenomics.gnocchi.models.LinearGnocchiModel]]
    */
   def apply(genotypes: GenotypeDataset,
             phenotypesContainer: PhenotypesContainer): LinearRegressionResults = {
     LinearRegressionResults(genotypes, phenotypesContainer)
   }
 
+  /**
+   * Run Linear Regression over a [[Dataset]] of [[CalledVariant]] objects and return a tuple that
+   * contains a [[Dataset]] of the resulting [[LinearVariantModel]] and a [[Dataset]] of the
+   * [[LinearAssociation]]
+   *
+   * @param genotypes [[Dataset]] of [[CalledVariant]]s for which to compute Linear models and
+   *                 associations
+   * @param phenotypes Phenotype data corresponding to the [[Dataset]] of [[CalledVariant]] objects
+   * @param allelicAssumption Allelic assumption to use for this analysis
+   * @return Tuple of two [[Dataset]] objects. First is [[LinearVariantModel]] objects, second is
+   *         [[LinearAssociation]] objects
+   */
   def createModelAndAssociations(genotypes: Dataset[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
                                  allelicAssumption: String): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
@@ -54,7 +67,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
     //ToDo: Singular Matrix Exceptions
     val results = genotypes.flatMap((genos: CalledVariant) => {
       try {
-        val (model, association) = applyToSite(phenotypes.value, genos, allelicAssumption)
+        val (model, association) = applyToSite(genos, phenotypes.value, allelicAssumption)
         Some((model, association))
       } catch {
         case e: breeze.linalg.MatrixSingularException => None
@@ -65,15 +78,16 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   }
 
   /**
-   * Apply to site.
+   * Solve the Logistic Regression problem for a single variant site.
    *
-   * @param phenotypes
-   * @param genotypes
-   * @param allelicAssumption
-   * @return
+   * @param genotypes a single [[CalledVariant]] object to solve Logistic Regression for
+   * @param phenotypes Phenotypes corresponding to the genotype data
+   * @param allelicAssumption Allelic assumption to use for the genotype encoding
+   * @return a tuple of [[LinearVariantModel]] and [[LinearAssociation]] containing the relevant
+   *         statistics for the Logistic Regression solution
    */
-  def applyToSite(phenotypes: Map[String, Phenotype],
-                  genotypes: CalledVariant,
+  def applyToSite(genotypes: CalledVariant,
+                  phenotypes: Map[String, Phenotype],
                   allelicAssumption: String): (LinearVariantModel, LinearAssociation) = {
 
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
@@ -128,13 +142,18 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   }
 
   /**
+   * Given a weight vector, and input X and Y, solve for the significance value of the genotype
+   * parameter. Also takes in optional partial sum of square residuals and additional samples count
+   * for the purpose of merging together an exsiting association with a new set of data.
    *
-   * @param x
-   * @param y
-   * @param beta
-   * @param modelxTx
-   * @param partialSSResiduals Optional parameter that can be used as the SSResiduals from another/other datasets
-   * @return (genotype parameter standard error, t-statistic for model, pValue for model, sum of squared residuals)
+   * @param x Design matrix to be used, containing formatted genotype data
+   * @param y Target vector corresponding to the design matrix
+   * @param beta weight vector to use for calculating the genotype parameter signicicance
+   * @param modelxTx the xTx matrix of the model that is being significance tested
+   * @param partialSSResiduals Optional parameter that can be used as the SSResiduals from
+   *                           another/other datasets
+   * @return (genotype parameter standard error, t-statistic for model, pValue for model, sum of
+   *         squared residuals)
    */
   def calculateSignificance(x: DenseMatrix[Double],
                             y: DenseVector[Double],
