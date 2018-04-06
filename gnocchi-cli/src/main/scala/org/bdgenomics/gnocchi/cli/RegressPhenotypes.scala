@@ -100,6 +100,9 @@ class RegressPhenotypesArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-ADAMformat", usage = "Genotypes are ADAM formatted GenotypeRDDs.")
   var adamFormat: Boolean = false
+
+  @Args4jOption(required = false, name = "-datasetName", usage = "Unique ID name of the genotype dataset being loaded.")
+  var datasetName: String = ""
 }
 
 class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSparkCommand[RegressPhenotypesArgs] {
@@ -140,7 +143,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     }
 
     // the ordering of calls below is important
-    val rawGenotypes = sc.loadGenotypes(args.genotypes, "", args.associationType.split("_").head, adamFormat = args.adamFormat)
+    val rawGenotypes = sc.loadGenotypes(args.genotypes, args.datasetName, args.associationType.split("_").head, adamFormat = args.adamFormat)
     val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
     val recoded = sc.recodeMajorAllele(sampleFiltered)
     val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)
