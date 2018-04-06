@@ -43,6 +43,9 @@ class TransformVariantsArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-allelicAssumption", usage = "Allelic assumption to use for dataset. One of [ADDITIVE, DOMINANT, RECESSIVE]. Default is ADDITIVE.")
   var allelicAssumption = "ADDITIVE"
+
+  @Args4jOption(required = false, name = "-vcfDirectory", usage = "Set flag if the input path is a directory containing multiple VCF files.")
+  var vcfDirectory = false
 }
 
 class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSparkCommand[TransformVariantsArgs] {

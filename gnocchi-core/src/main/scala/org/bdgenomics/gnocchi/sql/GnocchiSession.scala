@@ -315,12 +315,12 @@ class GnocchiSession(@transient val sc: SparkContext)
     } else {
       val genotypeDataset = loadGnocchiGenotypes(genotypesPath)
 
-      require(genotypeDataset.datasetUID != datasetUID,
+      require(genotypeDataset.datasetUID == datasetUID,
         s"Passed datasetUID `$datasetUID` " +
           s"does not equal the saved model's UID `${genotypeDataset.datasetUID}")
-      require(genotypeDataset.allelicAssumption != allelicAssumption,
-        s"Passed datasetUID `$allelicAssumption` " +
-          s"does not equal the saved model's UID `${genotypeDataset.allelicAssumption}")
+      require(genotypeDataset.allelicAssumption == allelicAssumption,
+        s"Passed allelic assumption `$allelicAssumption` " +
+          s"does not equal the saved model's allelic assumption `${genotypeDataset.allelicAssumption}`")
       genotypeDataset
     }
   }
@@ -375,7 +375,13 @@ class GnocchiSession(@transient val sc: SparkContext)
     GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
   }
 
-  private def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
+  /**
+   * Loads a [[CalledVariant]] [[Dataset]] from an ADAM formatted [[VariantContextRDD]]
+   *
+   * @param vcRDD the [[VariantContextRDD]] to convert
+   * @return a [[Dataset]] of [[CalledVariant]] objects
+   */
+  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
     vcRDD.rdd.map(vc => {
       val variant = vc.variant.variant
       val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
