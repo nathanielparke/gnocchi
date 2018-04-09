@@ -370,8 +370,31 @@ class GnocchiSession(@transient val sc: SparkContext)
                                   allelicAssumption: String): GenotypeDataset = {
     val genotypesRDD: GenotypeRDD = sc.loadParquetGenotypes(genotypesPath)
     val variantContextRDD: VariantContextRDD = genotypesRDD.toVariantContexts()
-    val sampleIDs = variantContextRDD.samples.map(_.getSampleId).toSet
-    val data = loadCalledVariantDSFromVariantContextRDD(variantContextRDD)
+    wrapAdamVariantContextRDD(variantContextRDD, datasetUID, allelicAssumption)
+  }
+
+  /**
+   * Loads a ADAM formatted Parquet [[VariantContextRDD]] located at a specified path and converts it
+   * into a Gnocchi formatted [[GenotypeDataset]]
+   *
+   * @param variantsPath Path to the ADAM formatted Parquet [[VariantContextRDD]]
+   * @param datasetUID see [[loadGenotypes]] for description of Dataset Unique ID
+   * @param allelicAssumption a [[String]] that denotes the allelic assumption (Additive / Dominant
+   *                          / Recessive) that will be attached to this dataset
+   * @return [[GenotypeDataset]] of variants contained in the ADAM formatted Parquet [[VariantContextRDD]]
+   */
+  private def loadAdamVariantContextRDD(variantsPath: String,
+                                        datasetUID: String,
+                                        allelicAssumption: String): GenotypeDataset = {
+    val variantContextRDD: VariantContextRDD = sc.loadVariantContexts(variantsPath)
+    wrapAdamVariantContextRDD(variantContextRDD, datasetUID, allelicAssumption)
+  }
+
+  def wrapAdamVariantContextRDD(rdd: VariantContextRDD,
+                                datasetUID: String,
+                                allelicAssumption: String): GenotypeDataset = {
+    val sampleIDs = rdd.samples.map(_.getSampleId).toSet
+    val data = loadCalledVariantDSFromVariantContextRDD(rdd)
     GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
   }
 

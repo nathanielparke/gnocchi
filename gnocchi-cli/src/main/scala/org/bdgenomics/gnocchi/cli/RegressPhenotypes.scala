@@ -65,7 +65,7 @@ class RegressPhenotypesArgs extends Args4jBase {
   @Args4jOption(required = false, name = "-covar", usage = "The covariates file path")
   var covarFile: String = _
 
-  @Args4jOption(required = false, name = "-covarNames", usage = "The covariates to include in the analysis") // this will be used to construct the original phenotypes array in LoadPhenotypes. Will need to throw out samples that don't have all of the right fields.
+  @Args4jOption(required = false, name = "-covarNames", usage = "The covariates to include in the analysis")
   var covarNames: String = _
 
   @Args4jOption(required = false, name = "-covarSpaceDelimited", usage = "Set flag if covariates file is space delimited, otherwise tab delimited is assumed.")
@@ -126,7 +126,9 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     }
 
     val phenoDelimiter = if (args.phenoSpaceDelimiter) { " " } else { "\t" }
+
     val covarDelimiter = if (args.covarSpaceDelimiter) { " " } else { "\t" }
+
     val missingPhenos = if (args.missingPhenoChars == null) List("-9") else args.missingPhenoChars.split(",").toList
 
     val phenotypesContainer = if (args.covarFile != null) {

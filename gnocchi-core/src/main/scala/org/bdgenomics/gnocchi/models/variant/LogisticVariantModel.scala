@@ -26,7 +26,7 @@ import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
  * @param uniqueID Unique identifier of the variant this model is associated with
  * @param chromosome Chromosome of the variant this model is associated with
  * @param position Position of the variant this model is associated with
- * @param referenceAllele Refrerence allele of the variant this model is associated with
+ * @param referenceAllele Reference allele of the variant this model is associated with
  * @param alternateAllele Alternate allele of the variant this model is associated with
  * @param weights the weights of the Logistic model that were found through training in
  *                [[LogisticSiteRegression]]

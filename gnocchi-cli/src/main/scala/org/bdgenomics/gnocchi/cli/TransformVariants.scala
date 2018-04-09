@@ -19,6 +19,8 @@ package org.bdgenomics.gnocchi.cli
 
 import org.apache.spark.SparkContext
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
+import org.bdgenomics.adam.rdd.ADAMContext
+import org.bdgenomics.gnocchi.sql.GenotypeDataset
 import org.bdgenomics.utils.cli._
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
@@ -46,13 +48,30 @@ class TransformVariantsArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-vcfDirectory", usage = "Set flag if the input path is a directory containing multiple VCF files.")
   var vcfDirectory = false
+
+  @Args4jOption(required = false, name = "-saveADAMParquet", usage = "Set flag to save the ADAM Formatted VariantContextRDD. Saves to OUTPUT/adam")
+  var saveAdamParquet = false
 }
 
 class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSparkCommand[TransformVariantsArgs] {
   val companion = TransformVariants
 
   def run(sc: SparkContext) {
-    val rawGenotypes = sc.loadGenotypes(args.inputPath, args.datasetUID, args.allelicAssumption, !args.inputPath.endsWith(".vcf"))
-    rawGenotypes.save(args.outputPath)
+
+    val ac = new ADAMContext(sc)
+
+    val rawGenotypes = if (args.vcfDirectory || sc.isVcfExt(args.inputPath)) {
+      val variantContextRDD = ac.loadVcf(args.inputPath)
+      if (args.saveAdamParquet) { variantContextRDD.saveAsParquet(args.outputPath + "/adam") }
+      sc.wrapAdamVariantContextRDD(variantContextRDD, args.datasetUID, args.allelicAssumption)
+    } else {
+      sc.loadGenotypes(args.inputPath, args.datasetUID, args.allelicAssumption, adamFormat = true)
+    }
+
+    if (args.saveAdamParquet) {
+      rawGenotypes.save(args.outputPath + "/gnocchi")
+    } else {
+      rawGenotypes.save(args.outputPath)
+    }
   }
 }
