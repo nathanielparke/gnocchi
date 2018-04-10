@@ -23,6 +23,7 @@ from bdgenomics.gnocchi.test import SparkTestCase
 class GnocchiSessionTest(SparkTestCase):
 
     def test_load_genotypes(self):
+      
         testFile = self.resourceFile("1Sample1Variant.vcf")
         gs = GnocchiSession(self.ss)
 
@@ -33,6 +34,7 @@ class GnocchiSessionTest(SparkTestCase):
 
 
     def test_load_phenotypes(self):
+      
         testFile = self.resourceFile("first5samples5phenotypes2covars.txt")
         gs = GnocchiSession(self.ss)
 
@@ -43,6 +45,7 @@ class GnocchiSessionTest(SparkTestCase):
 
 
     def test_filters_integration(self):
+      
         testFile = self.exampleFile("time_genos_1.vcf")
         gs = GnocchiSession(self.ss)
 
