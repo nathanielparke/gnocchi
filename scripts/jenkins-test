@@ -145,7 +145,6 @@ ASSEMBLY_DIR="${GNOCCHI_TMP_DIR}/gnocchi-assembly/target"
 ASSEMBLY_JAR="$(ls -1 "$ASSEMBLY_DIR" | grep "^gnocchi[0-9A-Za-z\_\.-]*\.jar$" | grep -v javadoc | grep -v sources || true)"
 
 export PYSPARK_SUBMIT_ARGS="--jars ${ASSEMBLY_DIR}/${ASSEMBLY_JAR} --driver-class-path ${ASSEMBLY_DIR}/${ASSEMBLY_JAR} pyspark-shell"
-echo "Printing PYSPARK_SUBMIT_ARGS: \n\n ${PYSPARK_SUBMIT_ARGS} \n\n"
 
 # create a conda environment for python build, if necessary
 uuid=$(uuidgen)
