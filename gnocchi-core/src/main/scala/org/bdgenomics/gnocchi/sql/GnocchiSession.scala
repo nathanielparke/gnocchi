@@ -383,7 +383,7 @@ class GnocchiSession(@transient val sc: SparkContext)
    *                          / Recessive) that will be attached to this dataset
    * @return [[GenotypeDataset]] of variants contained in the ADAM formatted Parquet [[VariantContextRDD]]
    */
-  private def loadAdamVariantContextRDD(variantsPath: String,
+   def loadAdamVariantContextRDD(variantsPath: String,
                                         datasetUID: String,
                                         allelicAssumption: String): GenotypeDataset = {
     val variantContextRDD: VariantContextRDD = sc.loadVariantContexts(variantsPath)
