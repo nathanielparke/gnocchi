@@ -28,6 +28,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
+import org.bdgenomics.gnocchi.utils.Timers._
 
 import scala.collection.immutable.Map
 
@@ -60,7 +61,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    */
   def createModelAndAssociations(genotypes: Dataset[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
-                                 allelicAssumption: String): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = {
+                                 allelicAssumption: String): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = CreateModelAndAssociations.time {
 
     import genotypes.sqlContext.implicits._
 
@@ -84,7 +85,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @return [[Dataset]] of [[LinearAssociation]] that store the results
    */
   def createAssociationsDataset(genotypesDS: GenotypeDataset,
-                         phenotypesContainer: PhenotypesContainer): Dataset[LinearAssociation] = {
+                                phenotypesContainer: PhenotypesContainer): Dataset[LinearAssociation] = CreatAssociationsDataset.time {
 
     import genotypesDS.genotypes.sqlContext.implicits._
 
@@ -98,7 +99,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       }
     })
 
-    results.cache()
+    results
   }
 
   /**
@@ -111,8 +112,8 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    *         statistics for the Logistic Regression solution
    */
   def solveAssociation(genotypes: CalledVariant,
-                  phenotypes: Map[String, Phenotype],
-                  allelicAssumption: String): LinearAssociation = {
+                       phenotypes: Map[String, Phenotype],
+                       allelicAssumption: String): LinearAssociation = {
 
     val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
 
