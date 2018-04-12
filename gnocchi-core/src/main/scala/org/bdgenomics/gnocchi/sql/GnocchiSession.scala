@@ -97,6 +97,8 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
+    genotypes.cache()
+
     val x = genotypes.rdd.flatMap(
       f => {
         f.samples.map(
@@ -133,7 +135,7 @@ class GnocchiSession(@transient val sc: SparkContext)
   def filterSamples(genotypes: GenotypeDataset,
                     mind: Double,
                     ploidy: Double): GenotypeDataset = {
-    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
+    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy).cache()
     GenotypeDataset(
       newGenotypes,
       genotypes.datasetUID,
@@ -184,7 +186,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0,
       "`geno` value must be between 0.0 to 1.0 inclusive.")
-    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
+    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno).cache()
   }
 
   /**
@@ -236,7 +238,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       } else {
         f
       }
-    })
+    }).cache()
   }
 
   /**
@@ -347,9 +349,9 @@ class GnocchiSession(@transient val sc: SparkContext)
     ois.close
 
     val data = if (genotypesPath.split(",").length > 2) {
-      sparkSession.read.parquet(genotypesPath.split(",").map(_ + "/genotypes"): _*).as[CalledVariant]
+      sparkSession.read.parquet(genotypesPath.split(",").map(_ + "/genotypes"): _*).as[CalledVariant].cache()
     } else {
-      sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant]
+      sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant].cache()
     }
 
     GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
@@ -370,6 +372,7 @@ class GnocchiSession(@transient val sc: SparkContext)
                                   allelicAssumption: String): GenotypeDataset = {
     val genotypesRDD: GenotypeRDD = sc.loadParquetGenotypes(genotypesPath)
     val variantContextRDD: VariantContextRDD = genotypesRDD.toVariantContexts()
+    variantContextRDD.rdd.cache()
     wrapAdamVariantContextRDD(variantContextRDD, datasetUID, allelicAssumption)
   }
 
@@ -383,10 +386,11 @@ class GnocchiSession(@transient val sc: SparkContext)
    *                          / Recessive) that will be attached to this dataset
    * @return [[GenotypeDataset]] of variants contained in the ADAM formatted Parquet [[VariantContextRDD]]
    */
-   def loadAdamVariantContextRDD(variantsPath: String,
-                                        datasetUID: String,
-                                        allelicAssumption: String): GenotypeDataset = {
+  def loadAdamVariantContextRDD(variantsPath: String,
+                                datasetUID: String,
+                                allelicAssumption: String): GenotypeDataset = {
     val variantContextRDD: VariantContextRDD = sc.loadVariantContexts(variantsPath)
+    variantContextRDD.rdd.cache()
     wrapAdamVariantContextRDD(variantContextRDD, datasetUID, allelicAssumption)
   }
 
@@ -582,6 +586,7 @@ class GnocchiSession(@transient val sc: SparkContext)
                                          saveAsText: Boolean = false): Unit = {
     if (saveAsText) {
       val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
+      associations.cache()
       val assoc = associations.select(necessaryFields: _*).sort($"pValue".asc)
       assoc.write
         .format("com.databricks.spark.csv")

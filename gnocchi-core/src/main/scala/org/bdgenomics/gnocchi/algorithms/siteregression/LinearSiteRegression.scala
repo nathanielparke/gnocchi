@@ -74,7 +74,61 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       }
     })
 
-    (results.map(_._1), results.map(_._2))
+    (results.map(_._1).cache(), results.map(_._2).cache())
+  }
+
+  /**
+   *
+   * @param genotypesDS [[GenotypeDataset]] that wraps a dataset of genomic data
+   * @param phenotypesContainer [[PhenotypesContainer]] that contains phenotypic information
+   * @return [[Dataset]] of [[LinearAssociation]] that store the results
+   */
+  def createAssociationsDataset(genotypesDS: GenotypeDataset,
+                         phenotypesContainer: PhenotypesContainer): Dataset[LinearAssociation] = {
+
+    import genotypesDS.genotypes.sqlContext.implicits._
+
+    //ToDo: Singular Matrix Exceptions
+    val results = genotypesDS.genotypes.flatMap((genos: CalledVariant) => {
+      try {
+        val association = solveAssociation(genos, phenotypesContainer.phenotypes.value, genotypesDS.allelicAssumption)
+        Some(association)
+      } catch {
+        case e: breeze.linalg.MatrixSingularException => None
+      }
+    })
+
+    results.cache()
+  }
+
+  /**
+   * Solve the Logistic Regression problem for a single variant site.
+   *
+   * @param genotypes a single [[CalledVariant]] object to solve Logistic Regression for
+   * @param phenotypes Phenotypes corresponding to the genotype data
+   * @param allelicAssumption Allelic assumption to use for the genotype encoding
+   * @return a tuple of [[LinearVariantModel]] and [[LinearAssociation]] containing the relevant
+   *         statistics for the Logistic Regression solution
+   */
+  def solveAssociation(genotypes: CalledVariant,
+                  phenotypes: Map[String, Phenotype],
+                  allelicAssumption: String): LinearAssociation = {
+
+    val (x, y) = prepareDesignMatrix(genotypes, phenotypes, allelicAssumption)
+
+    val (xTx, xTy, beta) = solveRegression(x, y)
+
+    val (genoSE, t, pValue, ssResiduals) = calculateSignificance(x, y, beta, xTx)
+
+    LinearAssociation(
+      genotypes.uniqueID,
+      genotypes.chromosome,
+      genotypes.position,
+      x.rows,
+      pValue,
+      genoSE,
+      ssResiduals,
+      t)
   }
 
   /**
