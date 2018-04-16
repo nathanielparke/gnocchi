@@ -51,7 +51,7 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
    * optimizations.
    *
    * @todo Move the allelic assumption [[String]] to
-   *       [[org.bdgenomics.gnocchi.utils.AllelicAssumption.AllelicAssumption]] type.
+   *       [[org.bdgenomics.gnocchi.types.AllelicAssumption.AllelicAssumption]] type.
    *
    * @param phenotypes [[Phenotype]]s map that contains the labels (primary phenotype) and part of the design matrix
    *                  (covariates)

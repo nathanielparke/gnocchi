@@ -19,7 +19,7 @@ package org.bdgenomics.gnocchi.models
 
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
-import org.bdgenomics.gnocchi.utils.ModelType._
+import org.bdgenomics.gnocchi.types.ModelType._
 
 /**
  * Data container for [[LogisticVariantModel]] and the associated metadata that is shared between

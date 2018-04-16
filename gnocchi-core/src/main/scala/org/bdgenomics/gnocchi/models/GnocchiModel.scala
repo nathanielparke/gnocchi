@@ -22,7 +22,7 @@ import java.io.ObjectOutputStream
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.VariantModel
-import org.bdgenomics.gnocchi.utils.ModelType.ModelType
+import org.bdgenomics.gnocchi.types.ModelType.ModelType
 
 trait GnocchiModel[VM <: VariantModel[VM], GM <: GnocchiModel[VM, GM]] {
 

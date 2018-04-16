@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.bdgenomics.gnocchi.utils
+package org.bdgenomics.gnocchi.types
 
-object ModelType extends Enumeration {
-  type ModelType = Value
-  val Logistic, Linear = Value
+object AllelicAssumption extends Enumeration {
+  type AllelicAssumption = Value
+  val additive, dominant, recessive = Value
 }

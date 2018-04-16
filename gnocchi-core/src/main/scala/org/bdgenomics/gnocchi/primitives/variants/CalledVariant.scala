@@ -18,12 +18,13 @@
 package org.bdgenomics.gnocchi.primitives.variants
 
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
+import org.bdgenomics.gnocchi.types.GenotypeBase._
 
 case class CalledVariant(uniqueID: String,
                          chromosome: Int,
                          position: Int,
-                         referenceAllele: String,
-                         alternateAllele: String,
+                         referenceAllele: GenotypeBase,
+                         alternateAllele: GenotypeBase,
                          samples: List[GenotypeState]) extends Product {
 
   val ploidy: Int = samples.head.ploidy

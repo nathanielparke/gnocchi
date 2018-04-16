@@ -17,11 +17,13 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
+import org.bdgenomics.gnocchi.types.GenotypeBase.GenotypeBase
+
 trait VariantModel[VM <: VariantModel[VM]] {
   val uniqueID: String
   val chromosome: Int
   val position: Int
-  val referenceAllele: String
-  val alternateAllele: String
+  val referenceAllele: GenotypeBase
+  val alternateAllele: GenotypeBase
 }
 

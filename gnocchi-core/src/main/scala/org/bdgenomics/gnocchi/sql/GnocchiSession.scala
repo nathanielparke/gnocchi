@@ -33,7 +33,8 @@ import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssoci
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
-import org.bdgenomics.gnocchi.utils.ModelType._
+import org.bdgenomics.gnocchi.types.GenotypeBase._
+import org.bdgenomics.gnocchi.types.ModelType._
 import org.bdgenomics.gnocchi.utils.Timers._
 import org.bdgenomics.utils.misc.Logging
 
@@ -428,6 +429,15 @@ class GnocchiSession(@transient val sc: SparkContext)
         variant.getAlternateAllele,
         genotypeStates)
     }).toDS()
+  }
+
+  implicit def stringToGenotypeBase(input: String): GenotypeBase = {
+    input match {
+      case "A" => A
+      case "T" => T
+      case "C" => C
+      case "G" => G
+    }
   }
 
   /**

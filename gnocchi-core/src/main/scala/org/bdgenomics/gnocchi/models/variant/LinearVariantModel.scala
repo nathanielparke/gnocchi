@@ -22,6 +22,7 @@ import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
+import org.bdgenomics.gnocchi.types.GenotypeBase._
 
 import scala.collection.immutable.Map
 
@@ -50,8 +51,8 @@ import scala.collection.immutable.Map
 case class LinearVariantModel(uniqueID: String,
                               chromosome: Int,
                               position: Int,
-                              referenceAllele: String,
-                              alternateAllele: String,
+                              referenceAllele: GenotypeBase,
+                              alternateAllele: GenotypeBase,
                               numSamples: Int,
                               numPredictors: Int,
                               xTx: Array[Double],

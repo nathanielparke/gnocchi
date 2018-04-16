@@ -18,6 +18,7 @@
 package org.bdgenomics.gnocchi.models.variant
 
 import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
+import org.bdgenomics.gnocchi.types.GenotypeBase._
 
 /**
  * Data container for the statistical model produced by running [[LogisticSiteRegression]] on a
@@ -34,7 +35,7 @@ import org.bdgenomics.gnocchi.algorithms.siteregression.LogisticSiteRegression
 case class LogisticVariantModel(uniqueID: String,
                                 chromosome: Int,
                                 position: Int,
-                                referenceAllele: String,
-                                alternateAllele: String,
+                                referenceAllele: GenotypeBase,
+                                alternateAllele: GenotypeBase,
                                 weights: List[Double])
     extends VariantModel[LogisticVariantModel] with LogisticSiteRegression

@@ -129,14 +129,14 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
                      covarDelimiter: java.lang.String = "\t",
                      missing: java.util.ArrayList[java.lang.String] = new java.util.ArrayList[String](List("-9").asJava)): PhenotypesContainer = {
 
-    // Convert python compatible nullable types to scala options                   
+    // Convert python compatible nullable org.bdgenomics.gnocchi.types to scala options
     val covarPathOption = if (covarPath == null) {
       None
     } else {
       Some(covarPath)
     }
 
-    // Convert python compatible nullable types to scala options                   
+    // Convert python compatible nullable org.bdgenomics.gnocchi.types to scala options
     val covarNamesOption = if (covarNames == null) {
       None
     } else {
