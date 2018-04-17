@@ -521,11 +521,6 @@
         <version>${spark.version}</version>
         <scope>provided</scope>
       </dependency>
-      <dependency>
-        <groupId>ch.cern.sparkmeasure</groupId>
-        <artifactId>spark-measure_2.11</artifactId>
-        <version>0.11</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 
