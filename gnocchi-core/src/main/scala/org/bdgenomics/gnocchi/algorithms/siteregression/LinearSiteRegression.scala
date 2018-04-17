@@ -75,7 +75,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
       }
     })
 
-    (results.map(_._1).cache(), results.map(_._2).cache())
+    (results.map(_._1), results.map(_._2))
   }
 
   /**

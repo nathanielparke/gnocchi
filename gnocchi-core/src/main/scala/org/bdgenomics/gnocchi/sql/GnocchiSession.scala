@@ -98,7 +98,7 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    genotypes.cache()
+    genotypes
 
     val x = genotypes.rdd.flatMap(
       f => {
@@ -136,7 +136,7 @@ class GnocchiSession(@transient val sc: SparkContext)
   def filterSamples(genotypes: GenotypeDataset,
                     mind: Double,
                     ploidy: Double): GenotypeDataset = {
-    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy).cache()
+    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
     GenotypeDataset(
       newGenotypes,
       genotypes.datasetUID,
@@ -187,7 +187,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0,
       "`geno` value must be between 0.0 to 1.0 inclusive.")
-    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno).cache()
+    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
   }
 
   /**
@@ -239,7 +239,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       } else {
         f
       }
-    }).cache()
+    })
   }
 
   /**
@@ -314,7 +314,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       val vcRdd = sc.loadVcf(genotypesPath)
       val sampleIDs = vcRdd.samples.map(_.getSampleId).toSet
       val data = loadCalledVariantDSFromVariantContextRDD(vcRdd)
-      GenotypeDataset(data.cache(), datasetUID, allelicAssumption, sampleIDs)
+      GenotypeDataset(data, datasetUID, allelicAssumption, sampleIDs)
     } else {
       val genotypeDataset = loadGnocchiGenotypes(genotypesPath)
 
@@ -585,7 +585,6 @@ class GnocchiSession(@transient val sc: SparkContext)
                                          saveAsText: Boolean = false): Unit = SaveAssociations.time {
     if (saveAsText) {
       val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
-      associations.cache()
       val assoc = associations.select(necessaryFields: _*).sort($"pValue".asc)
       assoc.write
         .format("com.databricks.spark.csv")
