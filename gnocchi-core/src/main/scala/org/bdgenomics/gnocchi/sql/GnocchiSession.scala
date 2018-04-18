@@ -308,7 +308,7 @@ class GnocchiSession(@transient val sc: SparkContext)
     if (datasetUID == "") logWarning("datasetUID is null. This is dangerous if you plan on merging models!")
 
     if (adamFormat) {
-      loadAdamGenotypeRDD(genotypesPath, datasetUID, allelicAssumption)
+      loadAdamVariantContextRDD(genotypesPath, datasetUID, allelicAssumption)
     } else if (isVcfExt(genotypesPath)) {
       val vcRdd = sc.loadVcf(genotypesPath)
       val sampleIDs = vcRdd.samples.map(_.getSampleId).toSet
