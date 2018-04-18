@@ -21,6 +21,7 @@ import java.io.{ ObjectInputStream, Serializable }
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{ array, col, lit, udf }
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{ Column, Dataset, SparkSession }
@@ -29,7 +30,7 @@ import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, Variant
 import org.bdgenomics.formats.avro.GenotypeAllele
 import org.bdgenomics.gnocchi.models.{ GnocchiModel, LinearGnocchiModel, LogisticGnocchiModel }
 import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, VariantModel }
-import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
+import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociation, LinearAssociationBuilder, LogisticAssociation }
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
@@ -91,14 +92,14 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @return Returns a filtered [[Dataset]] of [[CalledVariant]] with samples that have missingness
    *         greater than threshold removed
    */
-  def filterSamples(genotypes: Dataset[CalledVariant],
+  def filterSamples(genotypes: RDD[CalledVariant],
                     mind: Double,
-                    ploidy: Double): Dataset[CalledVariant] = FilterSamples.time {
+                    ploidy: Double): RDD[CalledVariant] = FilterSamples.time {
 
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    val x = genotypes.rdd.flatMap(
+    val x = genotypes.flatMap(
       f => {
         f.samples.map(
           g => { (g.sampleID, g.misses.toInt) })
@@ -152,8 +153,8 @@ class GnocchiSession(@transient val sc: SparkContext)
    *                  a [[CalledVariant]] object
    * @return a transformed [[Dataset]] of [[CalledVariant]] objects
    */
-  def createCalledVariant(genotypes: Dataset[CalledVariant],
-                          samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
+  def createCalledVariant(genotypes: RDD[CalledVariant],
+                          samplesFn: List[GenotypeState] => List[GenotypeState]): RDD[CalledVariant] = {
     genotypes.map(f => {
       CalledVariant(f.uniqueID,
         f.chromosome,
@@ -178,9 +179,9 @@ class GnocchiSession(@transient val sc: SparkContext)
    *            be between 0.0 and 1.0 because it represents a percentage.
    * @return Filtered [[Dataset]] of [[CalledVariant]] objects
    */
-  def filterVariants(genotypes: Dataset[CalledVariant],
+  def filterVariants(genotypes: RDD[CalledVariant],
                      geno: Double,
-                     maf: Double): Dataset[CalledVariant] = FilterVariants.time {
+                     maf: Double): RDD[CalledVariant] = FilterVariants.time {
     require(maf >= 0.0 && maf <= 1.0,
       "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0,
@@ -221,7 +222,7 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @param genotypes The [[CalledVariant]] [[Dataset]] to recode
    * @return Returns an updated [[CalledVariant]] [[Dataset]] that has been recoded
    */
-  def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = RecodeMajorAllele.time {
+  def recodeMajorAllele(genotypes: RDD[CalledVariant]): RDD[CalledVariant] = RecodeMajorAllele.time {
     genotypes.map(f => {
       if (f.maf > 0.5) {
         CalledVariant(f.uniqueID,
@@ -353,7 +354,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       sparkSession.read.parquet(genotypesPath + "/genotypes").as[CalledVariant]
     }
 
-    GenotypeDataset(data, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
+    GenotypeDataset(data.rdd, metaData.datasetUID, metaData.allelicAssumption, metaData.sampleUIDs)
   }
 
   /**
@@ -405,7 +406,7 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @param vcRDD the [[VariantContextRDD]] to convert
    * @return a [[Dataset]] of [[CalledVariant]] objects
    */
-  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = LoadCalledVariantDSFromVariantContextRDD.time {
+  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): RDD[CalledVariant] = LoadCalledVariantDSFromVariantContextRDD.time {
     vcRDD.rdd.map(vc => {
       val variant = vc.variant.variant
       val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
@@ -425,7 +426,7 @@ class GnocchiSession(@transient val sc: SparkContext)
         variant.getReferenceAllele,
         variant.getAlternateAllele,
         genotypeStates)
-    }).toDS()
+    })
   }
 
   /**
@@ -569,28 +570,72 @@ class GnocchiSession(@transient val sc: SparkContext)
     })
   }
 
-  /**
-   * Save's a [[Dataset]] of [[Association]] objects to the specified location as either parquet, or
-   * text.
-   *
-   * @param associations [[Dataset]] of [[Association]] to be saved
-   * @param outPath path to save the [[Dataset]] of [[Association]] top
-   * @param saveAsText save these associations as text files?
-   * @tparam A type of association
-   */
-  def saveAssociations[A <: Association](associations: Dataset[A],
-                                         outPath: String,
-                                         saveAsText: Boolean = false): Unit = SaveAssociations.time {
+  //  /**
+  //   * Save's a [[Dataset]] of [[Association]] objects to the specified location as either parquet, or
+  //   * text.
+  //   *
+  //   * @param associations [[Dataset]] of [[Association]] to be saved
+  //   * @param outPath path to save the [[Dataset]] of [[Association]] top
+  //   * @param saveAsText save these associations as text files?
+  //   * @tparam A type of association
+  //   */
+  //  def saveAssociations[A <: Association](associations: RDD[A],
+  //                                         outPath: String,
+  //                                         saveAsText: Boolean = false): Unit = SaveAssociations.time {
+  //    import sparkSession.implicits._
+  //    import GnocchiSession._
+  //
+  //    if (saveAsText) {
+  //      val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
+  //      val ds = sparkSession.createDataFrame(associations)
+  //      val assoc = ds.select(necessaryFields: _*).sort($"pValue".asc)
+  //      assoc.write
+  //        .format("com.databricks.spark.csv")
+  //        .option("header", "true")
+  //        .option("delimiter", "\t")
+  //        .save(outPath)
+  //    } else {
+  //      sparkSession.createDataFrame(associations).write.parquet(outPath)
+  //    }
+  //  }
+
+  def saveLinearAssociations(associations: RDD[LinearAssociation],
+                             outPath: String,
+                             saveAsText: Boolean = false): Unit = SaveAssociations.time {
+    import sparkSession.implicits._
+    import GnocchiSession._
+
     if (saveAsText) {
       val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
-      val assoc = associations.select(necessaryFields: _*).sort($"pValue".asc)
+      val ds = sparkSession.createDataFrame(associations)
+      val assoc = ds.select(necessaryFields: _*).sort($"pValue".asc)
       assoc.write
         .format("com.databricks.spark.csv")
         .option("header", "true")
         .option("delimiter", "\t")
         .save(outPath)
     } else {
-      associations.write.parquet(outPath)
+      sparkSession.createDataFrame(associations).write.parquet(outPath)
+    }
+  }
+
+  def saveLogisticAssociations(associations: RDD[LogisticAssociation],
+                               outPath: String,
+                               saveAsText: Boolean = false): Unit = SaveAssociations.time {
+    import sparkSession.implicits._
+    import GnocchiSession._
+
+    if (saveAsText) {
+      val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
+      val ds = sparkSession.createDataFrame(associations)
+      val assoc = ds.select(necessaryFields: _*).sort($"pValue".asc)
+      assoc.write
+        .format("com.databricks.spark.csv")
+        .option("header", "true")
+        .option("delimiter", "\t")
+        .save(outPath)
+    } else {
+      sparkSession.createDataFrame(associations).write.parquet(outPath)
     }
   }
 
@@ -619,7 +664,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       val metaData = ois.readObject.asInstanceOf[LinearGnocchiModel]
       ois.close()
       require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
-      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LinearVariantModel]
+      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LinearVariantModel].rdd
       LinearGnocchiModel(data,
         metaData.phenotypeName,
         metaData.covariatesNames,
@@ -630,7 +675,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       val metaData = ois.readObject.asInstanceOf[LogisticGnocchiModel]
       ois.close()
       require(metaData.modelType == modelType, "Loaded model has different type than input parameter.")
-      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LogisticVariantModel]
+      val data = sparkSession.read.parquet(modelPath + "/variantModels").as[LogisticVariantModel].rdd
       LogisticGnocchiModel(data,
         metaData.phenotypeName,
         metaData.covariatesNames,

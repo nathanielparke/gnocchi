@@ -154,16 +154,16 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
         val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
+        sc.saveLinearAssociations(associations, args.output, args.saveAsText)
       case "DOMINANT_LINEAR" =>
         val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
+        sc.saveLinearAssociations(associations, args.output, args.saveAsText)
       case "ADDITIVE_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
+        sc.saveLogisticAssociations(associations, args.output, args.saveAsText)
       case "DOMINANT_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
+        sc.saveLogisticAssociations(associations, args.output, args.saveAsText)
     }
   }
 }

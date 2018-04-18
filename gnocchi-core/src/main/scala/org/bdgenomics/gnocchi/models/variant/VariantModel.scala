@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.models.variant
 
-trait VariantModel[VM <: VariantModel[VM]] {
+trait VariantModel[VM <: VariantModel[VM]] extends Product {
   val uniqueID: String
   val chromosome: Int
   val position: Int

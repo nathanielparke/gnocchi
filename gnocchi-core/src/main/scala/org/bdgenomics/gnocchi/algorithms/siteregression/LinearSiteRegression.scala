@@ -25,6 +25,7 @@ import breeze.numerics._
 import breeze.stats._
 import breeze.stats.distributions.StudentsT
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
@@ -59,11 +60,9 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @return Tuple of two [[Dataset]] objects. First is [[LinearVariantModel]] objects, second is
    *         [[LinearAssociation]] objects
    */
-  def createModelAndAssociations(genotypes: Dataset[CalledVariant],
+  def createModelAndAssociations(genotypes: RDD[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
-                                 allelicAssumption: String): (Dataset[LinearVariantModel], Dataset[LinearAssociation]) = CreateModelAndAssociations.time {
-
-    import genotypes.sqlContext.implicits._
+                                 allelicAssumption: String): (RDD[LinearVariantModel], RDD[LinearAssociation]) = CreateModelAndAssociations.time {
 
     //ToDo: Singular Matrix Exceptions
     val results = genotypes.flatMap((genos: CalledVariant) => {
@@ -85,9 +84,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
    * @return [[Dataset]] of [[LinearAssociation]] that store the results
    */
   def createAssociationsDataset(genotypesDS: GenotypeDataset,
-                                phenotypesContainer: PhenotypesContainer): Dataset[LinearAssociation] = CreatAssociationsDataset.time {
-
-    import genotypesDS.genotypes.sqlContext.implicits._
+                                phenotypesContainer: PhenotypesContainer): RDD[LinearAssociation] = CreatAssociationsDataset.time {
 
     //ToDo: Singular Matrix Exceptions
     val results = genotypesDS.genotypes.flatMap((genos: CalledVariant) => {

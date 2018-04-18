@@ -22,6 +22,7 @@ import java.io.ObjectOutputStream
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.col
 import org.apache.hadoop.fs.Path
+import org.apache.spark.rdd.RDD
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearRegressionResults
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.primitives.association.LinearAssociationBuilder
@@ -55,7 +56,7 @@ import org.bdgenomics.gnocchi.sql.GnocchiSession._
  * @param numSamples
  * @param allelicAssumption
  */
-case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders: Dataset[LinearAssociationBuilder],
+case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders: RDD[LinearAssociationBuilder],
                                             phenotypeNames: String,
                                             covariatesNames: List[String],
                                             sampleUIDs: Set[String],
@@ -63,8 +64,6 @@ case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders
                                             allelicAssumption: String) {
 
   //  val fullyBuilt = has seen genotypes for all individual ids used to build the model
-
-  import linearAssociationBuilders.sparkSession.implicits._
 
   /**
    * Joins a [[Dataset]] of [[CalledVariant]] with a [[Dataset]] of [[LinearAssociationBuilder]] and updates
@@ -81,9 +80,9 @@ case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders
   def addNewData(newGenotypeData: GenotypeDataset,
                  newPhenotypeData: PhenotypesContainer): LinearAssociationsDatasetBuilder = {
     LinearAssociationsDatasetBuilder(
-      linearAssociationBuilders
-        .joinWith(newGenotypeData.genotypes, linearAssociationBuilders("model.uniqueID") === newGenotypeData.genotypes("uniqueID"))
-        .map { case (builder, newVariant) => builder.addNewData(newVariant, newPhenotypeData.phenotypes.value, allelicAssumption) },
+      linearAssociationBuilders.keyBy(_.association.uniqueID)
+        .join(newGenotypeData.genotypes.keyBy(_.uniqueID))
+        .map { case (key, (builder, newVariant)) => builder.addNewData(newVariant, newPhenotypeData.phenotypes.value, allelicAssumption) },
       phenotypeNames,
       covariatesNames,
       sampleUIDs,
@@ -97,8 +96,8 @@ case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders
    * @param outPath Path to the output location.
    */
   def saveAssociations(outPath: String): Unit = {
-    val sc = linearAssociationBuilders.sparkSession.sparkContext
-    sc.saveAssociations(linearAssociationBuilders.map(_.association),
+    val sc = linearAssociationBuilders.sparkContext
+    sc.saveLinearAssociations(linearAssociationBuilders.map(_.association),
       outPath,
       saveAsText = true)
   }
@@ -109,15 +108,19 @@ case class LinearAssociationsDatasetBuilder(@transient linearAssociationBuilders
    * @param saveTo path to save this serialized object to.
    */
   def save(saveTo: String): Unit = {
+    import org.bdgenomics.gnocchi.sql.GnocchiSession._
     val metadataPath = new Path(saveTo + "/metaData")
 
-    val metadata_fs = metadataPath.getFileSystem(linearAssociationBuilders.sparkSession.sparkContext.hadoopConfiguration)
+    val metadata_fs = metadataPath.getFileSystem(linearAssociationBuilders.sparkContext.hadoopConfiguration)
     val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
 
     metadata_oos.writeObject(this)
     metadata_oos.close()
 
-    linearAssociationBuilders.write.parquet(saveTo + "/LinearAssociationBuilders")
+    val ss = linearAssociationBuilders.sparkContext.sparkSession
+    import ss.implicits._
+
+    ss.createDataset(linearAssociationBuilders).write.parquet(saveTo + "/LinearAssociationBuilders")
   }
 }
 
@@ -140,11 +143,9 @@ object LinearAssociationsDatasetBuilder {
             genotypeData: GenotypeDataset,
             phenotypeData: PhenotypesContainer): LinearAssociationsDatasetBuilder = {
 
-    import model.variantModels.sparkSession.implicits._
-
-    val linearAssociationBuilders = model.variantModels.joinWith(genotypeData.genotypes, model.variantModels("uniqueID") === genotypeData.genotypes("uniqueID"))
+    val linearAssociationBuilders = model.variantModels.keyBy(_.uniqueID).join(genotypeData.genotypes.keyBy(_.uniqueID))
       .map {
-        case (model, genotype) => {
+        case (key, (model, genotype)) => {
           LinearAssociationBuilder(model, model.createAssociation(genotype, phenotypeData.phenotypes.value, genotypeData.allelicAssumption))
         }
       }

@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
@@ -32,7 +33,7 @@ import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, PhenotypesContainer }
 case class LinearRegressionResults(genotypes: GenotypeDataset,
                                    phenotypes: PhenotypesContainer) {
 
-  lazy val (models: Dataset[LinearVariantModel], associations: Dataset[LinearAssociation]) =
+  lazy val (models: RDD[LinearVariantModel], associations: RDD[LinearAssociation]) =
     LinearSiteRegression.createModelAndAssociations(
       genotypes.genotypes,
       phenotypes.phenotypes,

@@ -17,6 +17,10 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import java.io.ObjectOutputStream
+
+import org.apache.hadoop.fs.Path
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 import org.bdgenomics.gnocchi.utils.ModelType._
@@ -36,7 +40,7 @@ import org.bdgenomics.gnocchi.utils.ModelType._
  * @param numSamples the number of subjects used in this study, to build this model
  * @param allelicAssumption The allelic assumption used in this study, to build this model
  */
-case class LogisticGnocchiModel(@transient variantModels: Dataset[LogisticVariantModel],
+case class LogisticGnocchiModel(@transient variantModels: RDD[LogisticVariantModel],
                                 phenotypeName: String,
                                 covariatesNames: List[String],
                                 sampleUIDs: Set[String],
@@ -44,4 +48,21 @@ case class LogisticGnocchiModel(@transient variantModels: Dataset[LogisticVarian
                                 allelicAssumption: String)
     extends GnocchiModel[LogisticVariantModel, LogisticGnocchiModel] {
   val modelType: ModelType = Logistic
+
+  def save(saveTo: String): Unit = {
+    import org.bdgenomics.gnocchi.sql.GnocchiSession._
+
+    val metadataPath = new Path(saveTo + "/metaData")
+
+    val metadata_fs = metadataPath.getFileSystem(variantModels.sparkContext.hadoopConfiguration)
+    val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
+
+    metadata_oos.writeObject(this)
+    metadata_oos.close()
+
+    val ss = variantModels.sparkContext.sparkSession
+    import ss.implicits._
+
+    variantModels.sparkContext.sparkSession.createDataset(variantModels).write.parquet(saveTo + "/variantModels")
+  }
 }

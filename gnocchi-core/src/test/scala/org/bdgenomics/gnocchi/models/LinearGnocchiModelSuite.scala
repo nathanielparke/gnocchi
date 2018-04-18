@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
@@ -80,12 +81,12 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     val linearGnocchiModel = mock(classOf[LinearGnocchiModel])
     val spyVar1 = spy(variantModel1)
 
-    val varModelDataset1 = ss.createDataset(List(spyVar1))
+    val varModelDataset1 = sc.parallelize(List(spyVar1))
 
     when(linearGnocchiModel.variantModels).thenReturn(varModelDataset1)
-    when(linearGnocchiModel.mergeVariantModels(any[Dataset[LinearVariantModel]])).thenCallRealMethod()
+    when(linearGnocchiModel.mergeVariantModels(any[RDD[LinearVariantModel]])).thenCallRealMethod()
 
-    val mergedInGM = linearGnocchiModel.mergeVariantModels(ss.createDataset(List(variantModel2))).collect().head
+    val mergedInGM = linearGnocchiModel.mergeVariantModels(sc.parallelize(List(variantModel2))).collect().head
 
     assert(mergedInGM.uniqueID == mergedVariantModel.uniqueID, "uniqueID in hand merged Variant Model different than uniqueID from the gnocchiModel merge.")
     assert(mergedInGM.chromosome == mergedVariantModel.chromosome, "chromosome in hand merged Variant Model different than chromosome from the gnocchiModel merge.")
@@ -101,8 +102,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks if there are overlapping sampleIDs between the two models being merged.") {
-    val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
-    val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
+    val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
+    val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
     val covariateNames = List("covar_1", "covar_2")
 
@@ -125,8 +126,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks if the allelic assumption between the two models is different.") {
-    val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
-    val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
+    val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
+    val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
     val covariateNames = List("covar_1", "covar_2")
 
@@ -148,8 +149,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks by default if the phenotype used in each model is different.") {
-    val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
-    val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
+    val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
+    val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val covariateNames = List("covar_1", "covar_2")
 
     val sampleUIDs1 = Set("1", "2", "3", "4")
@@ -171,8 +172,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("LinearGnocchiModel.mergeGnocchiModel allows for different phenotype names in the built gnocchi models") {
-    val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
-    val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
+    val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
+    val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val covariateNames = List("covar_1", "covar_2")
 
     val sampleUIDs1 = Set("1", "2", "3", "4")
@@ -193,8 +194,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
   }
 
   sparkTest("LinearGnocchiModel.mergeGnocchiModel correctly merges model metadata") {
-    val variantModels1 = mock(classOf[Dataset[LinearVariantModel]])
-    val variantModels2 = mock(classOf[Dataset[LinearVariantModel]])
+    val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
+    val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
     val covariateNames = List("covar_1", "covar_2")
 
@@ -206,8 +207,8 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
 
     val mockedLinearGnocchiModel = mock(classOf[LinearGnocchiModel])
 
-    when(mockedLinearGnocchiModel.mergeVariantModels(any[Dataset[LinearVariantModel]]))
-      .thenReturn(mock(classOf[Dataset[LinearVariantModel]]))
+    when(mockedLinearGnocchiModel.mergeVariantModels(any[RDD[LinearVariantModel]]))
+      .thenReturn(mock(classOf[RDD[LinearVariantModel]]))
     when(mockedLinearGnocchiModel.mergeGnocchiModel(any[LinearGnocchiModel], anyBoolean())).thenCallRealMethod()
 
     when(mockedLinearGnocchiModel.variantModels).thenReturn(variantModels1)

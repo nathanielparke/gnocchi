@@ -17,6 +17,10 @@
  */
 package org.bdgenomics.gnocchi.models
 
+import java.io.ObjectOutputStream
+
+import org.apache.hadoop.fs.Path
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 import org.bdgenomics.gnocchi.utils.ModelType._
@@ -36,7 +40,7 @@ import org.bdgenomics.gnocchi.utils.ModelType._
  * @param numSamples the number of subjects used in this study, to build this model
  * @param allelicAssumption The allelic assumption used in this study, to build this model
  */
-case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantModel],
+case class LinearGnocchiModel(@transient variantModels: RDD[LinearVariantModel],
                               phenotypeName: String,
                               covariatesNames: List[String],
                               sampleUIDs: Set[String],
@@ -44,8 +48,6 @@ case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantMod
                               allelicAssumption: String)
     extends GnocchiModel[LinearVariantModel, LinearGnocchiModel] {
   val modelType: ModelType = Linear
-
-  import variantModels.sqlContext.implicits._
 
   /**
    * Merge two [[LinearGnocchiModel]]s together into the union of the two models. This is done by
@@ -93,8 +95,25 @@ case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantMod
    *                        variant models stored in this object.
    * @return the dataset of merged [[LinearVariantModel]]
    */
-  def mergeVariantModels(newVariantModels: Dataset[LinearVariantModel]): Dataset[LinearVariantModel] = {
-    variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID"))
-      .map(x => x._1.mergeWith(x._2))
+  def mergeVariantModels(newVariantModels: RDD[LinearVariantModel]): RDD[LinearVariantModel] = {
+    variantModels.keyBy(_.uniqueID).join(newVariantModels.keyBy(_.uniqueID))
+      .map(x => x._2._1.mergeWith(x._2._2))
+  }
+
+  def save(saveTo: String): Unit = {
+    import org.bdgenomics.gnocchi.sql.GnocchiSession._
+
+    val metadataPath = new Path(saveTo + "/metaData")
+
+    val metadata_fs = metadataPath.getFileSystem(variantModels.sparkContext.hadoopConfiguration)
+    val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
+
+    metadata_oos.writeObject(this)
+    metadata_oos.close()
+
+    val ss = variantModels.sparkContext.sparkSession
+    import ss.implicits._
+
+    variantModels.sparkContext.sparkSession.createDataset(variantModels).write.parquet(saveTo + "/variantModels")
   }
 }

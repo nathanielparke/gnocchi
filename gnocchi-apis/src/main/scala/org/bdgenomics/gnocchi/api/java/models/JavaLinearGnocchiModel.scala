@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.gnocchi.api.java.models
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
@@ -27,11 +28,11 @@ class JavaLinearGnocchiModel(val lgm: LinearGnocchiModel) {
     new JavaLinearGnocchiModel(newModel)
   }
 
-  def mergeVariantModels(newVariantModels: Dataset[LinearVariantModel]): Dataset[LinearVariantModel] = {
+  def mergeVariantModels(newVariantModels: RDD[LinearVariantModel]): RDD[LinearVariantModel] = {
     lgm.mergeVariantModels(newVariantModels)
   }
 
-  def getVariantModels(): Dataset[LinearVariantModel] = {
+  def getVariantModels(): RDD[LinearVariantModel] = {
     lgm.variantModels
   }
 

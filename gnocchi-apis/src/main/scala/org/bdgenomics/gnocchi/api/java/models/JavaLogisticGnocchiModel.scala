@@ -17,9 +17,10 @@
  */
 package org.bdgenomics.gnocchi.api.java.models
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
-import org.bdgenomics.gnocchi.models.variant.{ LogisticVariantModel }
-import org.bdgenomics.gnocchi.models.{ LogisticGnocchiModel }
+import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
+import org.bdgenomics.gnocchi.models.LogisticGnocchiModel
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession
@@ -31,7 +32,7 @@ class JavaLogisticGnocchiModel(val lgm: LogisticGnocchiModel) {
     lgm.save(saveTo)
   }
 
-  def getVariantModels(): Dataset[LogisticVariantModel] = {
+  def getVariantModels(): RDD[LogisticVariantModel] = {
     lgm.variantModels
   }
 

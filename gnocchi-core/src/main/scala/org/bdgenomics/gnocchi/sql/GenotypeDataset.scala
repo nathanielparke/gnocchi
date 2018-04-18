@@ -22,6 +22,7 @@ import java.io.ObjectOutputStream
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.hadoop.fs.Path
+import org.apache.spark.rdd.RDD
 
 /**
  * Use this object as a container for genomic data stored in [[CalledVariant]] objects. This object
@@ -32,7 +33,7 @@ import org.apache.hadoop.fs.Path
  * @param datasetUID Unique Identifier for this dataset of genomic variants. A good example for this
  *                   would be the dbGaP study accession ID
  */
-case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
+case class GenotypeDataset(@transient genotypes: RDD[CalledVariant],
                            datasetUID: String,
                            allelicAssumption: String,
                            sampleUIDs: Set[String]) {
@@ -53,14 +54,18 @@ case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
    * @param saveTo the path to save this object to
    */
   def save(saveTo: String): Unit = {
+    import org.bdgenomics.gnocchi.sql.GnocchiSession._
+    val ss = genotypes.sparkContext.sparkSession
+    import ss.implicits._
+
     val metadataPath = new Path(saveTo + "/metaData")
 
-    val metadata_fs = metadataPath.getFileSystem(genotypes.sparkSession.sparkContext.hadoopConfiguration)
+    val metadata_fs = metadataPath.getFileSystem(genotypes.sparkContext.hadoopConfiguration)
     val metadata_oos = new ObjectOutputStream(metadata_fs.create(metadataPath))
 
     metadata_oos.writeObject(this)
     metadata_oos.close()
 
-    genotypes.write.parquet(saveTo + "/genotypes")
+    genotypes.toDS().write.parquet(saveTo + "/genotypes")
   }
 }

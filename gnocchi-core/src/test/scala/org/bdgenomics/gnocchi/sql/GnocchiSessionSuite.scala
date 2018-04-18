@@ -18,6 +18,7 @@
 
 package org.bdgenomics.gnocchi.sql
 
+import org.apache.spark.rdd.RDD
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
@@ -41,7 +42,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.loadGenotypes should map fields correctly.") {
     val genoPath = testFile("1Sample1Variant.vcf")
     val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant", "ADDITIVE")
-    val firstCalledVariant = genotypes.genotypes.head
+    val firstCalledVariant = genotypes.genotypes.first()
 
     assert(firstCalledVariant.uniqueID.equals("rs3131972"))
     assert(firstCalledVariant.chromosome === 1)
@@ -195,10 +196,10 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     CalledVariant(uid.toString(), 1, 1234, "A", "G", samples)
   }
 
-  private def makeCalledVariantDS(variants: List[CalledVariant]): Dataset[CalledVariant] = {
+  private def makeCalledVariantDS(variants: List[CalledVariant]): RDD[CalledVariant] = {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    sc.parallelize(variants).toDS()
+    sc.parallelize(variants)
   }
 
   val sampleIds = List("sample1", "sample2", "sample3", "sample4")
@@ -267,9 +268,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   }
 
   sparkTest("sc.filterSamples exit gracefully when mind < 0.") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     try {
       sc.filterSamples(dataset, -0.4, 2)
       fail("sc.filterSamples does not fail on missingness per individual < 0.")
@@ -287,7 +286,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.filterVariants exit gracefully when maf _ > 1") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     try {
       sc.filterVariants(dataset, geno = 0.0, maf = 1.2)
       fail("sc.filterVariants does not fail on minor allele frequency > 1.")
@@ -299,7 +298,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.filterVariants should filter out all samples when maf == 1") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     val leftOver = sc.filterVariants(dataset, geno = 0.0, maf = 1.0)
     assert(leftOver.count() == 0, "Minor allele frequency filter at 1.0 should filter out all variants.")
   }
@@ -311,7 +310,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val mafs = List(0.2, 0.4, 0.6, 0.8)
       .map(x => createSampleGenotypeStates(num = 10, maf = x))
       .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(mafs)
+    val dataset = sc.parallelize(mafs)
 
     def maf1 = sc.filterVariants(dataset, maf = 0.2, geno = 0.0)
     def maf2 = sc.filterVariants(dataset, maf = 0.4, geno = 0.0)
@@ -331,7 +330,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val mafs = List(0.2, 0.4, 0.6, 0.8)
       .map(x => createSampleGenotypeStates(num = 5, maf = x))
       .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(mafs)
+    val dataset = sc.parallelize(mafs)
 
     assert(sc.filterVariants(dataset, maf = 0.0, geno = 0.0).count == 4, "sc.filterVariants filters out variants when maf == 0.0")
   }
@@ -339,7 +338,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.filterVariants should exit gracefully when maf < 0") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     try {
       sc.filterVariants(dataset, geno = 0.0, maf = -0.2)
       fail("sc.filterVariants does not fail on minor allele frequency < 0.")
@@ -355,7 +354,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.filterVariants should exit gracefully when geno > 1") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     try {
       sc.filterVariants(dataset, geno = 1.2, maf = 0.0)
       fail("sc.filterVariants does not fail on minor allele frequency < 0.")
@@ -371,7 +370,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val genos = List(0.2, 0.4, 0.6, 0.8)
       .map(x => createSampleGenotypeStates(num = 5, geno = x))
       .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
+    val dataset = sc.parallelize(genos)
 
     assert(sc.filterVariants(dataset, maf = 0.0, geno = 1.0).count == 4, "sc.filterVariants filters out variants when geno == 1.0")
   }
@@ -383,7 +382,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val genos = List(0.2, 0.4, 0.6, 0.8)
       .map(x => createSampleGenotypeStates(num = 5, geno = x))
       .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
+    val dataset = sc.parallelize(genos)
 
     assert(sc.filterVariants(dataset, geno = 0.8, maf = 0.0).count == 4, "sc.filterVariants incorrectly filtered at geno = 0.8")
     assert(sc.filterVariants(dataset, geno = 0.6, maf = 0.0).count == 3, "sc.filterVariants incorrectly filtered at geno = 0.6")
@@ -398,7 +397,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val genos = List(0.2, 0.4, 0.6, 0.8)
       .map(x => createSampleGenotypeStates(num = 5, geno = x))
       .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
+    val dataset = sc.parallelize(genos)
 
     assert(sc.filterVariants(dataset, geno = 0.0, maf = 0.0).count == 0, "sc.filterVariants incorrectly filtered at geno = 0.0")
   }
@@ -406,7 +405,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
   sparkTest("sc.filterVariants should gracefully exit when geno < 0") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+    val dataset = sc.parallelize(List.fill(5)(createSampleCalledVariant()))
     try {
       sc.filterVariants(dataset, geno = -0.2, maf = 0.0)
       fail("sc.filterVariants does not fail on minor allele frequency < 0.")
@@ -435,7 +434,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 1.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar))).first
 
     assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
     assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
@@ -452,7 +451,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.75)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar))).first
 
     assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
     assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
@@ -469,7 +468,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.5)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar))).first
 
     assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
     assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
@@ -484,7 +483,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.25)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar))).first
 
     assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
     assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
@@ -499,7 +498,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar))).first
 
     assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
     assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
@@ -514,7 +513,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar)))
+    val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar)))
 
     assert(recoded.isInstanceOf[Dataset[CalledVariant]], "sc.recodeMajorAllele does not produce a `Dataset[CalledVariant]`")
   }

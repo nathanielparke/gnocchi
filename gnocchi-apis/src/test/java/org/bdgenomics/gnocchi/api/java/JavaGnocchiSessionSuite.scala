@@ -22,6 +22,7 @@ import org.bdgenomics.gnocchi.api.java.GnocchiFunSuite
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.GnocchiSession
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.mockito.Mockito
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.api.java.core.JavaGnocchiSession
@@ -37,7 +38,7 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
   }
 
   ignore("Verify filterSamples makes correct call to GnocchiSession") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+    val mockGenotype = Mockito.mock(classOf[RDD[CalledVariant]])
     val mockMind = 0.0
     val mockPloidy = 0.0
 
@@ -47,7 +48,7 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
   }
 
   ignore("Verify filterVariants makes correct call to GnocchiSession") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+    val mockGenotype = Mockito.mock(classOf[RDD[CalledVariant]])
     val mockGeno = 0.0
     val mockMaf = 0.0
 
@@ -57,7 +58,7 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
   }
 
   ignore("Verify recodeMajorAllele makes correct call to Gnocchi Sesssion") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+    val mockGenotype = Mockito.mock(classOf[RDD[CalledVariant]])
 
     jgs.recodeMajorAllele(mockGenotype)
 

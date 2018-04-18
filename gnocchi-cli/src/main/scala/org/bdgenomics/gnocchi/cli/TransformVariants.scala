@@ -73,10 +73,10 @@ class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSp
       sc.loadGenotypes(args.inputPath, args.datasetUID, args.allelicAssumption, adamFormat = true)
     }
 
-    if (args.saveAdamParquet) {
-      rawGenotypes.save(args.outputPath + "/gnocchi")
-    } else {
-      rawGenotypes.save(args.outputPath)
-    }
+    //    if (args.saveAdamParquet) {
+    //      rawGenotypes.save(args.outputPath + "/gnocchi")
+    //    } else {
+    //      rawGenotypes.save(args.outputPath)
+    //    }
   }
 }

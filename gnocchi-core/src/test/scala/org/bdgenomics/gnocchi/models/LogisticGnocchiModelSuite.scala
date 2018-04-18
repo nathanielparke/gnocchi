@@ -42,7 +42,7 @@ class LogisticGnocchiModelSuite extends GnocchiFunSuite {
         "T",
         List(0.21603874149667546, -0.20074885895765007, 0.21603874149667546, -0.20074885895765007))
 
-    val variantModels = ss.createDataset(List(variantModel))
+    val variantModels = sc.parallelize(List(variantModel))
 
     try {
       LogisticGnocchiModel(

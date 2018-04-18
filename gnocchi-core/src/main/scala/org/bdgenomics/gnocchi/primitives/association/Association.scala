@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.primitives.association
 
-trait Association {
+trait Association extends Product {
   val uniqueID: String
   val chromosome: Int
   val position: Int

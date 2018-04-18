@@ -21,6 +21,7 @@ import breeze.linalg._
 import breeze.numerics._
 import org.apache.commons.math3.distribution.ChiSquaredDistribution
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.models.variant.LogisticVariantModel
 import org.bdgenomics.gnocchi.primitives.association.LogisticAssociation
@@ -58,10 +59,9 @@ trait LogisticSiteRegression extends SiteRegression[LogisticVariantModel, Logist
    * @return Tuple of two [[Dataset]] objects. First is [[LogisticVariantModel]], second is
    *         [[LogisticAssociation]] objects
    */
-  def createModelAndAssociations(genotypes: Dataset[CalledVariant],
+  def createModelAndAssociations(genotypes: RDD[CalledVariant],
                                  phenotypes: Broadcast[Map[String, Phenotype]],
-                                 allelicAssumption: String): (Dataset[LogisticVariantModel], Dataset[LogisticAssociation]) = {
-    import genotypes.sqlContext.implicits._
+                                 allelicAssumption: String): (RDD[LogisticVariantModel], RDD[LogisticAssociation]) = {
 
     val results = genotypes.flatMap((genos: CalledVariant) => {
       try {
