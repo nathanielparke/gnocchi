@@ -62,7 +62,20 @@ trait GnocchiFunSuite extends SparkFunSuite {
     val alt = if (alternateAllele.isEmpty) random.shuffle(List("A", "C", "T", "G").filter(_ != ref)).head else alternateAllele.get
     val sam = if (samples.isEmpty) createSampleGenotypeStates(num = 50) else samples.get
 
-    CalledVariant(uid, chrom, pos, ref, alt, sam)
+    val ploidy = sam.head.ploidy
+
+    val missingCount = sam.map(_.misses.toInt).sum
+    val alleleCount = sam.map(_.alts.toInt).sum
+
+    val maf = if (sam.length * ploidy > missingCount) {
+      alleleCount.toDouble / (sam.length * ploidy - missingCount).toDouble
+    } else {
+      0.5
+    }
+
+    val geno = missingCount.toDouble / (sam.length * ploidy).toDouble
+
+    CalledVariant(uid, chrom, pos, ref, alt, maf, geno, sam)
   }
 
   def createSamplePhenotype(calledVariant: Option[CalledVariant] = None,

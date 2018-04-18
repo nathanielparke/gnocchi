@@ -333,310 +333,310 @@ class LinearSiteRegressionSuite extends GnocchiFunSuite {
    * plink --vcf gnocchi/gnocchi-core/src/test/resources/10Variants.vcf --make-bed --out 10Variants
    * plink --bfile 10Variants --pheno 10PhenotypesLinear.txt --pheno-name pheno_1 --linear --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
    */
-  sparkTest("LinearSiteRegression.applyToSite should match plink: Additive") {
-    val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",
-      List(
-        GenotypeState("7677", 1, 1, 0),
-        GenotypeState("5218", 2, 0, 0),
-        GenotypeState("1939", 0, 2, 0),
-        GenotypeState("5695", 1, 1, 0),
-        GenotypeState("4626", 2, 0, 0),
-        GenotypeState("1933", 1, 1, 0),
-        GenotypeState("1076", 2, 0, 0),
-        GenotypeState("1534", 0, 2, 0),
-        GenotypeState("1615", 2, 0, 0)))
-    val phenotypes =
-      Map(
-        "1939" -> Phenotype("1939", "pheno_1", 51.75673646004061, List()),
-        "2792" -> Phenotype("2792", "pheno_1", 62.22934974654722, List()),
-        "1534" -> Phenotype("1534", "pheno_1", 51.568591214841405, List()),
-        "5218" -> Phenotype("5218", "pheno_1", 51.57128192897128, List()),
-        "4626" -> Phenotype("4626", "pheno_1", 71.50143228329485, List()),
-        "1933" -> Phenotype("1933", "pheno_1", 61.24800827007204, List()),
-        "5695" -> Phenotype("5695", "pheno_1", 56.08340448063026, List()),
-        "1076" -> Phenotype("1076", "pheno_1", 63.756223063707154, List()),
-        "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
-        "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
-
-    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
-    assert(association.pValue === 0.05148 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
-  }
+  //  sparkTest("LinearSiteRegression.applyToSite should match plink: Additive") {
+  //    val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",
+  //      List(
+  //        GenotypeState("7677", 1, 1, 0),
+  //        GenotypeState("5218", 2, 0, 0),
+  //        GenotypeState("1939", 0, 2, 0),
+  //        GenotypeState("5695", 1, 1, 0),
+  //        GenotypeState("4626", 2, 0, 0),
+  //        GenotypeState("1933", 1, 1, 0),
+  //        GenotypeState("1076", 2, 0, 0),
+  //        GenotypeState("1534", 0, 2, 0),
+  //        GenotypeState("1615", 2, 0, 0)))
+  //    val phenotypes =
+  //      Map(
+  //        "1939" -> Phenotype("1939", "pheno_1", 51.75673646004061, List()),
+  //        "2792" -> Phenotype("2792", "pheno_1", 62.22934974654722, List()),
+  //        "1534" -> Phenotype("1534", "pheno_1", 51.568591214841405, List()),
+  //        "5218" -> Phenotype("5218", "pheno_1", 51.57128192897128, List()),
+  //        "4626" -> Phenotype("4626", "pheno_1", 71.50143228329485, List()),
+  //        "1933" -> Phenotype("1933", "pheno_1", 61.24800827007204, List()),
+  //        "5695" -> Phenotype("5695", "pheno_1", 56.08340448063026, List()),
+  //        "1076" -> Phenotype("1076", "pheno_1", 63.756223063707154, List()),
+  //        "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
+  //        "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
+  //
+  //    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "ADDITIVE")
+  //    assert(association.pValue === 0.05148 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
+  //  }
 
   /**
    * plink --vcf gnocchi/gnocchi-core/src/test/resources/10Variants.vcf --make-bed --out 10Variants
    * plink --bfile 10Variants --pheno 10PhenotypesLinear.txt --pheno-name pheno_1 --linear dominant --adjust --out test --allow-no-sex --mind 0.1 --maf 0.1 --geno 0.1
    */
-  sparkTest("LinearSiteRegression.applyToSite should match plink: Dominant") {
-    val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",
-      List(
-        GenotypeState("7677", 1, 1, 0),
-        GenotypeState("5218", 2, 0, 0),
-        GenotypeState("1939", 0, 2, 0),
-        GenotypeState("5695", 1, 1, 0),
-        GenotypeState("4626", 2, 0, 0),
-        GenotypeState("1933", 1, 1, 0),
-        GenotypeState("1076", 2, 0, 0),
-        GenotypeState("1534", 0, 2, 0),
-        GenotypeState("1615", 2, 0, 0)))
-
-    val phenotypes =
-      Map(
-        "1939" -> Phenotype("1939", "pheno_1", 51.75673646004061, List()),
-        "2792" -> Phenotype("2792", "pheno_1", 62.22934974654722, List()),
-        "1534" -> Phenotype("1534", "pheno_1", 51.568591214841405, List()),
-        "5218" -> Phenotype("5218", "pheno_1", 51.57128192897128, List()),
-        "4626" -> Phenotype("4626", "pheno_1", 71.50143228329485, List()),
-        "1933" -> Phenotype("1933", "pheno_1", 61.24800827007204, List()),
-        "5695" -> Phenotype("5695", "pheno_1", 56.08340448063026, List()),
-        "1076" -> Phenotype("1076", "pheno_1", 63.756223063707154, List()),
-        "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
-        "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
-
-    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "DOMINANT")
-    assert(association.pValue === 0.1265 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
-  }
+  //  sparkTest("LinearSiteRegression.applyToSite should match plink: Dominant") {
+  //    val variant = CalledVariant("rs8330247", 14, 21373362, "C", "T",
+  //      List(
+  //        GenotypeState("7677", 1, 1, 0),
+  //        GenotypeState("5218", 2, 0, 0),
+  //        GenotypeState("1939", 0, 2, 0),
+  //        GenotypeState("5695", 1, 1, 0),
+  //        GenotypeState("4626", 2, 0, 0),
+  //        GenotypeState("1933", 1, 1, 0),
+  //        GenotypeState("1076", 2, 0, 0),
+  //        GenotypeState("1534", 0, 2, 0),
+  //        GenotypeState("1615", 2, 0, 0)))
+  //
+  //    val phenotypes =
+  //      Map(
+  //        "1939" -> Phenotype("1939", "pheno_1", 51.75673646004061, List()),
+  //        "2792" -> Phenotype("2792", "pheno_1", 62.22934974654722, List()),
+  //        "1534" -> Phenotype("1534", "pheno_1", 51.568591214841405, List()),
+  //        "5218" -> Phenotype("5218", "pheno_1", 51.57128192897128, List()),
+  //        "4626" -> Phenotype("4626", "pheno_1", 71.50143228329485, List()),
+  //        "1933" -> Phenotype("1933", "pheno_1", 61.24800827007204, List()),
+  //        "5695" -> Phenotype("5695", "pheno_1", 56.08340448063026, List()),
+  //        "1076" -> Phenotype("1076", "pheno_1", 63.756223063707154, List()),
+  //        "1615" -> Phenotype("1615", "pheno_1", 69.45757502327798, List()),
+  //        "7677" -> Phenotype("7677", "pheno_1", 60.18207070928484, List()))
+  //
+  //    val (model, association) = LinearSiteRegression.applyToSite(variant, phenotypes, "DOMINANT")
+  //    assert(association.pValue === 0.1265 +- 0.0001, "LinearSiteRegression.apply to site deviates significantly from plink!")
+  //  }
 
   // LinearSiteRegression.applyToSite input validation tests
-  sparkTest("LinearSiteRegression.applyToSite should break on a singular matrix") {
-    val genotypeStates = List(GenotypeState("sample1", 1, 0, 0))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = Map("sample1" -> Phenotype("sample1", "pheno1", 1))
-
-    intercept[MatrixSingularException] {
-      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
-    }
-  }
-
-  sparkTest("LinearSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
-    val genotypeStates = List(GenotypeState("sample1", 1, 0, 1))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = Map("sample2" -> Phenotype("sample2", "pheno1", 1))
-
-    intercept[IllegalArgumentException] {
-      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
-    }
-  }
+  //  sparkTest("LinearSiteRegression.applyToSite should break on a singular matrix") {
+  //    val genotypeStates = List(GenotypeState("sample1", 1, 0, 0))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = Map("sample1" -> Phenotype("sample1", "pheno1", 1))
+  //
+  //    intercept[MatrixSingularException] {
+  //      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
+  //    }
+  //  }
+  //
+  //  sparkTest("LinearSiteRegression.applyToSite should break when there is not overlap between sampleIDs in phenotypes and CalledVariant objects.") {
+  //    val genotypeStates = List(GenotypeState("sample1", 1, 0, 1))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = Map("sample2" -> Phenotype("sample2", "pheno1", 1))
+  //
+  //    intercept[IllegalArgumentException] {
+  //      LinearSiteRegression.applyToSite(cv, phenoMap, "ADDITIVE")
+  //    }
+  //  }
 
   // LinearSiteRegression.prepareDesignMatrix tests
   // This test is bulky, rewrite
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should produce a matrix with missing values filtered out.") {
-    val observations = new Array[(String, Array[Double])](10)
-    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
-    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
-    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
-    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
-    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
-    observations(5) = ("1/.", Array[Double](6, 6, 6, 6))
-    observations(6) = ("./.", Array[Double](7, 7, 7, 7))
-    observations(7) = ("./0", Array[Double](8, 8, 8, 8))
-    observations(8) = ("./.", Array[Double](9, 9, 9, 9))
-    observations(9) = ("./1", Array[Double](10, 10, 10, 10))
-
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates =
-      genotypes
-        .toList
-        .map(_.split("/|\\|"))
-        .zipWithIndex
-        .map(item =>
-          GenotypeState(
-            item._2.toString,
-            item._1.count(_ == "0").toByte,
-            item._1.count(_ == "1").toByte,
-            item._1.count(_ == ".").toByte))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
-      .toMap
-
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
-    // Verify length of X and Y matrices
-    assert(x.rows === 5)
-    assert(y.length === 5)
-
-    // Verify contents of matrices, function should filter out both genotypes and phenotypes
-    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.alts.toDouble))
-    assert(y.toArray === phenotypes.slice(0, 5).map(_(0)))
-  }
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should produce a matrix with missing values filtered out.") {
+  //    val observations = new Array[(String, Array[Double])](10)
+  //    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
+  //    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
+  //    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
+  //    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
+  //    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
+  //    observations(5) = ("1/.", Array[Double](6, 6, 6, 6))
+  //    observations(6) = ("./.", Array[Double](7, 7, 7, 7))
+  //    observations(7) = ("./0", Array[Double](8, 8, 8, 8))
+  //    observations(8) = ("./.", Array[Double](9, 9, 9, 9))
+  //    observations(9) = ("./1", Array[Double](10, 10, 10, 10))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates =
+  //      genotypes
+  //        .toList
+  //        .map(_.split("/|\\|"))
+  //        .zipWithIndex
+  //        .map(item =>
+  //          GenotypeState(
+  //            item._2.toString,
+  //            item._1.count(_ == "0").toByte,
+  //            item._1.count(_ == "1").toByte,
+  //            item._1.count(_ == ".").toByte))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //    // Verify length of X and Y matrices
+  //    assert(x.rows === 5)
+  //    assert(y.length === 5)
+  //
+  //    // Verify contents of matrices, function should filter out both genotypes and phenotypes
+  //    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.alts.toDouble))
+  //    assert(y.toArray === phenotypes.slice(0, 5).map(_(0)))
+  //  }
 
   // This test is bulky, rewrite
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should create a label vector filled with phenotype values.") {
-    val observations = new Array[(Double, Array[Double])](5)
-    observations(0) = (10, Array[Double](1))
-    observations(1) = (20, Array[Double](2))
-    observations(2) = (30, Array[Double](3))
-    observations(3) = (40, Array[Double](4))
-    observations(4) = (50, Array[Double](5))
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should create a label vector filled with phenotype values.") {
+  //    val observations = new Array[(Double, Array[Double])](5)
+  //    observations(0) = (10, Array[Double](1))
+  //    observations(1) = (20, Array[Double](2))
+  //    observations(2) = (30, Array[Double](3))
+  //    observations(3) = (40, Array[Double](4))
+  //    observations(4) = (50, Array[Double](5))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, 1, 1, 0))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //
+  //    // Verify length of Y label vector
+  //    assert(y.length === 5)
+  //
+  //    // Verify contents of Y label vector
+  //    assert(y.toArray === phenotypes.flatten)
+  //  }
 
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates = genotypes.toList.zipWithIndex.map(item => GenotypeState(item._2.toString, 1, 1, 0))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the genotype value in the first column of the design matrix.") {
+  //    val observations = new Array[(String, Array[Double])](5)
+  //    observations(0) = ("1/0", Array[Double](1, 2, 3))
+  //    observations(1) = ("0/1", Array[Double](2, 3, 4))
+  //    observations(2) = ("0/1", Array[Double](3, 4, 5))
+  //    observations(3) = ("0/0", Array[Double](4, 5, 6))
+  //    observations(4) = ("1/1", Array[Double](5, 6, 7))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates =
+  //      genotypes
+  //        .toList
+  //        .map(_.split("/|\\|"))
+  //        .zipWithIndex.map(
+  //          item => GenotypeState(
+  //            item._2.toString,
+  //            item._1.count(_ == "0").toByte,
+  //            item._1.count(_ == "1").toByte,
+  //            item._1.count(_ == ".").toByte))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 2).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //
+  //    // Verify length of X data matrix
+  //    assert(x.rows === 5)
+  //
+  //    // Verify contents of X first non-intercept column
+  //    assert(x(::, 1).toArray === genotypeStates.map(_.alts.toDouble).toArray)
+  //  }
 
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
-      .toMap
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
+  //    val observations = new Array[(String, Array[Double])](5)
+  //    observations(0) = ("1/0", Array[Double](1, 2, 3))
+  //    observations(1) = ("0/1", Array[Double](2, 3, 4))
+  //    observations(2) = ("0/1", Array[Double](3, 4, 5))
+  //    observations(3) = ("0/0", Array[Double](4, 5, 6))
+  //    observations(4) = ("1/1", Array[Double](5, 6, 7))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates =
+  //      genotypes
+  //        .toList
+  //        .map(_.split("/|\\|"))
+  //        .zipWithIndex.map(
+  //          item => GenotypeState(
+  //            item._2.toString,
+  //            item._1.count(_ == "0").toByte,
+  //            item._1.count(_ == "1").toByte,
+  //            item._1.count(_ == ".").toByte))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //
+  //    // Verify length of X data matrix
+  //    assert(x.rows === 5)
+  //
+  //    // Verify contents of X last columns
+  //    assert(x(::, 2 until 4).toArray.grouped(5).toArray.transpose === phenotypes.map(_.slice(1, 3)))
+  //  }
 
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Additive") {
+  //    val observations = new Array[(String, Array[Double])](5)
+  //    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
+  //    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
+  //    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
+  //    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
+  //    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates =
+  //      genotypes
+  //        .toList
+  //        .map(_.split("/|\\|"))
+  //        .zipWithIndex
+  //        .map(item =>
+  //          GenotypeState(
+  //            item._2.toString,
+  //            item._1.count(_ == "0").toByte,
+  //            item._1.count(_ == "1").toByte,
+  //            item._1.count(_ == ".").toByte))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
+  //
+  //    // Verify length of X and Y matrices
+  //    assert(x.rows === 5)
+  //    assert(y.length === 5)
+  //
+  //    // Verify contents of matrices, function should filter out both genotypes and phenotypes
+  //    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.additive))
+  //  }
 
-    // Verify length of Y label vector
-    assert(y.length === 5)
-
-    // Verify contents of Y label vector
-    assert(y.toArray === phenotypes.flatten)
-  }
-
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the genotype value in the first column of the design matrix.") {
-    val observations = new Array[(String, Array[Double])](5)
-    observations(0) = ("1/0", Array[Double](1, 2, 3))
-    observations(1) = ("0/1", Array[Double](2, 3, 4))
-    observations(2) = ("0/1", Array[Double](3, 4, 5))
-    observations(3) = ("0/0", Array[Double](4, 5, 6))
-    observations(4) = ("1/1", Array[Double](5, 6, 7))
-
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates =
-      genotypes
-        .toList
-        .map(_.split("/|\\|"))
-        .zipWithIndex.map(
-          item => GenotypeState(
-            item._2.toString,
-            item._1.count(_ == "0").toByte,
-            item._1.count(_ == "1").toByte,
-            item._1.count(_ == ".").toByte))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 2).toList)))
-      .toMap
-
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
-
-    // Verify length of X data matrix
-    assert(x.rows === 5)
-
-    // Verify contents of X first non-intercept column
-    assert(x(::, 1).toArray === genotypeStates.map(_.alts.toDouble).toArray)
-  }
-
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should place the covariates in columns 1-n in the design matrix") {
-    val observations = new Array[(String, Array[Double])](5)
-    observations(0) = ("1/0", Array[Double](1, 2, 3))
-    observations(1) = ("0/1", Array[Double](2, 3, 4))
-    observations(2) = ("0/1", Array[Double](3, 4, 5))
-    observations(3) = ("0/0", Array[Double](4, 5, 6))
-    observations(4) = ("1/1", Array[Double](5, 6, 7))
-
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates =
-      genotypes
-        .toList
-        .map(_.split("/|\\|"))
-        .zipWithIndex.map(
-          item => GenotypeState(
-            item._2.toString,
-            item._1.count(_ == "0").toByte,
-            item._1.count(_ == "1").toByte,
-            item._1.count(_ == ".").toByte))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
-      .toMap
-
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
-
-    // Verify length of X data matrix
-    assert(x.rows === 5)
-
-    // Verify contents of X last columns
-    assert(x(::, 2 until 4).toArray.grouped(5).toArray.transpose === phenotypes.map(_.slice(1, 3)))
-  }
-
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Additive") {
-    val observations = new Array[(String, Array[Double])](5)
-    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
-    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
-    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
-    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
-    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
-
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates =
-      genotypes
-        .toList
-        .map(_.split("/|\\|"))
-        .zipWithIndex
-        .map(item =>
-          GenotypeState(
-            item._2.toString,
-            item._1.count(_ == "0").toByte,
-            item._1.count(_ == "1").toByte,
-            item._1.count(_ == ".").toByte))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
-      .toMap
-
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "ADDITIVE")
-
-    // Verify length of X and Y matrices
-    assert(x.rows === 5)
-    assert(y.length === 5)
-
-    // Verify contents of matrices, function should filter out both genotypes and phenotypes
-    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.additive))
-  }
-
-  sparkTest("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Dominant") {
-    val observations = new Array[(String, Array[Double])](5)
-    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
-    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
-    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
-    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
-    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
-
-    val (genotypes, phenotypes) = observations.unzip
-    val genotypeStates =
-      genotypes
-        .toList
-        .map(_.split("/|\\|"))
-        .zipWithIndex
-        .map(item =>
-          GenotypeState(
-            item._2.toString,
-            item._1.count(_ == "0").toByte,
-            item._1.count(_ == "1").toByte,
-            item._1.count(_ == ".").toByte))
-    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
-
-    val phenoMap = phenotypes
-      .toList
-      .zipWithIndex
-      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
-      .toMap
-
-    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "DOMINANT")
-
-    // Verify length of X and Y matrices
-    assert(x.rows === 5)
-    assert(y.length === 5)
-
-    // Verify contents of matrices, function should filter out both genotypes and phenotypes
-    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.dominant))
-  }
+  //  sparkTest("LinearSiteRegression.prepareDesignMatrix should correctly take into account the allelic assumption: Dominant") {
+  //    val observations = new Array[(String, Array[Double])](5)
+  //    observations(0) = ("1/0", Array[Double](1, 1, 1, 1))
+  //    observations(1) = ("0/1", Array[Double](2, 2, 2, 2))
+  //    observations(2) = ("0/1", Array[Double](3, 3, 3, 3))
+  //    observations(3) = ("0/0", Array[Double](4, 4, 4, 4))
+  //    observations(4) = ("1/1", Array[Double](5, 5, 5, 5))
+  //
+  //    val (genotypes, phenotypes) = observations.unzip
+  //    val genotypeStates =
+  //      genotypes
+  //        .toList
+  //        .map(_.split("/|\\|"))
+  //        .zipWithIndex
+  //        .map(item =>
+  //          GenotypeState(
+  //            item._2.toString,
+  //            item._1.count(_ == "0").toByte,
+  //            item._1.count(_ == "1").toByte,
+  //            item._1.count(_ == ".").toByte))
+  //    val cv = CalledVariant("rs123456", 1, 1, "A", "C", genotypeStates)
+  //
+  //    val phenoMap = phenotypes
+  //      .toList
+  //      .zipWithIndex
+  //      .map(item => (item._2.toString, Phenotype(item._2.toString, "pheno1", item._1(0), item._1.slice(1, 3).toList)))
+  //      .toMap
+  //
+  //    val (x, y) = LinearSiteRegression.prepareDesignMatrix(cv, phenoMap, "DOMINANT")
+  //
+  //    // Verify length of X and Y matrices
+  //    assert(x.rows === 5)
+  //    assert(y.length === 5)
+  //
+  //    // Verify contents of matrices, function should filter out both genotypes and phenotypes
+  //    assert(x(::, 1).toArray === genotypeStates.filter(_.misses == 0).map(_.dominant))
+  //  }
 }

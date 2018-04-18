@@ -24,6 +24,8 @@ case class CalledVariant(uniqueID: String,
                          position: Int,
                          referenceAllele: String,
                          alternateAllele: String,
+                         minorAlleleFreq: Double,
+                         missingness: Double,
                          samples: List[GenotypeState]) extends Product {
 
   val ploidy: Int = samples.head.ploidy

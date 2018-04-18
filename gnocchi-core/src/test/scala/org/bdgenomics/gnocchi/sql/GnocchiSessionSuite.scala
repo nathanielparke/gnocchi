@@ -192,7 +192,7 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   private def makeCalledVariant(uid: Int, sampleIds: List[String], genotypeStates: List[String]): CalledVariant = {
     val samples = sampleIds.zip(genotypeStates).map(idGs => makeGenotypeState(idGs._1, idGs._2))
-    CalledVariant(uid.toString(), 1, 1234, "A", "G", samples)
+    CalledVariant(uid.toString(), 1, 1234, "A", "G", 0.0, 0.0, samples)
   }
 
   private def makeCalledVariantDS(variants: List[CalledVariant]): Dataset[CalledVariant] = {

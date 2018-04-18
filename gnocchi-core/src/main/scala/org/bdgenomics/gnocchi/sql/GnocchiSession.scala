@@ -22,7 +22,7 @@ import java.io.{ ObjectInputStream, Serializable }
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.{ array, col, lit, udf }
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, VariantRDD }
@@ -160,6 +160,8 @@ class GnocchiSession(@transient val sc: SparkContext)
         f.position,
         f.referenceAllele,
         f.alternateAllele,
+        f.minorAlleleFreq,
+        f.missingness,
         samplesFn(f.samples))
     })
   }
@@ -185,7 +187,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0,
       "`geno` value must be between 0.0 to 1.0 inclusive.")
-    genotypes.filter(x => x.maf >= maf && 1 - x.maf >= maf && x.geno <= geno)
+    genotypes.filter(x => x.minorAlleleFreq >= maf && 1 - x.minorAlleleFreq >= maf && x.missingness <= geno)
   }
 
   /**
@@ -218,27 +220,38 @@ class GnocchiSession(@transient val sc: SparkContext)
    * done by flipping the referenceAllele and alternateAllele when the frequency of alt is greater
    * than that of ref.
    *
+   * Note: As it is currently written this operation requires the dataset to be deserialized from
+   * the spark sql format into a rdd of java objects. This is because we are not just accessing
+   * fields in the object, but operating in a non-simple way. Spark's current translation from
+   * dataset object API to the underlying SQL generated code cannot support things like array sums,
+   * which are needed to compute the minor allele frequency.
+   *
    * @param genotypes The [[CalledVariant]] [[Dataset]] to recode
    * @return Returns an updated [[CalledVariant]] [[Dataset]] that has been recoded
    */
   def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = RecodeMajorAllele.time {
     genotypes.map(f => {
-      if (f.maf > 0.5) {
-        CalledVariant(f.uniqueID,
-          f.chromosome,
-          f.position,
-          f.alternateAllele,
-          f.referenceAllele,
-          f.samples.map(geno =>
-            GenotypeState(geno.sampleID,
-              geno.alts,
-              geno.refs,
-              geno.misses)))
+      if (f.minorAlleleFreq > 0.5) {
+        f.copy(
+          samples = f.samples.map(g => { g.copy(refs = g.alts, alts = g.refs) }),
+          alternateAllele = f.referenceAllele,
+          referenceAllele = f.alternateAllele,
+          minorAlleleFreq = 1 - f.minorAlleleFreq)
       } else {
         f
       }
     })
   }
+  //  def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
+  //    val struct_schema = ArrayType(
+  //      StructType(List(
+  //        StructField("sampleID", StringType),
+  //        StructField("alts", ByteType),
+  //        StructField("refs", ByteType),
+  //        StructField("misses", ByteType))))
+  //    val recoded = genotypes.where($"minorAlleleFreq" > 0.5).withColumn("samplesTmp", $"samples".cast(struct_schema)).drop("samples").withColumnRenamed("samplesTmp", "samples").as[CalledVariant]
+  //    genotypes.where($"minorAlleleFreq" <= 0.5).union(recoded)
+  //  }
 
   /**
    * Wrapper around [[recodeMajorAllele()]] that take in [[GenotypeDataset]] instead of the
@@ -418,12 +431,27 @@ class GnocchiSession(@transient val sc: SparkContext)
           geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
       }).toList
 
+      val ploidy = genotypeStates.head.ploidy
+
+      val missingCount = genotypeStates.map(_.misses.toInt).sum
+      val alleleCount = genotypeStates.map(_.alts.toInt).sum
+
+      val maf = if (genotypeStates.length * ploidy > missingCount) {
+        alleleCount.toDouble / (genotypeStates.length * ploidy - missingCount).toDouble
+      } else {
+        0.5
+      }
+
+      val geno = missingCount.toDouble / (genotypeStates.length * ploidy).toDouble
+
       CalledVariant(
         rs_id,
         contigName,
         variant.getEnd.intValue(),
         variant.getReferenceAllele,
         variant.getAlternateAllele,
+        maf,
+        geno,
         genotypeStates)
     }).toDS()
   }
