@@ -149,7 +149,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
     val recoded = sc.recodeMajorAllele(sampleFiltered)
     val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)
-    filteredGeno.genotypes.count()
+    //    filteredGeno.genotypes.count()
 
     args.associationType match {
       case "ADDITIVE_LINEAR" =>

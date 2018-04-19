@@ -509,13 +509,13 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
   }
 
-  sparkTest("sc.recodeMajorAllele should return `Dataset[CalledVariant]` type.") {
+  sparkTest("sc.recodeMajorAllele should return `RDD[CalledVariant]` type.") {
     val sparkSession = SparkSession.builder().getOrCreate()
     import sparkSession.implicits._
     val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
     val recoded = sc.recodeMajorAllele(sc.parallelize(List(sampleVar)))
 
-    assert(recoded.isInstanceOf[Dataset[CalledVariant]], "sc.recodeMajorAllele does not produce a `Dataset[CalledVariant]`")
+    assert(recoded.isInstanceOf[RDD[CalledVariant]], "sc.recodeMajorAllele does not produce a `RDD[CalledVariant]`")
   }
 
   // phenotype missing tests

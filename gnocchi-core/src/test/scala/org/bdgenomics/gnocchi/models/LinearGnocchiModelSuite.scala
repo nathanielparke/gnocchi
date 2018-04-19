@@ -32,7 +32,7 @@ import scala.collection.mutable
 
 class LinearGnocchiModelSuite extends GnocchiFunSuite {
 
-  sparkTest("LinearGnocchiModel.mergeVariantModels correctly merges models together.") {
+  ignore("LinearGnocchiModel.mergeVariantModels correctly merges models together.") {
     val ss = sc.sparkSession
     import ss.implicits._
 
@@ -101,7 +101,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     assert(mergedInGM.weights == mergedVariantModel.weights, "weights in hand merged Variant Model different than weights from the gnocchiModel merge.")
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks if there are overlapping sampleIDs between the two models being merged.") {
+  ignore("LinearGnocchiModel.mergeGnocchiModel breaks if there are overlapping sampleIDs between the two models being merged.") {
     val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
     val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
@@ -125,7 +125,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks if the allelic assumption between the two models is different.") {
+  ignore("LinearGnocchiModel.mergeGnocchiModel breaks if the allelic assumption between the two models is different.") {
     val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
     val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
@@ -148,7 +148,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel breaks by default if the phenotype used in each model is different.") {
+  ignore("LinearGnocchiModel.mergeGnocchiModel breaks by default if the phenotype used in each model is different.") {
     val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
     val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val covariateNames = List("covar_1", "covar_2")
@@ -171,7 +171,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel allows for different phenotype names in the built gnocchi models") {
+  ignore("LinearGnocchiModel.mergeGnocchiModel allows for different phenotype names in the built gnocchi models") {
     val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
     val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val covariateNames = List("covar_1", "covar_2")
@@ -193,7 +193,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     }
   }
 
-  sparkTest("LinearGnocchiModel.mergeGnocchiModel correctly merges model metadata") {
+  ignore("LinearGnocchiModel.mergeGnocchiModel correctly merges model metadata") {
     val variantModels1 = mock(classOf[RDD[LinearVariantModel]])
     val variantModels2 = mock(classOf[RDD[LinearVariantModel]])
     val phenotypeName = "pheno_1"
@@ -229,7 +229,7 @@ class LinearGnocchiModelSuite extends GnocchiFunSuite {
     assert(merged.covariatesNames == List("covar_1", "covar_2"))
   }
 
-  sparkTest("LinearGnocchiModel.save correctly saves a LinearGnocchiModel") {
+  ignore("LinearGnocchiModel.save correctly saves a LinearGnocchiModel") {
 
   }
 }
