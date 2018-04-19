@@ -65,12 +65,20 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
                           phenotypes: Map[String, Phenotype],
                           allelicAssumption: String): (DenseMatrix[Double], DenseVector[Double]) = {
 
-    val validGenos = genotypes.samples.filter(genotypeState => genotypeState.misses == 0 && phenotypes.contains(genotypeState.sampleID))
+    val validGenos = genotypes.samples.filter { case (sampleID, genotypeState) => genotypeState.misses == 0 && phenotypes.contains(sampleID) }
 
-    val samplesGenotypes = allelicAssumption.toUpperCase match {
-      case "ADDITIVE"  => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.additive))
-      case "DOMINANT"  => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.dominant))
-      case "RECESSIVE" => validGenos.map(genotypeState => (genotypeState.sampleID, genotypeState.recessive))
+    val samplesGenotypes = if (genotypes.maf < 0.5) {
+      allelicAssumption.toUpperCase match {
+        case "ADDITIVE"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.additive) }
+        case "DOMINANT"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.dominant) }
+        case "RECESSIVE" => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.recessive) }
+      }
+    } else {
+      allelicAssumption.toUpperCase match {
+        case "ADDITIVE"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.reverseAdditive) }
+        case "DOMINANT"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.reverseDominant) }
+        case "RECESSIVE" => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.recessive) }
+      }
     }
 
     val (primitiveX, primitiveY) = samplesGenotypes.flatMap({

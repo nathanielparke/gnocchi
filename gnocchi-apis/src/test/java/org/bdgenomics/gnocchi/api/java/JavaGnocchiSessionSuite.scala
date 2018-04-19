@@ -31,57 +31,57 @@ class JavaGnocchiSessionSuite extends GnocchiFunSuite {
   var gs: GnocchiSession = null
   var jgs: JavaGnocchiSession = null
 
-  sparkBefore("Creating JavaGnocchiSession") {
-    gs = Mockito.mock(classOf[GnocchiSession])
-    jgs = new JavaGnocchiSession(gs)
-  }
-
-  ignore("Verify filterSamples makes correct call to GnocchiSession") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
-    val mockMind = 0.0
-    val mockPloidy = 0.0
-
-    jgs.filterSamples(mockGenotype, mockMind, mockPloidy)
-
-    Mockito.verify(gs).filterSamples(mockGenotype, mockMind, mockPloidy)
-  }
-
-  ignore("Verify filterVariants makes correct call to GnocchiSession") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
-    val mockGeno = 0.0
-    val mockMaf = 0.0
-
-    jgs.filterVariants(mockGenotype, mockGeno, mockMaf)
-
-    Mockito.verify(gs).filterVariants(mockGenotype, mockGeno, mockMaf)
-  }
-
-  ignore("Verify recodeMajorAllele makes correct call to Gnocchi Sesssion") {
-    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
-
-    jgs.recodeMajorAllele(mockGenotype)
-
-    Mockito.verify(gs).recodeMajorAllele(mockGenotype)
-  }
-
-  ignore("Verify loadGenotypes makes correct call to Gnocchi Sesssion") {
-    val mockGeno = ""
-    val mockDatasetName = ""
-    val mockAllelicAssumption = ""
-
-    jgs.loadGenotypes(mockGeno, mockDatasetName, mockAllelicAssumption)
-
-    Mockito.verify(gs).loadGenotypes(mockGeno, mockDatasetName, mockAllelicAssumption)
-  }
-
-  ignore("Verify loadPhenotypes makes correct call to Gnocchi Sesssion") {
-    val mockPhenotypesPath = ""
-    val mockPrimaryID = ""
-    val mockPhenoName = ""
-    val mockDelimiter = ""
-
-    jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, null, null)
-
-    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List("-9"))
-  }
+  //  sparkBefore("Creating JavaGnocchiSession") {
+  //    gs = Mockito.mock(classOf[GnocchiSession])
+  //    jgs = new JavaGnocchiSession(gs)
+  //  }
+  //
+  //  ignore("Verify filterSamples makes correct call to GnocchiSession") {
+  //    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+  //    val mockMind = 0.0
+  //    val mockPloidy = 0.0
+  //
+  //    jgs.filterSamples(mockGenotype, mockMind, mockPloidy)
+  //
+  //    Mockito.verify(gs).filterSamples(mockGenotype, mockMind, mockPloidy)
+  //  }
+  //
+  //  ignore("Verify filterVariants makes correct call to GnocchiSession") {
+  //    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+  //    val mockGeno = 0.0
+  //    val mockMaf = 0.0
+  //
+  //    jgs.filterVariants(mockGenotype, mockGeno, mockMaf)
+  //
+  //    Mockito.verify(gs).filterVariants(mockGenotype, mockGeno, mockMaf)
+  //  }
+  //
+  //  ignore("Verify recodeMajorAllele makes correct call to Gnocchi Sesssion") {
+  //    val mockGenotype = Mockito.mock(classOf[Dataset[CalledVariant]])
+  //
+  //    jgs.recodeMajorAllele(mockGenotype)
+  //
+  //    Mockito.verify(gs).recodeMajorAllele(mockGenotype)
+  //  }
+  //
+  //  ignore("Verify loadGenotypes makes correct call to Gnocchi Sesssion") {
+  //    val mockGeno = ""
+  //    val mockDatasetName = ""
+  //    val mockAllelicAssumption = ""
+  //
+  //    jgs.loadGenotypes(mockGeno, mockDatasetName, mockAllelicAssumption)
+  //
+  //    Mockito.verify(gs).loadGenotypes(mockGeno, mockDatasetName, mockAllelicAssumption)
+  //  }
+  //
+  //  ignore("Verify loadPhenotypes makes correct call to Gnocchi Sesssion") {
+  //    val mockPhenotypesPath = ""
+  //    val mockPrimaryID = ""
+  //    val mockPhenoName = ""
+  //    val mockDelimiter = ""
+  //
+  //    jgs.loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, null, null)
+  //
+  //    Mockito.verify(gs).loadPhenotypes(mockPhenotypesPath, mockPrimaryID, mockPhenoName, mockDelimiter, None, None, "\t", List("-9"))
+  //  }
 }

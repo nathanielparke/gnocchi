@@ -24,23 +24,24 @@ case class CalledVariant(uniqueID: String,
                          position: Int,
                          referenceAllele: String,
                          alternateAllele: String,
-                         minorAlleleFreq: Double,
+                         maf: Double,
                          missingness: Double,
-                         samples: List[GenotypeState]) extends Product {
+                         samples: Map[String, GenotypeState]) extends Product {
+  val ploidy: Int = samples.head._2.ploidy
+}
 
-  val ploidy: Int = samples.head.ploidy
-
+object CalledVariant {
   /**
    * @return the minor allele frequency across all samples for this variant
    */
-  def maf: Double = {
-    val missingCount = samples.map(_.misses.toInt).sum
-    val alleleCount = samples.map(_.alts.toInt).sum
+  def maf(calledVariant: CalledVariant): Double = {
+    val missingCount = calledVariant.samples.values.map(_.misses.toInt).sum
+    val alleleCount = calledVariant.samples.values.map(_.alts.toInt).sum
 
-    assert(samples.length * ploidy > missingCount, s"Variant, ${uniqueID}, has entirely missing row.")
+    assert(calledVariant.samples.size * calledVariant.ploidy > missingCount, s"Variant, ${calledVariant.uniqueID}, has entirely missing row.")
 
-    if (samples.length * ploidy > missingCount) {
-      alleleCount.toDouble / (samples.length * ploidy - missingCount).toDouble
+    if (calledVariant.samples.size * calledVariant.ploidy > missingCount) {
+      alleleCount.toDouble / (calledVariant.samples.size * calledVariant.ploidy - missingCount).toDouble
     } else {
       0.5
     }
@@ -49,23 +50,23 @@ case class CalledVariant(uniqueID: String,
   /**
    * @return The fraction of missing values for this variant values across all samples
    */
-  def geno: Double = {
-    val missingCount = samples.map(_.misses.toInt).sum
+  def geno(calledVariant: CalledVariant): Double = {
+    val missingCount = calledVariant.samples.values.map(_.misses.toInt).sum
 
-    missingCount.toDouble / (samples.length * ploidy).toDouble
+    missingCount.toDouble / (calledVariant.samples.size * calledVariant.ploidy).toDouble
   }
 
   /**
    * @return Number of samples that have all valid values (none missing)
    */
-  def numValidSamples: Int = {
-    samples.count(_.misses == 0)
+  def numValidSamples(calledVariant: CalledVariant): Int = {
+    calledVariant.samples.values.count(_.misses == 0)
   }
 
   /**
    * @return Number of samples that have some valid values (could be some missing)
    */
-  def numSemiValidSamples: Int = {
-    samples.count(_.misses < ploidy)
+  def numSemiValidSamples(calledVariant: CalledVariant): Int = {
+    calledVariant.samples.values.count(_.misses < calledVariant.ploidy)
   }
 }

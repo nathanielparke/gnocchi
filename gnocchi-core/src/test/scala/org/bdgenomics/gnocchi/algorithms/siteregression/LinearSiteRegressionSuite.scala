@@ -25,309 +25,309 @@ import org.bdgenomics.gnocchi.utils.GnocchiFunSuite
 import org.scalactic.Tolerance._
 
 class LinearSiteRegressionSuite extends GnocchiFunSuite {
-  // LinearSiteRegression.applyToSite correctness tests
-  /* generate Anscombe's quartet for linear regression
-      the quartet data is as follows:
-          Anscombe's quartet
-         I           II          III          IV
-      x      y     x     y     x     y     x     y
-      10.0  8.04  10.0  9.14  10.0  7.46  8.0   6.58
-      8.0   6.95  8.0   8.14  8.0   6.77  8.0   5.76
-      13.0  7.58  13.0  8.74  13.0  12.74 8.0   7.71
-      9.0   8.81  9.0   8.77  9.0   7.11  8.0   8.84
-      11.0  8.33  11.0  9.26  11.0  7.81  8.0   8.47
-      14.0  9.96  14.0  8.10  14.0  8.84  8.0   7.04
-      6.0   7.24  6.0   6.13  6.0   6.08  8.0   5.25
-      4.0   4.26  4.0   3.10  4.0   5.39  19.0  12.50
-      12.0  10.84 12.0  9.13  12.0  8.15  8.0   5.56
-      7.0   4.82  7.0   7.26  7.0   6.42  8.0   7.91
-      5.0   5.68  5.0   4.74  5.0   5.73  8.0   6.89
-
-      The full description of Anscombe's Quartet can be found here: https://en.wikipedia.org/wiki/Anscombe%27s_quartet
-      Each of the members of the quartet should have roughly the same R^2 value, although the shapes of the graph are different shapes.
-      Target R^2 values verified values produced here https://rstudio-pubs-static.s3.amazonaws.com/52381_36ec82827e4b476fb968d9143aec7c4f.html.
-    */
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe I.") {
-    // Note: This test checks if the two calls used to solve regression in LinearSiteRegression
-    // actually produce the right result rather than calling applyToSite
-    // load AnscombeI into an observations variable
-    val anscombeI =
-      List(
-        (10.0, 8.04),
-        (8.0, 6.95),
-        (13.0, 7.58),
-        (9.0, 8.81),
-        (11.0, 8.33),
-        (14.0, 9.96),
-        (6.0, 7.24),
-        (4.0, 4.26),
-        (12.0, 10.84),
-        (7.0, 4.82),
-        (5.0, 5.68))
-
-    val primitiveX = anscombeI.map(x => Array(1.0, x._1)).toArray
-    val primitiveY = anscombeI.map(_._2).toArray
-
-    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
-    val y = new DenseVector(primitiveY)
-
-    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
-
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
-      x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      beta: DenseVector[Double],
-      xTx: DenseMatrix[Double])
-
-    val meanY = anscombeI.map(_._2).sum / anscombeI.size.toDouble
-    val ssDeviations = anscombeI.map(x => Math.pow(x._2 - meanY, 2)).sum
-
-    // Assert that the rsquared is in the right threshold.
-    // R^2 = 1 - (SS_res / SS_tot)
-    val rSquared = 1 - ssResiduals / ssDeviations
-    assert(rSquared === 0.6665 +- 0.005)
-
-    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002169629)
-    assert(pValue === 0.002169629 +- 0.00005)
-  }
-
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe II.") {
-    // load AnscombeII into an observations variable
-    val anscombeII =
-      List(
-        (10.0, 9.14),
-        (8.0, 8.14),
-        (13.0, 8.74),
-        (9.0, 8.77),
-        (11.0, 9.26),
-        (14.0, 8.10),
-        (6.0, 6.13),
-        (4.0, 3.10),
-        (12.0, 9.13),
-        (7.0, 7.26),
-        (5.0, 4.74))
-
-    val primitiveX = anscombeII.map(x => Array(1.0, x._1)).toArray
-    val primitiveY = anscombeII.map(_._2).toArray
-
-    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
-    val y = new DenseVector(primitiveY)
-
-    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
-
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
-      x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      beta: DenseVector[Double],
-      xTx: DenseMatrix[Double])
-
-    val meanY = anscombeII.map(_._2).sum / anscombeII.size.toDouble
-    val ssDeviations = anscombeII.map(x => Math.pow(x._2 - meanY, 2)).sum
-
-    // Assert that the rsquared is in the right threshold.
-    // R^2 = 1 - (SS_res / SS_tot)
-    val rSquared = 1 - ssResiduals / ssDeviations
-    assert(rSquared === 0.6662 +- 0.005)
-
-    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002178816)
-    assert(pValue === 0.002178816 +- 0.00005)
-  }
-
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe III.") {
-    // load AnscombeIII into an observations variable
-    val anscombeIII =
-      List(
-        (10.0, 7.46),
-        (8.0, 6.77),
-        (13.0, 12.74),
-        (9.0, 7.11),
-        (11.0, 7.81),
-        (14.0, 8.84),
-        (6.0, 6.08),
-        (4.0, 5.39),
-        (12.0, 8.15),
-        (7.0, 6.42),
-        (5.0, 5.73))
-
-    val primitiveX = anscombeIII.map(x => Array(1.0, x._1)).toArray
-    val primitiveY = anscombeIII.map(_._2).toArray
-
-    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
-    val y = new DenseVector(primitiveY)
-
-    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
-
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
-      x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      beta: DenseVector[Double],
-      xTx: DenseMatrix[Double])
-
-    val meanY = anscombeIII.map(_._2).sum / anscombeIII.size.toDouble
-    val ssDeviations = anscombeIII.map(x => Math.pow(x._2 - meanY, 2)).sum
-
-    // Assert that the rsquared is in the right threshold.
-    // R^2 = 1 - (SS_res / SS_tot)
-    val rSquared = 1 - ssResiduals / ssDeviations
-    assert(rSquared === 0.6663 +- 0.005)
-
-    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002176305)
-    assert(pValue === 0.002176305 +- 0.00005)
-  }
-
-  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe IV.") {
-    //load AnscombeIV into an observations variable
-    val anscombeIV =
-      List(
-        (8.0, 6.58),
-        (8.0, 5.76),
-        (8.0, 7.71),
-        (8.0, 8.84),
-        (8.0, 8.47),
-        (8.0, 7.04),
-        (8.0, 5.25),
-        (19.0, 12.50),
-        (8.0, 5.56),
-        (8.0, 7.91),
-        (8.0, 6.89))
-
-    val primitiveX = anscombeIV.map(x => Array(1.0, x._1)).toArray
-    val primitiveY = anscombeIV.map(_._2).toArray
-
-    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
-    val y = new DenseVector(primitiveY)
-
-    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
-
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
-      x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      beta: DenseVector[Double],
-      xTx: DenseMatrix[Double])
-
-    val meanY = anscombeIV.map(_._2).sum / anscombeIV.size.toDouble
-    val ssDeviations = anscombeIV.map(x => Math.pow(x._2 - meanY, 2)).sum
-
-    // Assert that the rsquared is in the right threshold.
-    // R^2 = 1 - (SS_res / SS_tot)
-    val rSquared = 1 - ssResiduals / ssDeviations
-    assert(rSquared === 0.6667 +- 0.005)
-
-    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002164602)
-    assert(pValue === 0.002164602 +- 0.00005)
-  }
-
-  /* Tests for multiple regression and covariate correction:
-      Data comes from here: https://onlinecourses.science.psu.edu/stat501/node/284
-      PIQ is treated as the phenotype of interest and Brain is treated as genotype. Height and Weight are treated as covariates.
-        Raw Data:
-                PIQ Brain Height  Weight
-                124 81.69 64.5  118
-                150 103.84  73.3  143
-                128 96.54 68.8  172
-                134 95.15 65.0  147
-                110 92.88 69.0  146
-                131 99.13 64.5  138
-                98  85.43 66.0  175
-                84  90.49 66.3  134
-                147 95.55 68.8  172
-                124 83.39 64.5  118
-                128 107.95  70.0  151
-                124 92.41 69.0  155
-                147 85.65 70.5  155
-                90  87.89 66.0  146
-                96  86.54 68.0  135
-                120 85.22 68.5  127
-                102 94.51 73.5  178
-                84  80.80 66.3  136
-                86  88.91 70.0  180
-                84  90.59 76.5  186
-                134 79.06 62.0  122
-                128 95.50 68.0  132
-                102 83.18 63.0  114
-                131 93.55 72.0  171
-                84  79.86 68.0  140
-                110 106.25  77.0  187
-                72  79.35 63.0  106
-                124 86.67 66.5  159
-                132 85.78 62.5  127
-                137 94.96 67.0  191
-                110 99.79 75.5  192
-                86  88.00 69.0  181
-                81  83.43 66.5  143
-                128 94.81 66.5  153
-                124 94.94 70.5  144
-                94  89.40 64.5  139
-                74  93.00 74.0  148
-                89  93.59 75.5  179
-  */
-  sparkTest("LinearSiteRegression.applyToSite should work correctly for PIQ data.") {
-    val observations =
-      List(
-        (124, Array[Double](1.0, 81.69, 64.5, 118)),
-        (150, Array[Double](1.0, 103.84, 73.3, 143)),
-        (128, Array[Double](1.0, 96.54, 68.8, 172)),
-        (134, Array[Double](1.0, 95.15, 65.0, 147)),
-        (110, Array[Double](1.0, 92.88, 69.0, 146)),
-        (131, Array[Double](1.0, 99.13, 64.5, 138)),
-        (98, Array[Double](1.0, 85.43, 66.0, 175)),
-        (84, Array[Double](1.0, 90.49, 66.3, 134)),
-        (147, Array[Double](1.0, 95.55, 68.8, 172)),
-        (124, Array[Double](1.0, 83.39, 64.5, 118)),
-        (128, Array[Double](1.0, 107.95, 70.0, 151)),
-        (124, Array[Double](1.0, 92.41, 69.0, 155)),
-        (147, Array[Double](1.0, 85.65, 70.5, 155)),
-        (90, Array[Double](1.0, 87.89, 66.0, 146)),
-        (96, Array[Double](1.0, 86.54, 68.0, 135)),
-        (120, Array[Double](1.0, 85.22, 68.5, 127)),
-        (102, Array[Double](1.0, 94.51, 73.5, 178)),
-        (84, Array[Double](1.0, 80.80, 66.3, 136)),
-        (86, Array[Double](1.0, 88.91, 70.0, 180)),
-        (84, Array[Double](1.0, 90.59, 76.5, 186)),
-        (134, Array[Double](1.0, 79.06, 62.0, 122)),
-        (128, Array[Double](1.0, 95.50, 68.0, 132)),
-        (102, Array[Double](1.0, 83.18, 63.0, 114)),
-        (131, Array[Double](1.0, 93.55, 72.0, 171)),
-        (84, Array[Double](1.0, 79.86, 68.0, 140)),
-        (110, Array[Double](1.0, 106.25, 77.0, 187)),
-        (72, Array[Double](1.0, 79.35, 63.0, 106)),
-        (124, Array[Double](1.0, 86.67, 66.5, 159)),
-        (132, Array[Double](1.0, 85.78, 62.5, 127)),
-        (137, Array[Double](1.0, 94.96, 67.0, 191)),
-        (110, Array[Double](1.0, 99.79, 75.5, 192)),
-        (86, Array[Double](1.0, 88.00, 69.0, 181)),
-        (81, Array[Double](1.0, 83.43, 66.5, 143)),
-        (128, Array[Double](1.0, 94.81, 66.5, 153)),
-        (124, Array[Double](1.0, 94.94, 70.5, 144)),
-        (94, Array[Double](1.0, 89.40, 64.5, 139)),
-        (74, Array[Double](1.0, 93.00, 74.0, 148)),
-        (89, Array[Double](1.0, 93.59, 75.5, 179)))
-
-    val primitiveX = observations.map(x => x._2).toArray
-    val primitiveY = observations.map(_._1.toDouble).toArray
-
-    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
-    val y = new DenseVector(primitiveY)
-
-    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
-
-    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
-      x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      beta: DenseVector[Double],
-      xTx: DenseMatrix[Double])
-
-    val meanY = observations.map(_._1).sum / observations.size.toDouble
-    val ssDeviations = observations.map(x => Math.pow(x._1 - meanY, 2)).sum
-
-    // Assert that the rsquared is in the right threshold.
-    // R^2 = 1 - (SS_res / SS_tot)
-    val rSquared = 1 - ssResiduals / ssDeviations
-    assert(rSquared === 0.2954 +- 0.005)
-
-    // Assert that the p-value for Brain is correct (expectedPVal ~= 0.000855632)
-    assert(pValue === 0.000855632 +- 0.00005)
-  }
+  //  // LinearSiteRegression.applyToSite correctness tests
+  //  /* generate Anscombe's quartet for linear regression
+  //      the quartet data is as follows:
+  //          Anscombe's quartet
+  //         I           II          III          IV
+  //      x      y     x     y     x     y     x     y
+  //      10.0  8.04  10.0  9.14  10.0  7.46  8.0   6.58
+  //      8.0   6.95  8.0   8.14  8.0   6.77  8.0   5.76
+  //      13.0  7.58  13.0  8.74  13.0  12.74 8.0   7.71
+  //      9.0   8.81  9.0   8.77  9.0   7.11  8.0   8.84
+  //      11.0  8.33  11.0  9.26  11.0  7.81  8.0   8.47
+  //      14.0  9.96  14.0  8.10  14.0  8.84  8.0   7.04
+  //      6.0   7.24  6.0   6.13  6.0   6.08  8.0   5.25
+  //      4.0   4.26  4.0   3.10  4.0   5.39  19.0  12.50
+  //      12.0  10.84 12.0  9.13  12.0  8.15  8.0   5.56
+  //      7.0   4.82  7.0   7.26  7.0   6.42  8.0   7.91
+  //      5.0   5.68  5.0   4.74  5.0   5.73  8.0   6.89
+  //
+  //      The full description of Anscombe's Quartet can be found here: https://en.wikipedia.org/wiki/Anscombe%27s_quartet
+  //      Each of the members of the quartet should have roughly the same R^2 value, although the shapes of the graph are different shapes.
+  //      Target R^2 values verified values produced here https://rstudio-pubs-static.s3.amazonaws.com/52381_36ec82827e4b476fb968d9143aec7c4f.html.
+  //    */
+  //  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe I.") {
+  //    // Note: This test checks if the two calls used to solve regression in LinearSiteRegression
+  //    // actually produce the right result rather than calling applyToSite
+  //    // load AnscombeI into an observations variable
+  //    val anscombeI =
+  //      List(
+  //        (10.0, 8.04),
+  //        (8.0, 6.95),
+  //        (13.0, 7.58),
+  //        (9.0, 8.81),
+  //        (11.0, 8.33),
+  //        (14.0, 9.96),
+  //        (6.0, 7.24),
+  //        (4.0, 4.26),
+  //        (12.0, 10.84),
+  //        (7.0, 4.82),
+  //        (5.0, 5.68))
+  //
+  //    val primitiveX = anscombeI.map(x => Array(1.0, x._1)).toArray
+  //    val primitiveY = anscombeI.map(_._2).toArray
+  //
+  //    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
+  //    val y = new DenseVector(primitiveY)
+  //
+  //    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
+  //
+  //    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
+  //      x: DenseMatrix[Double],
+  //      y: DenseVector[Double],
+  //      beta: DenseVector[Double],
+  //      xTx: DenseMatrix[Double])
+  //
+  //    val meanY = anscombeI.map(_._2).sum / anscombeI.size.toDouble
+  //    val ssDeviations = anscombeI.map(x => Math.pow(x._2 - meanY, 2)).sum
+  //
+  //    // Assert that the rsquared is in the right threshold.
+  //    // R^2 = 1 - (SS_res / SS_tot)
+  //    val rSquared = 1 - ssResiduals / ssDeviations
+  //    assert(rSquared === 0.6665 +- 0.005)
+  //
+  //    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002169629)
+  //    assert(pValue === 0.002169629 +- 0.00005)
+  //  }
+  //
+  //  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe II.") {
+  //    // load AnscombeII into an observations variable
+  //    val anscombeII =
+  //      List(
+  //        (10.0, 9.14),
+  //        (8.0, 8.14),
+  //        (13.0, 8.74),
+  //        (9.0, 8.77),
+  //        (11.0, 9.26),
+  //        (14.0, 8.10),
+  //        (6.0, 6.13),
+  //        (4.0, 3.10),
+  //        (12.0, 9.13),
+  //        (7.0, 7.26),
+  //        (5.0, 4.74))
+  //
+  //    val primitiveX = anscombeII.map(x => Array(1.0, x._1)).toArray
+  //    val primitiveY = anscombeII.map(_._2).toArray
+  //
+  //    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
+  //    val y = new DenseVector(primitiveY)
+  //
+  //    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
+  //
+  //    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
+  //      x: DenseMatrix[Double],
+  //      y: DenseVector[Double],
+  //      beta: DenseVector[Double],
+  //      xTx: DenseMatrix[Double])
+  //
+  //    val meanY = anscombeII.map(_._2).sum / anscombeII.size.toDouble
+  //    val ssDeviations = anscombeII.map(x => Math.pow(x._2 - meanY, 2)).sum
+  //
+  //    // Assert that the rsquared is in the right threshold.
+  //    // R^2 = 1 - (SS_res / SS_tot)
+  //    val rSquared = 1 - ssResiduals / ssDeviations
+  //    assert(rSquared === 0.6662 +- 0.005)
+  //
+  //    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002178816)
+  //    assert(pValue === 0.002178816 +- 0.00005)
+  //  }
+  //
+  //  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe III.") {
+  //    // load AnscombeIII into an observations variable
+  //    val anscombeIII =
+  //      List(
+  //        (10.0, 7.46),
+  //        (8.0, 6.77),
+  //        (13.0, 12.74),
+  //        (9.0, 7.11),
+  //        (11.0, 7.81),
+  //        (14.0, 8.84),
+  //        (6.0, 6.08),
+  //        (4.0, 5.39),
+  //        (12.0, 8.15),
+  //        (7.0, 6.42),
+  //        (5.0, 5.73))
+  //
+  //    val primitiveX = anscombeIII.map(x => Array(1.0, x._1)).toArray
+  //    val primitiveY = anscombeIII.map(_._2).toArray
+  //
+  //    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
+  //    val y = new DenseVector(primitiveY)
+  //
+  //    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
+  //
+  //    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
+  //      x: DenseMatrix[Double],
+  //      y: DenseVector[Double],
+  //      beta: DenseVector[Double],
+  //      xTx: DenseMatrix[Double])
+  //
+  //    val meanY = anscombeIII.map(_._2).sum / anscombeIII.size.toDouble
+  //    val ssDeviations = anscombeIII.map(x => Math.pow(x._2 - meanY, 2)).sum
+  //
+  //    // Assert that the rsquared is in the right threshold.
+  //    // R^2 = 1 - (SS_res / SS_tot)
+  //    val rSquared = 1 - ssResiduals / ssDeviations
+  //    assert(rSquared === 0.6663 +- 0.005)
+  //
+  //    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002176305)
+  //    assert(pValue === 0.002176305 +- 0.00005)
+  //  }
+  //
+  //  sparkTest("LinearSiteRegression.applyToSite should calculate rsquared and p-value correctly for Anscombe IV.") {
+  //    //load AnscombeIV into an observations variable
+  //    val anscombeIV =
+  //      List(
+  //        (8.0, 6.58),
+  //        (8.0, 5.76),
+  //        (8.0, 7.71),
+  //        (8.0, 8.84),
+  //        (8.0, 8.47),
+  //        (8.0, 7.04),
+  //        (8.0, 5.25),
+  //        (19.0, 12.50),
+  //        (8.0, 5.56),
+  //        (8.0, 7.91),
+  //        (8.0, 6.89))
+  //
+  //    val primitiveX = anscombeIV.map(x => Array(1.0, x._1)).toArray
+  //    val primitiveY = anscombeIV.map(_._2).toArray
+  //
+  //    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
+  //    val y = new DenseVector(primitiveY)
+  //
+  //    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
+  //
+  //    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
+  //      x: DenseMatrix[Double],
+  //      y: DenseVector[Double],
+  //      beta: DenseVector[Double],
+  //      xTx: DenseMatrix[Double])
+  //
+  //    val meanY = anscombeIV.map(_._2).sum / anscombeIV.size.toDouble
+  //    val ssDeviations = anscombeIV.map(x => Math.pow(x._2 - meanY, 2)).sum
+  //
+  //    // Assert that the rsquared is in the right threshold.
+  //    // R^2 = 1 - (SS_res / SS_tot)
+  //    val rSquared = 1 - ssResiduals / ssDeviations
+  //    assert(rSquared === 0.6667 +- 0.005)
+  //
+  //    // Assert that the p-value for independent variable is correct (expectedPVal ~= 0.002164602)
+  //    assert(pValue === 0.002164602 +- 0.00005)
+  //  }
+  //
+  //  /* Tests for multiple regression and covariate correction:
+  //      Data comes from here: https://onlinecourses.science.psu.edu/stat501/node/284
+  //      PIQ is treated as the phenotype of interest and Brain is treated as genotype. Height and Weight are treated as covariates.
+  //        Raw Data:
+  //                PIQ Brain Height  Weight
+  //                124 81.69 64.5  118
+  //                150 103.84  73.3  143
+  //                128 96.54 68.8  172
+  //                134 95.15 65.0  147
+  //                110 92.88 69.0  146
+  //                131 99.13 64.5  138
+  //                98  85.43 66.0  175
+  //                84  90.49 66.3  134
+  //                147 95.55 68.8  172
+  //                124 83.39 64.5  118
+  //                128 107.95  70.0  151
+  //                124 92.41 69.0  155
+  //                147 85.65 70.5  155
+  //                90  87.89 66.0  146
+  //                96  86.54 68.0  135
+  //                120 85.22 68.5  127
+  //                102 94.51 73.5  178
+  //                84  80.80 66.3  136
+  //                86  88.91 70.0  180
+  //                84  90.59 76.5  186
+  //                134 79.06 62.0  122
+  //                128 95.50 68.0  132
+  //                102 83.18 63.0  114
+  //                131 93.55 72.0  171
+  //                84  79.86 68.0  140
+  //                110 106.25  77.0  187
+  //                72  79.35 63.0  106
+  //                124 86.67 66.5  159
+  //                132 85.78 62.5  127
+  //                137 94.96 67.0  191
+  //                110 99.79 75.5  192
+  //                86  88.00 69.0  181
+  //                81  83.43 66.5  143
+  //                128 94.81 66.5  153
+  //                124 94.94 70.5  144
+  //                94  89.40 64.5  139
+  //                74  93.00 74.0  148
+  //                89  93.59 75.5  179
+  //  */
+  //  sparkTest("LinearSiteRegression.applyToSite should work correctly for PIQ data.") {
+  //    val observations =
+  //      List(
+  //        (124, Array[Double](1.0, 81.69, 64.5, 118)),
+  //        (150, Array[Double](1.0, 103.84, 73.3, 143)),
+  //        (128, Array[Double](1.0, 96.54, 68.8, 172)),
+  //        (134, Array[Double](1.0, 95.15, 65.0, 147)),
+  //        (110, Array[Double](1.0, 92.88, 69.0, 146)),
+  //        (131, Array[Double](1.0, 99.13, 64.5, 138)),
+  //        (98, Array[Double](1.0, 85.43, 66.0, 175)),
+  //        (84, Array[Double](1.0, 90.49, 66.3, 134)),
+  //        (147, Array[Double](1.0, 95.55, 68.8, 172)),
+  //        (124, Array[Double](1.0, 83.39, 64.5, 118)),
+  //        (128, Array[Double](1.0, 107.95, 70.0, 151)),
+  //        (124, Array[Double](1.0, 92.41, 69.0, 155)),
+  //        (147, Array[Double](1.0, 85.65, 70.5, 155)),
+  //        (90, Array[Double](1.0, 87.89, 66.0, 146)),
+  //        (96, Array[Double](1.0, 86.54, 68.0, 135)),
+  //        (120, Array[Double](1.0, 85.22, 68.5, 127)),
+  //        (102, Array[Double](1.0, 94.51, 73.5, 178)),
+  //        (84, Array[Double](1.0, 80.80, 66.3, 136)),
+  //        (86, Array[Double](1.0, 88.91, 70.0, 180)),
+  //        (84, Array[Double](1.0, 90.59, 76.5, 186)),
+  //        (134, Array[Double](1.0, 79.06, 62.0, 122)),
+  //        (128, Array[Double](1.0, 95.50, 68.0, 132)),
+  //        (102, Array[Double](1.0, 83.18, 63.0, 114)),
+  //        (131, Array[Double](1.0, 93.55, 72.0, 171)),
+  //        (84, Array[Double](1.0, 79.86, 68.0, 140)),
+  //        (110, Array[Double](1.0, 106.25, 77.0, 187)),
+  //        (72, Array[Double](1.0, 79.35, 63.0, 106)),
+  //        (124, Array[Double](1.0, 86.67, 66.5, 159)),
+  //        (132, Array[Double](1.0, 85.78, 62.5, 127)),
+  //        (137, Array[Double](1.0, 94.96, 67.0, 191)),
+  //        (110, Array[Double](1.0, 99.79, 75.5, 192)),
+  //        (86, Array[Double](1.0, 88.00, 69.0, 181)),
+  //        (81, Array[Double](1.0, 83.43, 66.5, 143)),
+  //        (128, Array[Double](1.0, 94.81, 66.5, 153)),
+  //        (124, Array[Double](1.0, 94.94, 70.5, 144)),
+  //        (94, Array[Double](1.0, 89.40, 64.5, 139)),
+  //        (74, Array[Double](1.0, 93.00, 74.0, 148)),
+  //        (89, Array[Double](1.0, 93.59, 75.5, 179)))
+  //
+  //    val primitiveX = observations.map(x => x._2).toArray
+  //    val primitiveY = observations.map(_._1.toDouble).toArray
+  //
+  //    val x = new DenseMatrix(primitiveX.length, primitiveX(0).length, primitiveX.transpose.flatten)
+  //    val y = new DenseVector(primitiveY)
+  //
+  //    val (xTx, xTy, beta) = LinearSiteRegression.solveRegression(x, y)
+  //
+  //    val (genoSE, t, pValue, ssResiduals) = LinearSiteRegression.calculateSignificance(
+  //      x: DenseMatrix[Double],
+  //      y: DenseVector[Double],
+  //      beta: DenseVector[Double],
+  //      xTx: DenseMatrix[Double])
+  //
+  //    val meanY = observations.map(_._1).sum / observations.size.toDouble
+  //    val ssDeviations = observations.map(x => Math.pow(x._1 - meanY, 2)).sum
+  //
+  //    // Assert that the rsquared is in the right threshold.
+  //    // R^2 = 1 - (SS_res / SS_tot)
+  //    val rSquared = 1 - ssResiduals / ssDeviations
+  //    assert(rSquared === 0.2954 +- 0.005)
+  //
+  //    // Assert that the p-value for Brain is correct (expectedPVal ~= 0.000855632)
+  //    assert(pValue === 0.000855632 +- 0.00005)
+  //  }
 
   /**
    * plink --vcf gnocchi/gnocchi-core/src/test/resources/10Variants.vcf --make-bed --out 10Variants

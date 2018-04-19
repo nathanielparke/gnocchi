@@ -19,7 +19,7 @@
 package org.bdgenomics.gnocchi.api.java.core
 
 import org.apache.spark.api.java.JavaSparkContext
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{ DataFrame, Dataset }
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.bdgenomics.gnocchi.sql.{ GenotypeDataset, GnocchiSession, PhenotypesContainer }
@@ -57,39 +57,39 @@ class JavaGnocchiSession(val gs: GnocchiSession) extends Serializable {
    * @return Returns an updated Dataset with values removed, as specified by the
    *         filtering
    */
-  def filterSamples(genotypes: GenotypeDataset, mind: java.lang.Double, ploidy: java.lang.Double): GenotypeDataset = {
+  def filterSamples(genotypes: GenotypeDataset, mind: java.lang.Double, ploidy: java.lang.Double): (DataFrame, Set[String]) = {
     gs.filterSamples(genotypes, mind, ploidy)
   }
 
-  /**
-   * Returns a filtered Dataset of CalledVariant objects, where all variants with
-   * values less than the specified geno or maf threshold are filtered out.
-   *
-   * @param genotypes The Dataset of CalledVariant objects to filter on
-   * @param geno The percentage threshold for geno values for each CalledVariant
-   *             object
-   * @param maf The percentage threshold for Minor Allele Frequency for each
-   *            CalledVariant object
-   *
-   * @return Returns an updated Dataset with values removed, as specified by the
-   *         filtering
-   */
-  def filterVariants(genotypes: GenotypeDataset, geno: java.lang.Double, maf: java.lang.Double): GenotypeDataset = {
-    gs.filterVariants(genotypes, geno, maf)
-  }
+  //  /**
+  //   * Returns a filtered Dataset of CalledVariant objects, where all variants with
+  //   * values less than the specified geno or maf threshold are filtered out.
+  //   *
+  //   * @param genotypes The Dataset of CalledVariant objects to filter on
+  //   * @param geno The percentage threshold for geno values for each CalledVariant
+  //   *             object
+  //   * @param maf The percentage threshold for Minor Allele Frequency for each
+  //   *            CalledVariant object
+  //   *
+  //   * @return Returns an updated Dataset with values removed, as specified by the
+  //   *         filtering
+  //   */
+  //  def filterVariants(genotypes: GenotypeDataset, geno: java.lang.Double, maf: java.lang.Double): GenotypeDataset = {
+  //    gs.filterVariants(genotypes, geno, maf)
+  //  }
 
-  /**
-   * Returns a modified Dataset of CalledVariant objects, where any value with a
-   * maf > 0.5 is recoded. The recoding is specified as flipping the referenceAllele
-   * and alternateAllele when the frequency of alt is greater than that of ref.
-   *
-   * @param genotypes The Dataset of CalledVariant objects to recode
-   *
-   * @return Returns an updated Dataset that has been recoded
-   */
-  def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
-    gs.recodeMajorAllele(genotypes)
-  }
+  //  /**
+  //   * Returns a modified Dataset of CalledVariant objects, where any value with a
+  //   * maf > 0.5 is recoded. The recoding is specified as flipping the referenceAllele
+  //   * and alternateAllele when the frequency of alt is greater than that of ref.
+  //   *
+  //   * @param genotypes The Dataset of CalledVariant objects to recode
+  //   *
+  //   * @return Returns an updated Dataset that has been recoded
+  //   */
+  //  def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
+  //    gs.recodeMajorAllele(genotypes)
+  //  }
 
   /**
    * @note currently this does not enforce that the uniqueID is, in fact, unique across the dataset. Checking uniqueness

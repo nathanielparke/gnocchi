@@ -20,6 +20,7 @@ package org.bdgenomics.gnocchi.cli
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.bdgenomics.gnocchi.algorithms.siteregression._
+import org.bdgenomics.gnocchi.sql.GenotypeDataset
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.bdgenomics.utils.cli._
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
@@ -141,22 +142,23 @@ class BuildGnocchiModel(protected val args: BuildGnocchiModelArgs) extends BDGSp
 
     // the ordering of calls below is important
     val rawGenotypes = sc.loadGenotypes(args.genotypes, args.datasetName, args.associationType.split("_").head, adamFormat = args.adamFormat)
-    val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
-    val recoded = sc.recodeMajorAllele(sampleFiltered)
-    val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)
+    val (sampleFiltered, keptUIDS) = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
+    //    val recoded = sc.recodeMajorAllele(sampleFiltered)
+    val filteredGeno = sc.filterVariants(sampleFiltered, geno = args.geno, maf = args.maf, keptUIDS, args.ploidy)
+    val datasetWrapper = GenotypeDataset(filteredGeno, rawGenotypes.datasetUID, rawGenotypes.allelicAssumption, keptUIDS)
 
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
-        val model = LinearSiteRegression(filteredGeno, phenotypesContainer).gnocchiModel
+        val model = LinearSiteRegression(datasetWrapper, phenotypesContainer).gnocchiModel
         model.save(args.output)
       case "DOMINANT_LINEAR" =>
-        val model = LinearSiteRegression(filteredGeno, phenotypesContainer).gnocchiModel
+        val model = LinearSiteRegression(datasetWrapper, phenotypesContainer).gnocchiModel
         model.save(args.output)
       case "ADDITIVE_LOGISTIC" =>
-        val model = LogisticSiteRegression(filteredGeno, phenotypesContainer).gnocchiModel
+        val model = LogisticSiteRegression(datasetWrapper, phenotypesContainer).gnocchiModel
         model.save(args.output)
       case "DOMINANT_LOGISTIC" =>
-        val model = LogisticSiteRegression(filteredGeno, phenotypesContainer).gnocchiModel
+        val model = LogisticSiteRegression(datasetWrapper, phenotypesContainer).gnocchiModel
         model.save(args.output)
     }
   }

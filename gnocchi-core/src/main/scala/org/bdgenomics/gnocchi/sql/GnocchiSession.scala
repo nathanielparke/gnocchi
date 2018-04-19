@@ -21,9 +21,9 @@ import java.io.{ ObjectInputStream, Serializable }
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, col, lit, udf }
+import org.apache.spark.sql.functions.{ array, col, lit, udf, map }
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{ Column, Dataset, SparkSession }
+import org.apache.spark.sql.{ Column, DataFrame, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, VariantRDD }
 import org.bdgenomics.formats.avro.GenotypeAllele
@@ -91,80 +91,76 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @return Returns a filtered [[Dataset]] of [[CalledVariant]] with samples that have missingness
    *         greater than threshold removed
    */
-  def filterSamples(genotypes: Dataset[CalledVariant],
+  def filterSamples(genotypes: GenotypeDataset,
                     mind: Double,
-                    ploidy: Double): Dataset[CalledVariant] = FilterSamples.time {
+                    ploidy: Double): (DataFrame, Set[String]) = FilterSamples.time {
 
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    val x = genotypes.rdd.flatMap(
-      f => {
-        f.samples.map(
-          g => { (g.sampleID, g.misses.toInt) })
-      })
-    val summed = x.reduceByKey(_ + _)
+    val genoDS = genotypes.genotypes
+    val sampleIDs = genotypes.sampleUIDs
 
-    val count = genotypes.count()
-    val samplesWithMissingness =
-      summed.map {
-        case (a, b) => (a, b / (ploidy * count))
-      }
+    val exploded = genoDS.select(genoDS.columns.slice(0, 5).map(col(_)) ++ sampleIDs.map(x => col("samples." + x)).toSeq: _*)
+    exploded.cache()
 
-    val keepers =
-      samplesWithMissingness
-        .filter(x => x._2 <= mind)
-        .map(x => x._1).collect
+    val count = exploded.count
 
-    createCalledVariant(genotypes,
-      f => f.filter(g => keepers.contains(g.sampleID)))
+    val misses = exploded.select(sampleIDs.map(x => col(x + ".misses") as x).toSeq: _*)
+    val aggMisses = misses.groupBy().sum().toDF(sampleIDs.toSeq: _*)
+    val aggMissesLocal = aggMisses.select(array(sampleIDs.toSeq.head, sampleIDs.toSeq.tail: _*)).as[Array[Long]].collect().toSeq.head
+    val missingnessPct = aggMissesLocal.map(_ / (ploidy * count))
+
+    val samplesWithMissingness = sampleIDs.zip(missingnessPct)
+    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
+    (exploded.drop(sampleIDs.diff(keepers).toSeq: _*), keepers)
   }
 
-  /**
-   * Wrapper around the [[filterSamples()]] method that takes in [[GenotypeDataset]] instead of the
-   * [[Dataset]] of [[CalledVariant]]
-   *
-   * @param genotypes [[GenotypeDataset]] to filter
-   * @param mind The maximum fractional threshold of missingness that samples can have and be
-   *             kept; any sample with greater missingness will be filtered out.
-   * @param ploidy The number of sets of chromosomes
-   * @return Returns a [[GenotypeDataset]] with samples that have greater missigness than the `mind`
-   *         parameter filtered out.
-   */
-  def filterSamples(genotypes: GenotypeDataset,
-                    mind: Double,
-                    ploidy: Double): GenotypeDataset = {
-    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
-    GenotypeDataset(
-      newGenotypes,
-      genotypes.datasetUID,
-      genotypes.allelicAssumption,
-      genotypes.sampleUIDs)
-  }
+  //  /**
+  //   * Wrapper around the [[filterSamples()]] method that takes in [[GenotypeDataset]] instead of the
+  //   * [[Dataset]] of [[CalledVariant]]
+  //   *
+  //   * @param genotypes [[GenotypeDataset]] to filter
+  //   * @param mind The maximum fractional threshold of missingness that samples can have and be
+  //   *             kept; any sample with greater missingness will be filtered out.
+  //   * @param ploidy The number of sets of chromosomes
+  //   * @return Returns a [[GenotypeDataset]] with samples that have greater missigness than the `mind`
+  //   *         parameter filtered out.
+  //   */
+  //  def filterSamples(genotypes: GenotypeDataset,
+  //                    mind: Double,
+  //                    ploidy: Double): GenotypeDataset = {
+  //    val newGenotypes = filterSamples(genotypes.genotypes, mind, ploidy)
+  //    GenotypeDataset(
+  //      newGenotypes,
+  //      genotypes.datasetUID,
+  //      genotypes.allelicAssumption,
+  //      genotypes.sampleUIDs)
+  //  }
 
-  /**
-   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]]
-   * [[Dataset]] through transforming sample data with a supplied function.
-   *
-   * @param genotypes the original [[CalledVariant]] [[Dataset]] that will be
-   *                  transformed
-   * @param samplesFn the transform function for the [[List]] of [[GenotypeState]] objects stored in
-   *                  a [[CalledVariant]] object
-   * @return a transformed [[Dataset]] of [[CalledVariant]] objects
-   */
-  def createCalledVariant(genotypes: Dataset[CalledVariant],
-                          samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
-    genotypes.map(f => {
-      CalledVariant(f.uniqueID,
-        f.chromosome,
-        f.position,
-        f.referenceAllele,
-        f.alternateAllele,
-        f.minorAlleleFreq,
-        f.missingness,
-        samplesFn(f.samples))
-    })
-  }
+  //  /**
+  //   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]]
+  //   * [[Dataset]] through transforming sample data with a supplied function.
+  //   *
+  //   * @param genotypes the original [[CalledVariant]] [[Dataset]] that will be
+  //   *                  transformed
+  //   * @param samplesFn the transform function for the [[List]] of [[GenotypeState]] objects stored in
+  //   *                  a [[CalledVariant]] object
+  //   * @return a transformed [[Dataset]] of [[CalledVariant]] objects
+  //   */
+  //  def createCalledVariant(genotypes: Dataset[CalledVariant],
+  //                          samplesFn: List[GenotypeState] => List[GenotypeState]): Dataset[CalledVariant] = {
+  //    genotypes.map(f => {
+  //      CalledVariant(f.uniqueID,
+  //        f.chromosome,
+  //        f.position,
+  //        f.referenceAllele,
+  //        f.alternateAllele,
+  //        f.minorAlleleFreq,
+  //        f.missingness,
+  //        samplesFn(f.samples))
+  //    })
+  //  }
 
   /**
    * Returns a filtered [[Dataset]] of [[CalledVariant]] objects, where all
@@ -180,68 +176,82 @@ class GnocchiSession(@transient val sc: SparkContext)
    *            be between 0.0 and 1.0 because it represents a percentage.
    * @return Filtered [[Dataset]] of [[CalledVariant]] objects
    */
-  def filterVariants(genotypes: Dataset[CalledVariant],
+  def filterVariants(genotypes: DataFrame,
                      geno: Double,
-                     maf: Double): Dataset[CalledVariant] = FilterVariants.time {
+                     maf: Double,
+                     sampleUIDS: Set[String],
+                     ploidy: Double): Dataset[CalledVariant] = FilterVariants.time {
     require(maf >= 0.0 && maf <= 1.0,
       "`maf` value must be between 0.0 to 1.0 inclusive.")
     require(geno >= 0.0 && geno <= 1.0,
       "`geno` value must be between 0.0 to 1.0 inclusive.")
-    genotypes.filter(x => x.minorAlleleFreq >= maf && 1 - x.minorAlleleFreq >= maf && x.missingness <= geno)
+
+    val missesQueryString = sampleUIDS.toSeq.map(x => s"CAST(`$x`.misses AS DOUBLE)").reduce((x, y) => s"$x + $y")
+    val altsQueryString = sampleUIDS.toSeq.map(x => s"CAST(`$x`.alts AS DOUBLE)").reduce((x, y) => s"$x + $y")
+    genotypes.createTempView("genotypes")
+    val withMissesAlts = sparkSession.sql(s"SELECT *, $missesQueryString, $altsQueryString from genotypes").toDF(genotypes.columns ++ Array("misses", "alts"): _*)
+    withMissesAlts.createTempView("withMissesAlts")
+
+    val alleleCount = sampleUIDS.size * ploidy
+    val withStats = sparkSession.sql(s"SELECT *, `misses` / $alleleCount, `alts` / ($alleleCount - `misses`) from withMissesAlts").toDF(withMissesAlts.columns ++ Array("missingness", "maf"): _*)
+
+    val variantFiltered = withStats.filter($"maf" >= maf && lit(1) - $"maf" >= maf && $"missingness" <= geno)
+    val samplesMap = map(sampleUIDS.toList.flatMap(x => List(lit(x), col(x))): _*)
+    variantFiltered.withColumn("samples", samplesMap).drop(Array("misses", "alts") ++ sampleUIDS.toList: _*).as[CalledVariant]
   }
 
-  /**
-   * Wrapper around the [[filterVariants()]] method that takes in [[GenotypeDataset]] instead of the
-   * [[Dataset]] of [[CalledVariant]]
-   *
-   * @param genotypes [[GenotypeDataset]] to filter
-   * @param geno The maximum fractional threshold of missingness that variants can have and be
-   *             kept; any variant with greater missingness will be filtered out. This value must
-   *             be between 0.0 and 1.0 because it represents a percentage
-   * @param maf Fractional threshold for Minor Allele Frequency (MAF), where variants with
-   *            MAF, or (1 - MAF) less than this threshold will be filtered out. This value must
-   *            be between 0.0 and 1.0 because it represents a percentage.
-   * @return Filtered [[GenotypeDataset]]
-   */
-  def filterVariants(genotypes: GenotypeDataset,
-                     geno: Double,
-                     maf: Double): GenotypeDataset = {
-    val newGenotypes = filterVariants(genotypes.genotypes, geno, maf)
-    GenotypeDataset(
-      newGenotypes,
-      genotypes.datasetUID,
-      genotypes.allelicAssumption,
-      genotypes.sampleUIDs)
-  }
+  //  /**
+  //   * Wrapper around the [[filterVariants()]] method that takes in [[GenotypeDataset]] instead of the
+  //   * [[Dataset]] of [[CalledVariant]]
+  //   *
+  //   * @param genotypes [[GenotypeDataset]] to filter
+  //   * @param geno The maximum fractional threshold of missingness that variants can have and be
+  //   *             kept; any variant with greater missingness will be filtered out. This value must
+  //   *             be between 0.0 and 1.0 because it represents a percentage
+  //   * @param maf Fractional threshold for Minor Allele Frequency (MAF), where variants with
+  //   *            MAF, or (1 - MAF) less than this threshold will be filtered out. This value must
+  //   *            be between 0.0 and 1.0 because it represents a percentage.
+  //   * @return Filtered [[GenotypeDataset]]
+  //   */
+  //  def filterVariants(genotypes: GenotypeDataset,
+  //                     geno: Double,
+  //                     maf: Double): GenotypeDataset = {
+  //    val newGenotypes = filterVariants(genotypes.genotypes, geno, maf)
+  //    GenotypeDataset(
+  //      newGenotypes,
+  //      genotypes.datasetUID,
+  //      genotypes.allelicAssumption,
+  //      genotypes.sampleUIDs)
+  //  }
 
-  /**
-   * Returns a modified Dataset of CalledVariant objects, where any value with a
-   * maf > 0.5 is recoded such that the minor minor allele becomes the major allele. The recoding is
-   * done by flipping the referenceAllele and alternateAllele when the frequency of alt is greater
-   * than that of ref.
-   *
-   * Note: As it is currently written this operation requires the dataset to be deserialized from
-   * the spark sql format into a rdd of java objects. This is because we are not just accessing
-   * fields in the object, but operating in a non-simple way. Spark's current translation from
-   * dataset object API to the underlying SQL generated code cannot support things like array sums,
-   * which are needed to compute the minor allele frequency.
-   *
-   * @param genotypes The [[CalledVariant]] [[Dataset]] to recode
-   * @return Returns an updated [[CalledVariant]] [[Dataset]] that has been recoded
-   */
-  def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = RecodeMajorAllele.time {
-    genotypes.map(f => {
-      if (f.minorAlleleFreq > 0.5) {
-        f.copy(
-          samples = f.samples.map(g => { g.copy(refs = g.alts, alts = g.refs) }),
-          alternateAllele = f.referenceAllele,
-          referenceAllele = f.alternateAllele,
-          minorAlleleFreq = 1 - f.minorAlleleFreq)
-      } else {
-        f
-      }
-    })
-  }
+  //  /**
+  //   * Returns a modified Dataset of CalledVariant objects, where any value with a
+  //   * maf > 0.5 is recoded such that the minor minor allele becomes the major allele. The recoding is
+  //   * done by flipping the referenceAllele and alternateAllele when the frequency of alt is greater
+  //   * than that of ref.
+  //   *
+  //   * Note: As it is currently written this operation requires the dataset to be deserialized from
+  //   * the spark sql format into a rdd of java objects. This is because we are not just accessing
+  //   * fields in the object, but operating in a non-simple way. Spark's current translation from
+  //   * dataset object API to the underlying SQL generated code cannot support things like array sums,
+  //   * which are needed to compute the minor allele frequency.
+  //   *
+  //   * @param genotypes The [[CalledVariant]] [[Dataset]] to recode
+  //   * @return Returns an updated [[CalledVariant]] [[Dataset]] that has been recoded
+  //   */
+  //  def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = RecodeMajorAllele.time {
+  //    genotypes.map(f => {
+  //      if (f.minorAlleleFreq > 0.5) {
+  //        f.copy(
+  //          samples = f.samples.map(g => { g.copy(refs = g.alts, alts = g.refs) }),
+  //          alternateAllele = f.referenceAllele,
+  //          referenceAllele = f.alternateAllele,
+  //          minorAlleleFreq = 1 - f.minorAlleleFreq)
+  //      } else {
+  //        f
+  //      }
+  //    })
+  //  }
   //  def recodeMajorAllele(genotypes: Dataset[CalledVariant]): Dataset[CalledVariant] = {
   //    val struct_schema = ArrayType(
   //      StructType(List(
@@ -253,17 +263,17 @@ class GnocchiSession(@transient val sc: SparkContext)
   //    genotypes.where($"minorAlleleFreq" <= 0.5).union(recoded)
   //  }
 
-  /**
-   * Wrapper around [[recodeMajorAllele()]] that take in [[GenotypeDataset]] instead of the
-   * [[Dataset]] of [[CalledVariant]]
-   *
-   * @param genotypes [[GenotypeDataset]] to recode
-   * @return recoded [[GenotypeDataset]]
-   */
-  def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
-    val newGenotypes = recodeMajorAllele(genotypes.genotypes)
-    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
-  }
+  //  /**
+  //   * Wrapper around [[recodeMajorAllele()]] that take in [[GenotypeDataset]] instead of the
+  //   * [[Dataset]] of [[CalledVariant]]
+  //   *
+  //   * @param genotypes [[GenotypeDataset]] to recode
+  //   * @return recoded [[GenotypeDataset]]
+  //   */
+  //  def recodeMajorAllele(genotypes: GenotypeDataset): GenotypeDataset = {
+  //    val newGenotypes = recodeMajorAllele(genotypes.genotypes)
+  //    GenotypeDataset(newGenotypes, genotypes.datasetUID, genotypes.allelicAssumption, genotypes.sampleUIDs)
+  //  }
 
   /**
    * @param pathName The path name to match.
@@ -418,31 +428,17 @@ class GnocchiSession(@transient val sc: SparkContext)
    * @param vcRDD the [[VariantContextRDD]] to convert
    * @return a [[Dataset]] of [[CalledVariant]] objects
    */
-  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = LoadCalledVariantDSFromVariantContextRDD.time {
+  def loadCalledVariantDSFromVariantContextRDD(vcRDD: VariantContextRDD): Dataset[CalledVariant] = {
     vcRDD.rdd.map(vc => {
       val variant = vc.variant.variant
       val contigName = if (variant.getContigName.toLowerCase() == "x") 23 else variant.getContigName.toInt
       val rs_id = if (variant.getNames.size > 0) variant.getNames.get(0) else variant.getContigName + "_" + variant.getEnd.toString
 
       val genotypeStates = vc.genotypes.map(geno => {
-        GenotypeState(geno.getSampleId,
-          geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
+        (geno.getSampleId, GenotypeState(geno.getAlleles.count(_ == GenotypeAllele.REF).toByte,
           geno.getAlleles.count(al => al == GenotypeAllele.ALT || al == GenotypeAllele.OTHER_ALT).toByte,
-          geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte)
-      }).toList
-
-      val ploidy = genotypeStates.head.ploidy
-
-      val missingCount = genotypeStates.map(_.misses.toInt).sum
-      val alleleCount = genotypeStates.map(_.alts.toInt).sum
-
-      val maf = if (genotypeStates.length * ploidy > missingCount) {
-        alleleCount.toDouble / (genotypeStates.length * ploidy - missingCount).toDouble
-      } else {
-        0.5
-      }
-
-      val geno = missingCount.toDouble / (genotypeStates.length * ploidy).toDouble
+          geno.getAlleles.count(_ == GenotypeAllele.NO_CALL).toByte))
+      }).toMap
 
       CalledVariant(
         rs_id,
@@ -450,12 +446,11 @@ class GnocchiSession(@transient val sc: SparkContext)
         variant.getEnd.intValue(),
         variant.getReferenceAllele,
         variant.getAlternateAllele,
-        maf,
-        geno,
+        -9.0,
+        -9.0,
         genotypeStates)
     }).toDS()
   }
-
   /**
    * Returns a map of phenotype name to phenotype object, which is loaded from
    * a file, specified by phenotypesPath

@@ -38,18 +38,18 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     assert(genotypes.isInstanceOf[GenotypeDataset], "sc.loadGenotypes does not produce as GenotypeDataset")
   }
 
-  sparkTest("sc.loadGenotypes should map fields correctly.") {
-    val genoPath = testFile("1Sample1Variant.vcf")
-    val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant", "ADDITIVE")
-    val firstCalledVariant = genotypes.genotypes.head
-
-    assert(firstCalledVariant.uniqueID.equals("rs3131972"))
-    assert(firstCalledVariant.chromosome === 1)
-    assert(firstCalledVariant.position === 752721)
-    assert(firstCalledVariant.referenceAllele === "A")
-    assert(firstCalledVariant.alternateAllele === "G")
-    assert(firstCalledVariant.samples.equals(List(GenotypeState("sample1", 1, 1, 0))))
-  }
+  //  sparkTest("sc.loadGenotypes should map fields correctly.") {
+  //    val genoPath = testFile("1Sample1Variant.vcf")
+  //    val genotypes = sc.loadGenotypes(genoPath, "1Sample1Variant", "ADDITIVE")
+  //    val firstCalledVariant = genotypes.genotypes.head
+  //
+  //    assert(firstCalledVariant.uniqueID.equals("rs3131972"))
+  //    assert(firstCalledVariant.chromosome === 1)
+  //    assert(firstCalledVariant.position === 752721)
+  //    assert(firstCalledVariant.referenceAllele === "A")
+  //    assert(firstCalledVariant.alternateAllele === "G")
+  //    assert(firstCalledVariant.samples.equals(List(GenotypeState("sample1", 1, 1, 0))))
+  //  }
 
   sparkTest("sc.loadGenotypes should gracefully exit when a non-existing file path is passed in.") {
     val fakeFilePath = "fake/file/path.vcf"
@@ -185,339 +185,339 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
 
   // filter samples tests
 
-  private def makeGenotypeState(id: String, gs: String): GenotypeState = {
-    val alleleLst = gs.split("/")
-    GenotypeState(id, alleleLst.count(_ == "0").toByte, alleleLst.count(_ == "1").toByte, alleleLst.count(_ == ".").toByte)
-  }
-
-  private def makeCalledVariant(uid: Int, sampleIds: List[String], genotypeStates: List[String]): CalledVariant = {
-    val samples = sampleIds.zip(genotypeStates).map(idGs => makeGenotypeState(idGs._1, idGs._2))
-    CalledVariant(uid.toString(), 1, 1234, "A", "G", 0.0, 0.0, samples)
-  }
-
-  private def makeCalledVariantDS(variants: List[CalledVariant]): Dataset[CalledVariant] = {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    sc.parallelize(variants).toDS()
-  }
-
-  val sampleIds = List("sample1", "sample2", "sample3", "sample4")
-  val variant1Genotypes = List("./.", "./.", "./.", "1/1")
-  val variant2Genotypes = List("./.", "./.", "1/1", "1/1")
-  val variant3Genotypes = List("./.", "1/1", "1/1", "1/1")
-  val variant4Genotypes = List("./.", "1/1", "1/1", "1/1")
-  val variant5Genotypes = List("./.", "1/1", "1/1", "1/1")
-  val variant1CalledVariant = makeCalledVariant(1, sampleIds, variant1Genotypes)
-  val variant2CalledVariant = makeCalledVariant(2, sampleIds, variant2Genotypes)
-  val variant3CalledVariant = makeCalledVariant(3, sampleIds, variant3Genotypes)
-  val variant4CalledVariant = makeCalledVariant(4, sampleIds, variant4Genotypes)
-  val variant5CalledVariant = makeCalledVariant(5, sampleIds, variant5Genotypes)
-  val filterVariants = List(variant1CalledVariant, variant2CalledVariant,
-    variant3CalledVariant, variant4CalledVariant, variant5CalledVariant)
-
-  sparkTest("sc.filterSamples should not filter any samples if mind >= 1 since missingness should never exceed 1.0") {
-    val toFilterDS = makeCalledVariantDS(filterVariants)
-    val filteredSamples = sc.filterSamples(toFilterDS, 1.0, 2)
-    assert(filteredSamples.collect.forall(toFilterDS.collect.contains(_)), "Sample filtering did not match original collection.")
-  }
-
-  sparkTest("sc.filterSamples should filter on mind if mind is greater than 0 but less than 1") {
-    val toFilterDS = makeCalledVariantDS(filterVariants)
-    val filteredSamples = sc.filterSamples(toFilterDS, .3, 2)
-
-    // construct the target dataset that should be result of filtering `filterVariants` dataset
-    val targetFilteredSamples = List("sample3", "sample4")
-    val targetvariant1Genotypes = List("./.", "1/1")
-    val targetvariant2Genotypes = List("1/1", "1/1")
-    val targetvariant3Genotypes = List("1/1", "1/1")
-    val targetvariant4Genotypes = List("1/1", "1/1")
-    val targetvariant5Genotypes = List("1/1", "1/1")
-    val targetvariant1CalledVariant = makeCalledVariant(1, targetFilteredSamples, targetvariant1Genotypes)
-    val targetvariant2CalledVariant = makeCalledVariant(2, targetFilteredSamples, targetvariant2Genotypes)
-    val targetvariant3CalledVariant = makeCalledVariant(3, targetFilteredSamples, targetvariant3Genotypes)
-    val targetvariant4CalledVariant = makeCalledVariant(4, targetFilteredSamples, targetvariant4Genotypes)
-    val targetvariant5CalledVariant = makeCalledVariant(5, targetFilteredSamples, targetvariant5Genotypes)
-
-    val targetcalledVariantsDS = makeCalledVariantDS(List(targetvariant1CalledVariant, targetvariant2CalledVariant,
-      targetvariant3CalledVariant, targetvariant4CalledVariant, targetvariant5CalledVariant))
-
-    // Assert that the filtered dataset equals what we expect.
-    assert(filteredSamples.collect.forall(targetcalledVariantsDS.collect().contains(_)), "Filtered dataset did not match expected dataset.")
-  }
-
-  sparkTest("sc.filterSamples should filter out all non-perfect samples if mind == 0") {
-    val toFilterDS = makeCalledVariantDS(filterVariants)
-    val filteredSamples = sc.filterSamples(toFilterDS, 0.0, 2)
-    val targetFilteredSamples = List("sample4")
-    val targetvariant1Genotypes = List("1/1")
-    val targetvariant2Genotypes = List("1/1")
-    val targetvariant3Genotypes = List("1/1")
-    val targetvariant4Genotypes = List("1/1")
-    val targetvariant5Genotypes = List("1/1")
-    val targetvariant1CalledVariant = makeCalledVariant(1, targetFilteredSamples, targetvariant1Genotypes)
-    val targetvariant2CalledVariant = makeCalledVariant(2, targetFilteredSamples, targetvariant2Genotypes)
-    val targetvariant3CalledVariant = makeCalledVariant(3, targetFilteredSamples, targetvariant3Genotypes)
-    val targetvariant4CalledVariant = makeCalledVariant(4, targetFilteredSamples, targetvariant4Genotypes)
-    val targetvariant5CalledVariant = makeCalledVariant(5, targetFilteredSamples, targetvariant5Genotypes)
-
-    val targetcalledVariantsDS = makeCalledVariantDS(List(targetvariant1CalledVariant, targetvariant2CalledVariant,
-      targetvariant3CalledVariant, targetvariant4CalledVariant, targetvariant5CalledVariant))
-
-    assert(filteredSamples.collect.forall(targetcalledVariantsDS.collect().contains(_)), "Filtered dataset did not match expected dataset.")
-  }
-
-  sparkTest("sc.filterSamples exit gracefully when mind < 0.") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    try {
-      sc.filterSamples(dataset, -0.4, 2)
-      fail("sc.filterSamples does not fail on missingness per individual < 0.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  ignore("sc.filterSamples should remove samples from return dataset if they do not have a phenotype.") {
-
-  }
-
-  // filter variants tests
-
-  sparkTest("sc.filterVariants exit gracefully when maf _ > 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    try {
-      sc.filterVariants(dataset, geno = 0.0, maf = 1.2)
-      fail("sc.filterVariants does not fail on minor allele frequency > 1.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  sparkTest("sc.filterVariants should filter out all samples when maf == 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    val leftOver = sc.filterVariants(dataset, geno = 0.0, maf = 1.0)
-    assert(leftOver.count() == 0, "Minor allele frequency filter at 1.0 should filter out all variants.")
-  }
-
-  sparkTest("sc.filterVariants should properly filter out variants when  0 < maf < 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-
-    val mafs = List(0.2, 0.4, 0.6, 0.8)
-      .map(x => createSampleGenotypeStates(num = 10, maf = x))
-      .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(mafs)
-
-    def maf1 = sc.filterVariants(dataset, maf = 0.2, geno = 0.0)
-    def maf2 = sc.filterVariants(dataset, maf = 0.4, geno = 0.0)
-
-    assert(maf1.count() == 3, "Minor allele frequency filtered out wrong number.")
-    assert(maf2.count() == 2, "Minor allele frequency filtered out wrong number.")
-  }
-
-  ignore("sc.filterVariants should filter out everything when maf > 0.5") {
-
-  }
-
-  sparkTest("sc.filterVariants should not filter out any variants when maf == 0") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-
-    val mafs = List(0.2, 0.4, 0.6, 0.8)
-      .map(x => createSampleGenotypeStates(num = 5, maf = x))
-      .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(mafs)
-
-    assert(sc.filterVariants(dataset, maf = 0.0, geno = 0.0).count == 4, "sc.filterVariants filters out variants when maf == 0.0")
-  }
-
-  sparkTest("sc.filterVariants should exit gracefully when maf < 0") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    try {
-      sc.filterVariants(dataset, geno = 0.0, maf = -0.2)
-      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  ignore("sc.filterVariants should work correctly when an entire row is missing") {
-
-  }
-
-  sparkTest("sc.filterVariants should exit gracefully when geno > 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    try {
-      sc.filterVariants(dataset, geno = 1.2, maf = 0.0)
-      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  sparkTest("sc.filterVariants should not filter out any variants when geno == 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-
-    val genos = List(0.2, 0.4, 0.6, 0.8)
-      .map(x => createSampleGenotypeStates(num = 5, geno = x))
-      .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
-
-    assert(sc.filterVariants(dataset, maf = 0.0, geno = 1.0).count == 4, "sc.filterVariants filters out variants when geno == 1.0")
-  }
-
-  sparkTest("sc.filterVariants should work properly for  0 < geno < 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-
-    val genos = List(0.2, 0.4, 0.6, 0.8)
-      .map(x => createSampleGenotypeStates(num = 5, geno = x))
-      .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
-
-    assert(sc.filterVariants(dataset, geno = 0.8, maf = 0.0).count == 4, "sc.filterVariants incorrectly filtered at geno = 0.8")
-    assert(sc.filterVariants(dataset, geno = 0.6, maf = 0.0).count == 3, "sc.filterVariants incorrectly filtered at geno = 0.6")
-    assert(sc.filterVariants(dataset, geno = 0.4, maf = 0.0).count == 2, "sc.filterVariants incorrectly filtered at geno = 0.4")
-    assert(sc.filterVariants(dataset, geno = 0.2, maf = 0.0).count == 1, "sc.filterVariants incorrectly filtered at geno = 0.2")
-  }
-
-  sparkTest("sc.filterVariants should geno _ == 0") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-
-    val genos = List(0.2, 0.4, 0.6, 0.8)
-      .map(x => createSampleGenotypeStates(num = 5, geno = x))
-      .map(x => createSampleCalledVariant(samples = Option(x)))
-    val dataset = sparkSession.createDataset(genos)
-
-    assert(sc.filterVariants(dataset, geno = 0.0, maf = 0.0).count == 0, "sc.filterVariants incorrectly filtered at geno = 0.0")
-  }
-
-  sparkTest("sc.filterVariants should gracefully exit when geno < 0") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
-    try {
-      sc.filterVariants(dataset, geno = -0.2, maf = 0.0)
-      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
-    } catch {
-      case e: java.lang.IllegalArgumentException =>
-    }
-  }
-
-  ignore("sc.filterVariants should geno correct") {
-
-  }
-
-  ignore("filterVariants should filter out variants with genotyping rate less than 0.1 when " +
-    "geno threshold set to 0.1 and maf threshold is greater than 0.1") {
-
-  }
-
-  ignore("filterVariants should filter out variants with minor allele frequency less than 0.1 when" +
-    "maf threshold set to 0.1 and geno threshold is greater than 0.1") {
-
-  }
+  //  private def makeGenotypeState(id: String, gs: String): GenotypeState = {
+  //    val alleleLst = gs.split("/")
+  //    GenotypeState(id, alleleLst.count(_ == "0").toByte, alleleLst.count(_ == "1").toByte, alleleLst.count(_ == ".").toByte)
+  //  }
+  //
+  //  private def makeCalledVariant(uid: Int, sampleIds: List[String], genotypeStates: List[String]): CalledVariant = {
+  //    val samples = sampleIds.zip(genotypeStates).map(idGs => makeGenotypeState(idGs._1, idGs._2))
+  //    CalledVariant(uid.toString(), 1, 1234, "A", "G", 0.0, 0.0, samples)
+  //  }
+  //
+  //  private def makeCalledVariantDS(variants: List[CalledVariant]): Dataset[CalledVariant] = {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    sc.parallelize(variants).toDS()
+  //  }
+  //
+  //  val sampleIds = List("sample1", "sample2", "sample3", "sample4")
+  //  val variant1Genotypes = List("./.", "./.", "./.", "1/1")
+  //  val variant2Genotypes = List("./.", "./.", "1/1", "1/1")
+  //  val variant3Genotypes = List("./.", "1/1", "1/1", "1/1")
+  //  val variant4Genotypes = List("./.", "1/1", "1/1", "1/1")
+  //  val variant5Genotypes = List("./.", "1/1", "1/1", "1/1")
+  //  val variant1CalledVariant = makeCalledVariant(1, sampleIds, variant1Genotypes)
+  //  val variant2CalledVariant = makeCalledVariant(2, sampleIds, variant2Genotypes)
+  //  val variant3CalledVariant = makeCalledVariant(3, sampleIds, variant3Genotypes)
+  //  val variant4CalledVariant = makeCalledVariant(4, sampleIds, variant4Genotypes)
+  //  val variant5CalledVariant = makeCalledVariant(5, sampleIds, variant5Genotypes)
+  //  val filterVariants = List(variant1CalledVariant, variant2CalledVariant,
+  //    variant3CalledVariant, variant4CalledVariant, variant5CalledVariant)
+  //
+  //  sparkTest("sc.filterSamples should not filter any samples if mind >= 1 since missingness should never exceed 1.0") {
+  //    val toFilterDS = makeCalledVariantDS(filterVariants)
+  //    val filteredSamples = sc.filterSamples(toFilterDS, 1.0, 2)
+  //    assert(filteredSamples.collect.forall(toFilterDS.collect.contains(_)), "Sample filtering did not match original collection.")
+  //  }
+  //
+  //  sparkTest("sc.filterSamples should filter on mind if mind is greater than 0 but less than 1") {
+  //    val toFilterDS = makeCalledVariantDS(filterVariants)
+  //    val filteredSamples = sc.filterSamples(toFilterDS, .3, 2)
+  //
+  //    // construct the target dataset that should be result of filtering `filterVariants` dataset
+  //    val targetFilteredSamples = List("sample3", "sample4")
+  //    val targetvariant1Genotypes = List("./.", "1/1")
+  //    val targetvariant2Genotypes = List("1/1", "1/1")
+  //    val targetvariant3Genotypes = List("1/1", "1/1")
+  //    val targetvariant4Genotypes = List("1/1", "1/1")
+  //    val targetvariant5Genotypes = List("1/1", "1/1")
+  //    val targetvariant1CalledVariant = makeCalledVariant(1, targetFilteredSamples, targetvariant1Genotypes)
+  //    val targetvariant2CalledVariant = makeCalledVariant(2, targetFilteredSamples, targetvariant2Genotypes)
+  //    val targetvariant3CalledVariant = makeCalledVariant(3, targetFilteredSamples, targetvariant3Genotypes)
+  //    val targetvariant4CalledVariant = makeCalledVariant(4, targetFilteredSamples, targetvariant4Genotypes)
+  //    val targetvariant5CalledVariant = makeCalledVariant(5, targetFilteredSamples, targetvariant5Genotypes)
+  //
+  //    val targetcalledVariantsDS = makeCalledVariantDS(List(targetvariant1CalledVariant, targetvariant2CalledVariant,
+  //      targetvariant3CalledVariant, targetvariant4CalledVariant, targetvariant5CalledVariant))
+  //
+  //    // Assert that the filtered dataset equals what we expect.
+  //    assert(filteredSamples.collect.forall(targetcalledVariantsDS.collect().contains(_)), "Filtered dataset did not match expected dataset.")
+  //  }
+  //
+  //  sparkTest("sc.filterSamples should filter out all non-perfect samples if mind == 0") {
+  //    val toFilterDS = makeCalledVariantDS(filterVariants)
+  //    val filteredSamples = sc.filterSamples(toFilterDS, 0.0, 2)
+  //    val targetFilteredSamples = List("sample4")
+  //    val targetvariant1Genotypes = List("1/1")
+  //    val targetvariant2Genotypes = List("1/1")
+  //    val targetvariant3Genotypes = List("1/1")
+  //    val targetvariant4Genotypes = List("1/1")
+  //    val targetvariant5Genotypes = List("1/1")
+  //    val targetvariant1CalledVariant = makeCalledVariant(1, targetFilteredSamples, targetvariant1Genotypes)
+  //    val targetvariant2CalledVariant = makeCalledVariant(2, targetFilteredSamples, targetvariant2Genotypes)
+  //    val targetvariant3CalledVariant = makeCalledVariant(3, targetFilteredSamples, targetvariant3Genotypes)
+  //    val targetvariant4CalledVariant = makeCalledVariant(4, targetFilteredSamples, targetvariant4Genotypes)
+  //    val targetvariant5CalledVariant = makeCalledVariant(5, targetFilteredSamples, targetvariant5Genotypes)
+  //
+  //    val targetcalledVariantsDS = makeCalledVariantDS(List(targetvariant1CalledVariant, targetvariant2CalledVariant,
+  //      targetvariant3CalledVariant, targetvariant4CalledVariant, targetvariant5CalledVariant))
+  //
+  //    assert(filteredSamples.collect.forall(targetcalledVariantsDS.collect().contains(_)), "Filtered dataset did not match expected dataset.")
+  //  }
+  //
+  //  sparkTest("sc.filterSamples exit gracefully when mind < 0.") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    try {
+  //      sc.filterSamples(dataset, -0.4, 2)
+  //      fail("sc.filterSamples does not fail on missingness per individual < 0.")
+  //    } catch {
+  //      case e: java.lang.IllegalArgumentException =>
+  //    }
+  //  }
+  //
+  //  ignore("sc.filterSamples should remove samples from return dataset if they do not have a phenotype.") {
+  //
+  //  }
+  //
+  //  // filter variants tests
+  //
+  //  sparkTest("sc.filterVariants exit gracefully when maf _ > 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    try {
+  //      sc.filterVariants(dataset, geno = 0.0, maf = 1.2)
+  //      fail("sc.filterVariants does not fail on minor allele frequency > 1.")
+  //    } catch {
+  //      case e: java.lang.IllegalArgumentException =>
+  //    }
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should filter out all samples when maf == 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    val leftOver = sc.filterVariants(dataset, geno = 0.0, maf = 1.0)
+  //    assert(leftOver.count() == 0, "Minor allele frequency filter at 1.0 should filter out all variants.")
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should properly filter out variants when  0 < maf < 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //
+  //    val mafs = List(0.2, 0.4, 0.6, 0.8)
+  //      .map(x => createSampleGenotypeStates(num = 10, maf = x))
+  //      .map(x => createSampleCalledVariant(samples = Option(x)))
+  //    val dataset = sparkSession.createDataset(mafs)
+  //
+  //    def maf1 = sc.filterVariants(dataset, maf = 0.2, geno = 0.0)
+  //    def maf2 = sc.filterVariants(dataset, maf = 0.4, geno = 0.0)
+  //
+  //    assert(maf1.count() == 3, "Minor allele frequency filtered out wrong number.")
+  //    assert(maf2.count() == 2, "Minor allele frequency filtered out wrong number.")
+  //  }
+  //
+  //  ignore("sc.filterVariants should filter out everything when maf > 0.5") {
+  //
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should not filter out any variants when maf == 0") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //
+  //    val mafs = List(0.2, 0.4, 0.6, 0.8)
+  //      .map(x => createSampleGenotypeStates(num = 5, maf = x))
+  //      .map(x => createSampleCalledVariant(samples = Option(x)))
+  //    val dataset = sparkSession.createDataset(mafs)
+  //
+  //    assert(sc.filterVariants(dataset, maf = 0.0, geno = 0.0).count == 4, "sc.filterVariants filters out variants when maf == 0.0")
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should exit gracefully when maf < 0") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    try {
+  //      sc.filterVariants(dataset, geno = 0.0, maf = -0.2)
+  //      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
+  //    } catch {
+  //      case e: java.lang.IllegalArgumentException =>
+  //    }
+  //  }
+  //
+  //  ignore("sc.filterVariants should work correctly when an entire row is missing") {
+  //
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should exit gracefully when geno > 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    try {
+  //      sc.filterVariants(dataset, geno = 1.2, maf = 0.0)
+  //      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
+  //    } catch {
+  //      case e: java.lang.IllegalArgumentException =>
+  //    }
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should not filter out any variants when geno == 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //
+  //    val genos = List(0.2, 0.4, 0.6, 0.8)
+  //      .map(x => createSampleGenotypeStates(num = 5, geno = x))
+  //      .map(x => createSampleCalledVariant(samples = Option(x)))
+  //    val dataset = sparkSession.createDataset(genos)
+  //
+  //    assert(sc.filterVariants(dataset, maf = 0.0, geno = 1.0).count == 4, "sc.filterVariants filters out variants when geno == 1.0")
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should work properly for  0 < geno < 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //
+  //    val genos = List(0.2, 0.4, 0.6, 0.8)
+  //      .map(x => createSampleGenotypeStates(num = 5, geno = x))
+  //      .map(x => createSampleCalledVariant(samples = Option(x)))
+  //    val dataset = sparkSession.createDataset(genos)
+  //
+  //    assert(sc.filterVariants(dataset, geno = 0.8, maf = 0.0).count == 4, "sc.filterVariants incorrectly filtered at geno = 0.8")
+  //    assert(sc.filterVariants(dataset, geno = 0.6, maf = 0.0).count == 3, "sc.filterVariants incorrectly filtered at geno = 0.6")
+  //    assert(sc.filterVariants(dataset, geno = 0.4, maf = 0.0).count == 2, "sc.filterVariants incorrectly filtered at geno = 0.4")
+  //    assert(sc.filterVariants(dataset, geno = 0.2, maf = 0.0).count == 1, "sc.filterVariants incorrectly filtered at geno = 0.2")
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should geno _ == 0") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //
+  //    val genos = List(0.2, 0.4, 0.6, 0.8)
+  //      .map(x => createSampleGenotypeStates(num = 5, geno = x))
+  //      .map(x => createSampleCalledVariant(samples = Option(x)))
+  //    val dataset = sparkSession.createDataset(genos)
+  //
+  //    assert(sc.filterVariants(dataset, geno = 0.0, maf = 0.0).count == 0, "sc.filterVariants incorrectly filtered at geno = 0.0")
+  //  }
+  //
+  //  sparkTest("sc.filterVariants should gracefully exit when geno < 0") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val dataset = sparkSession.createDataset(List.fill(5)(createSampleCalledVariant()))
+  //    try {
+  //      sc.filterVariants(dataset, geno = -0.2, maf = 0.0)
+  //      fail("sc.filterVariants does not fail on minor allele frequency < 0.")
+  //    } catch {
+  //      case e: java.lang.IllegalArgumentException =>
+  //    }
+  //  }
+  //
+  //  ignore("sc.filterVariants should geno correct") {
+  //
+  //  }
+  //
+  //  ignore("filterVariants should filter out variants with genotyping rate less than 0.1 when " +
+  //    "geno threshold set to 0.1 and maf threshold is greater than 0.1") {
+  //
+  //  }
+  //
+  //  ignore("filterVariants should filter out variants with minor allele frequency less than 0.1 when" +
+  //    "maf threshold set to 0.1 and geno threshold is greater than 0.1") {
+  //
+  //  }
 
   // recode major allele tests
 
-  sparkTest("sc.recodeMajorAllele should maf _ == 1") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 1.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
-
-    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
-    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
-    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
-    assert(recoded.alternateAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly did not change the alternate allele value of variants to be recoded.")
-    assert(recoded.referenceAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly did not change the reference allele value of variants to be recoded.")
-
-    val recodedSamples = sampleVar.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses))
-
-    assert(recodedSamples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
-  }
-
-  sparkTest("sc.recodeMajorAllele should flip the minor and major allele when maf 1 > _ > 0.5") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.75)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
-
-    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
-    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
-    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
-    assert(recoded.alternateAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly did not change the alternate allele value of variants to be recoded.")
-    assert(recoded.referenceAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly did not change the reference allele value of variants to be recoded.")
-
-    val recodedSamples = sampleVar.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses))
-
-    assert(recodedSamples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
-  }
-
-  sparkTest("sc.recodeMajorAllele should not recode the variant when maf == 0.5") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.5)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
-
-    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
-    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
-    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
-    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
-    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
-
-    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
-  }
-
-  sparkTest("sc.recodeMajorAllele should not recode the variant when 0 < maf < 0.5") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.25)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
-
-    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
-    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
-    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
-    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
-    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
-
-    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
-  }
-
-  sparkTest("sc.recodeMajorAllele should maf _ == 0") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
-
-    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
-    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
-    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
-    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
-    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
-
-    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
-  }
-
-  sparkTest("sc.recodeMajorAllele should return `Dataset[CalledVariant]` type.") {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    import sparkSession.implicits._
-    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
-    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar)))
-
-    assert(recoded.isInstanceOf[Dataset[CalledVariant]], "sc.recodeMajorAllele does not produce a `Dataset[CalledVariant]`")
-  }
+  //  sparkTest("sc.recodeMajorAllele should maf _ == 1") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 1.0)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+  //
+  //    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
+  //    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
+  //    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
+  //    assert(recoded.alternateAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly did not change the alternate allele value of variants to be recoded.")
+  //    assert(recoded.referenceAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly did not change the reference allele value of variants to be recoded.")
+  //
+  //    val recodedSamples = sampleVar.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses))
+  //
+  //    assert(recodedSamples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
+  //  }
+  //
+  //  sparkTest("sc.recodeMajorAllele should flip the minor and major allele when maf 1 > _ > 0.5") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.75)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+  //
+  //    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
+  //    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
+  //    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
+  //    assert(recoded.alternateAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly did not change the alternate allele value of variants to be recoded.")
+  //    assert(recoded.referenceAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly did not change the reference allele value of variants to be recoded.")
+  //
+  //    val recodedSamples = sampleVar.samples.map(geno => GenotypeState(geno.sampleID, geno.alts, geno.refs, geno.misses))
+  //
+  //    assert(recodedSamples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
+  //  }
+  //
+  //  sparkTest("sc.recodeMajorAllele should not recode the variant when maf == 0.5") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.5)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+  //
+  //    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
+  //    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
+  //    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
+  //    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
+  //    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
+  //
+  //    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
+  //  }
+  //
+  //  sparkTest("sc.recodeMajorAllele should not recode the variant when 0 < maf < 0.5") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.25)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+  //
+  //    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
+  //    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
+  //    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
+  //    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
+  //    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
+  //
+  //    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
+  //  }
+  //
+  //  sparkTest("sc.recodeMajorAllele should maf _ == 0") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar))).head
+  //
+  //    assert(recoded.chromosome == sampleVar.chromosome, "sc.recodeMajorAllele incorrectly changed the chromosome value of variants to be recoded.")
+  //    assert(recoded.position == sampleVar.position, "sc.recodeMajorAllele incorrectly changed the position value of variants to be recoded.")
+  //    assert(recoded.uniqueID == sampleVar.uniqueID, "sc.recodeMajorAllele incorrectly changed the uniqueID value of variants to be recoded.")
+  //    assert(recoded.referenceAllele == sampleVar.referenceAllele, "sc.recodeMajorAllele incorrectly changed the reference allele value of variants to be recoded.")
+  //    assert(recoded.alternateAllele == sampleVar.alternateAllele, "sc.recodeMajorAllele incorrectly changed the alternate allele value of variants to be recoded.")
+  //
+  //    assert(sampleVar.samples == recoded.samples, "sc.recodeMajorAllele incorrectly recoded the alleles in the input variant.")
+  //  }
+  //
+  //  sparkTest("sc.recodeMajorAllele should return `Dataset[CalledVariant]` type.") {
+  //    val sparkSession = SparkSession.builder().getOrCreate()
+  //    import sparkSession.implicits._
+  //    val sampleVar = createSampleCalledVariant(samples = Option(createSampleGenotypeStates(num = 5, maf = 0.0)))
+  //    val recoded = sc.recodeMajorAllele(sparkSession.createDataset(List(sampleVar)))
+  //
+  //    assert(recoded.isInstanceOf[Dataset[CalledVariant]], "sc.recodeMajorAllele does not produce a `Dataset[CalledVariant]`")
+  //  }
 
   // phenotype missing tests
 

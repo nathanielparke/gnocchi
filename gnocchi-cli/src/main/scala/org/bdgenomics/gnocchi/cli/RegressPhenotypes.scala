@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.bdgenomics.gnocchi.primitives.association.{ LinearAssociation, LogisticAssociation }
+import org.bdgenomics.gnocchi.sql.GenotypeDataset
 import org.bdgenomics.utils.cli._
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
@@ -146,23 +147,23 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
     // the ordering of calls below is important
     val rawGenotypes = sc.loadGenotypes(args.genotypes, args.datasetName, args.associationType.split("_").head, adamFormat = args.adamFormat)
-    val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
-    val recoded = sc.recodeMajorAllele(sampleFiltered)
-    val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)
-    filteredGeno.genotypes.count()
+    val (sampleFiltered, keptUIDS) = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
+    //    val recoded = sc.recodeMajorAllele(sampleFiltered)
+    val filteredGeno = sc.filterVariants(sampleFiltered, geno = args.geno, maf = args.maf, keptUIDS, args.ploidy)
+    val datasetWrapper = GenotypeDataset(filteredGeno, rawGenotypes.datasetUID, rawGenotypes.allelicAssumption, keptUIDS)
 
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
-        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
+        val associations = LinearSiteRegression.createAssociationsDataset(datasetWrapper, phenotypesContainer)
         sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
       case "DOMINANT_LINEAR" =>
-        val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
+        val associations = LinearSiteRegression.createAssociationsDataset(datasetWrapper, phenotypesContainer)
         sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
       case "ADDITIVE_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
+        val associations = LogisticSiteRegression(datasetWrapper, phenotypesContainer).associations
         sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
       case "DOMINANT_LOGISTIC" =>
-        val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
+        val associations = LogisticSiteRegression(datasetWrapper, phenotypesContainer).associations
         sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
     }
   }
