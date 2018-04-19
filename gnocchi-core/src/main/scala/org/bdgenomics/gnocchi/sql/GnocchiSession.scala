@@ -99,7 +99,7 @@ class GnocchiSession(@transient val sc: SparkContext)
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
     val genoDS = genotypes.genotypes
-    val sampleIDs = genotypes.sampleUIDs
+    val sampleIDs = genotypes.sampleUIDs.toList
 
     val exploded = genoDS.select(genoDS.columns.slice(0, 5).map(col(_)) ++ sampleIDs.map(x => col("samples." + x)).toSeq: _*)
     exploded.cache()
@@ -113,8 +113,37 @@ class GnocchiSession(@transient val sc: SparkContext)
 
     val samplesWithMissingness = sampleIDs.zip(missingnessPct)
     val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
-    (exploded.drop(sampleIDs.diff(keepers).toSeq: _*), keepers)
+    (exploded.drop(sampleIDs.diff(keepers).toSeq: _*), keepers.toSet)
   }
+
+  //  def filterSamples(genotypes: Dataset[CalledVariant],
+  //                    mind: Double,
+  //                    ploidy: Double): Dataset[CalledVariant] = FilterSamples.time {
+  //
+  //    require(mind >= 0.0 && mind <= 1.0,
+  //      "`mind` value must be between 0.0 to 1.0 inclusive.")
+  //
+  //    val x = genotypes.rdd.flatMap(
+  //      f => {
+  //        f.samples.map(
+  //          g => { (g.sampleID, g.misses.toInt) })
+  //      })
+  //    val summed = x.reduceByKey(_ + _)
+  //
+  //    val count = genotypes.count()
+  //    val samplesWithMissingness =
+  //      summed.map {
+  //        case (a, b) => (a, b / (ploidy * count))
+  //      }
+  //
+  //    val keepers =
+  //      samplesWithMissingness
+  //        .filter(x => x._2 <= mind)
+  //        .map(x => x._1).collect
+  //
+  //    createCalledVariant(genotypes,
+  //      f => f.filter(g => keepers.contains(g.sampleID)))
+  //  }
 
   //  /**
   //   * Wrapper around the [[filterSamples()]] method that takes in [[GenotypeDataset]] instead of the
