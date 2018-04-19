@@ -67,7 +67,7 @@ trait SiteRegression[VM <: VariantModel[VM], A <: Association] extends Serializa
 
     val validGenos = genotypes.samples.filter { case (sampleID, genotypeState) => genotypeState.misses == 0 && phenotypes.contains(sampleID) }
 
-    val samplesGenotypes = if (genotypes.maf < 0.5) {
+    val samplesGenotypes = if (genotypes.maf <= 0.5) {
       allelicAssumption.toUpperCase match {
         case "ADDITIVE"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.additive) }
         case "DOMINANT"  => validGenos.map { case (sampleID, genotypeState) => (sampleID, genotypeState.dominant) }
