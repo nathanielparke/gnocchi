@@ -98,6 +98,8 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
+    genotypes.cache()
+
     val x = genotypes.rdd.flatMap(
       f => {
         f.samples.map(
