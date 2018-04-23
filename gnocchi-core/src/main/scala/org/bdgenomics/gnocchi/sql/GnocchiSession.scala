@@ -98,26 +98,53 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    val x = genotypes.rdd.flatMap(
-      f => {
-        f.samples.map(
-          g => { (g.sampleID, g.misses.toInt) })
-      })
-    val summed = x.reduceByKey(_ + _)
+//    val x = genotypes.rdd.flatMap(
+//      f => {
+//        f.samples.map(
+//          g => { (g.sampleID, g.misses.toInt) })
+//      })
+//    val summed = x.reduceByKey(_ + _)
+//
+//    val count = genotypes.count()
+//    val samplesWithMissingness =
+//      summed.map {
+//        case (a, b) => (a, b / (ploidy * count))
+//      }
+//
+//    val keepers =
+//      samplesWithMissingness
+//        .filter(x => x._2 <= mind)
+//        .map(x => x._1).collect
+//
+//    createCalledVariant(genotypes,
+//      f => f.filter(g => keepers.contains(g.sampleID)))
+  }
 
-    val count = genotypes.count()
-    val samplesWithMissingness =
-      summed.map {
-        case (a, b) => (a, b / (ploidy * count))
-      }
+  // MOVE TO SAMPLES AS MAP
+  def filterSamples(genotypes: GenotypeDataset,
+                    mind: Double,
+                    ploidy: Double): GenotypeDataset = {
 
-    val keepers =
-      samplesWithMissingness
-        .filter(x => x._2 <= mind)
-        .map(x => x._1).collect
+    val genoDS = genotypes.genotypes
+    val sampleIDs = genotypes.sampleUIDs.toList
 
-    createCalledVariant(genotypes,
-      f => f.filter(g => keepers.contains(g.sampleID)))
+    val exploded = genoDS.select(genoDS.columns.slice(0, 5).map(col).toSeq ++ sampleIDs.indices.map(x => $"samples"(x)).toSeq: _*)
+    exploded.cache()
+
+    val count = exploded.count
+
+    val misses = exploded.select(exploded.columns.drop(5).map(x => col(x + ".misses") as x).toSeq: _*)
+    val aggMisses = misses.groupBy().sum().toDF(sampleIDs.toSeq: _*)
+    val aggMissesLocal = aggMisses.select(array(sampleIDs.toSeq.head, sampleIDs.toSeq.tail: _*)).as[Array[Long]].collect().toSeq.head
+    val missingnessPct = aggMissesLocal.map(_ / (ploidy * count))
+
+    val samplesWithMissingness = sampleIDs.zip(missingnessPct)
+    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
+    val sampleFiltered = exploded.drop(sampleIDs.diff(keepers).toSeq: _*)
+
+    val samplesMap = map(keepers.toList.flatMap(x => List(lit(x), col(x))): _*)
+    val filtered = sampleFiltered.withColumn("samples", samplesMap).drop(keepers.toList: _*).as[CalledVariant]
+    GenotypeDataset(filtered, genotypes.datasetUID, genotypes.allelicAssumption, keepers.toSet)
   }
 
   /**
