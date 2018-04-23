@@ -98,9 +98,6 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    genotypes.repartition(2048)
-    genotypes.cache()
-
     val x = genotypes.rdd.flatMap(
       f => {
         f.samples.map(
@@ -171,6 +168,31 @@ class GnocchiSession(@transient val sc: SparkContext)
    * Returns a filtered [[Dataset]] of [[CalledVariant]] objects, where all
    * variants with values less than the specified geno or maf threshold are
    * filtered out.
+   *
+   * val alleleCount = sampleUIDs.size * ploidy
+   *
+   * val withAltsAndMisses = genotypes
+   *  .withColumn("explodedSamples", explode($"samples"))
+   *  .groupBy("uniqueID")
+   *  .agg(sum($"explodedSamples.alts") as "alts", Array(sum($"explodedSamples.misses") as "misses") ++ genoDS.columns.tail.map(c => first(c).alias(c)): _*)
+   *
+   *
+   * OR
+   *
+   * // Note that this needs sampleUIDs stored in the GenotypeDataset object
+   * val withAltsAndMisses = genotypes
+   *  .withColumn("alts", (0 until sampleUIDs.size).map($"samples.alts"(_))).reduce(_ + _))
+   *  .withColumn("misses", (0 until sampleUIDs.size).map($"samples.misses"(_))).reduce(_ + _))
+   *
+   *
+   * OR (if calledVariant samples are in the map form)
+   *
+   * val withAltsAndMisses = genotypes
+   *  .withColumn("alts", keepers.map(x => col(s"samples.${x}.alts")).reduce(_ + _))
+   *  .withColumn("misses", keepers.map(x => col(s"samples.${x}.misses")).reduce(_ + _))
+   *
+   * val withStats = counted.drop("missingness", "maf").withColumn("missingness", $"misses" / lit(alleleCount)).withColumn("maf", $"alts" / (lit(alleleCount) - $"misses")).drop("alts", "misses").as[CalledVariant]
+   *
    *
    * @param genotypes The [[Dataset]] of [[CalledVariant]] objects to filter
    * @param geno The maximum fractional threshold of missingness that variants can have and be
