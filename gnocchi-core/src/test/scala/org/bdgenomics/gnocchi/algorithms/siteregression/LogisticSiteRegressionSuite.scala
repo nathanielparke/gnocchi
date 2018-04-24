@@ -266,59 +266,6 @@ class LogisticSiteRegressionSuite extends GnocchiFunSuite {
     }
   }
 
-  // LogisticSiteRegression.prepareDesignMatrix tests
-  sparkTest("LogisticSiteRegression.prepareDesignMatrix should filter out missing values and produce a label vector and a design matrix.") {
-    // This should produce a singular hessian matrix as all the rows will be identical
-    val gs = createSampleGenotypeStates(num = 10, maf = 0.25, geno = 0.1, ploidy = 2)
-    val cv = createSampleCalledVariant(samples = Option(gs))
-    val phenos = createSamplePhenotype(calledVariant = Option(cv))
-
-    val (data, label) = LogisticSiteRegression.prepareDesignMatrix(cv, phenos, "ADDITIVE")
-
-    assert(data.rows == cv.numValidSamples, "LogisticSiteRegression.prepareDesignMatrix doesn't filter out missing values properly, design matrix.")
-    assert(data.isInstanceOf[DenseMatrix[Double]], "LogisticSiteRegression.prepareDesignMatrix doesn't produce a `breeze.linalg.DenseMatrix[Double]`.")
-    assert(label.length == cv.numValidSamples, "LogisticSiteRegression.prepareDesignMatrix doesn't filter out missing values properly, labels.")
-    assert(label.isInstanceOf[DenseVector[Double]], "LogisticSiteRegression.prepareDesignMatrix doesn't produce a `breeze.linalg.DenseVector[Double]`.")
-  }
-
-  // Ignore because there is no reliable way to get order from the map consistently
-  ignore("LogisticSiteRegression.prepareDesignMatrix should place the genotype value in the second column of the design matrix.") {
-    val gs = createSampleGenotypeStates(num = 10, maf = 0.25, geno = 0.1, ploidy = 2)
-    val cv = createSampleCalledVariant(samples = Option(gs))
-    val phenos = createSamplePhenotype(calledVariant = Option(cv))
-
-    val (data, label) = LogisticSiteRegression.prepareDesignMatrix(cv, phenos, "ADDITIVE")
-
-    val genos = DenseVector(cv.samples.filter { case (id, geno) => geno.misses == 0 }.map { case (id, geno) => geno.toDouble }.toSeq: _*)
-    assert(data(::, 1) == genos, "LogisticSiteRegression.prepareDesignMatrix places genos in the wrong place")
-  }
-
-  ignore("LogisticSiteRegression.prepareDesignMatrix should place the covariates in columns 1 through n in the design matrix") {
-    val gs = createSampleGenotypeStates(num = 10, maf = 0.25, geno = 0.1, ploidy = 2)
-    val cv = createSampleCalledVariant(samples = Option(gs))
-    val phenos = createSamplePhenotype(calledVariant = Option(cv), numCovariate = 3)
-
-    val (data, label) = LogisticSiteRegression.prepareDesignMatrix(cv, phenos, "ADDITIVE")
-
-    val covs = data(::, 2 to -1)
-    val rows = phenos.filter(x => cv.samples.filter { case (id, geno) => geno.misses == 0 }.map(_._1).toSeq.contains(x._1))
-      .map(_._2.covariates)
-      .toList
-    val otherCovs = DenseMatrix(rows: _*)
-
-    for (i <- 0 until covs.cols) assert(covs(::, i).toArray.toList.sorted == otherCovs(::, i).toArray.toList.sorted, "Covariates are wrong.")
-  }
-
-  sparkTest("LogisticSiteRegression.prepareDesignMatrix should produce a `(DenseMatrix[Double], DenseVector[Double])`") {
-    val gs = createSampleGenotypeStates(num = 10, maf = 0.25, geno = 0.1, ploidy = 2)
-    val cv = createSampleCalledVariant(samples = Option(gs))
-    val phenos = createSamplePhenotype(calledVariant = Option(cv), numCovariate = 3)
-
-    val XandY = LogisticSiteRegression.prepareDesignMatrix(cv, phenos, "ADDITIVE")
-
-    assert(XandY.isInstanceOf[(DenseMatrix[Double], DenseVector[Double])], "LogisticSiteRegression.prepareDesignMatrix returned an incorrect type.")
-  }
-
   // LogisticSiteRegression.findBeta tests
 
   sparkTest("LogisticSiteRegression.findBeta should throw a singular matrix exception when hessian is noninvertible.") {

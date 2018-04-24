@@ -21,15 +21,15 @@ import java.io.{ ObjectInputStream, Serializable }
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{ array, col, lit, udf, map }
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{ Column, Dataset, SparkSession }
 import org.bdgenomics.adam.rdd.ADAMContext._
-import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD, VariantRDD }
+import org.bdgenomics.adam.rdd.variant.{ GenotypeRDD, VariantContextRDD }
 import org.bdgenomics.formats.avro.GenotypeAllele
+import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel }
 import org.bdgenomics.gnocchi.models.{ GnocchiModel, LinearGnocchiModel, LogisticGnocchiModel }
-import org.bdgenomics.gnocchi.models.variant.{ LinearVariantModel, LogisticVariantModel, VariantModel }
-import org.bdgenomics.gnocchi.primitives.association.{ Association, LinearAssociationBuilder }
+import org.bdgenomics.gnocchi.primitives.association.Association
 import org.bdgenomics.gnocchi.primitives.genotype.GenotypeState
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant

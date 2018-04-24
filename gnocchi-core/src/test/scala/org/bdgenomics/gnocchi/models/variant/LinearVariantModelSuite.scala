@@ -75,7 +75,14 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
 
     val returnedAssoc = model1.createAssociation(variant, phenotypes, "ADDITIVE")
 
-    assert(correctAssoc == returnedAssoc, "Incorrect association!")
+    assert(correctAssoc.uniqueID == returnedAssoc.uniqueID, "Incorrect association!")
+    assert(correctAssoc.chromosome == returnedAssoc.chromosome, "Incorrect association!")
+    assert(correctAssoc.position == returnedAssoc.position, "Incorrect association!")
+    assert(correctAssoc.numSamples == returnedAssoc.numSamples, "Incorrect association!")
+    assert(correctAssoc.pValue === returnedAssoc.pValue +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.genotypeStandardError === returnedAssoc.genotypeStandardError +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.ssResiduals === returnedAssoc.ssResiduals +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.tStatistic === returnedAssoc.tStatistic +- 0.00005, "Incorrect association!")
   }
 
   sparkTest("LinearVariantModel.createAssociation[Dominant] should correctly construct an association.") {
@@ -127,7 +134,15 @@ class LinearVariantModelSuite extends GnocchiFunSuite {
 
     val returnedAssoc = model1.createAssociation(variant, phenotypes, "DOMINANT")
 
-    assert(correctAssoc == returnedAssoc, "Incorrect association!")
+    assert(correctAssoc.uniqueID == returnedAssoc.uniqueID, "Incorrect association!")
+    assert(correctAssoc.chromosome == returnedAssoc.chromosome, "Incorrect association!")
+    assert(correctAssoc.position == returnedAssoc.position, "Incorrect association!")
+    assert(correctAssoc.numSamples == returnedAssoc.numSamples, "Incorrect association!")
+    assert(correctAssoc.pValue === returnedAssoc.pValue +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.genotypeStandardError === returnedAssoc.genotypeStandardError +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.ssResiduals === returnedAssoc.ssResiduals +- 0.00005, "Incorrect association!")
+    assert(correctAssoc.tStatistic === returnedAssoc.tStatistic +- 0.00005, "Incorrect association!")
+
   }
 
   sparkTest("LinearVariantModel.mergeWith correctly merges together two LinearVariantModels") {
