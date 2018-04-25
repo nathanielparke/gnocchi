@@ -21,7 +21,9 @@ object GnocchiMain {
 
   private val commands = List(
     RegressPhenotypes,
-    TransformVariants)
+    TransformVariants,
+    BuildGnocchiModel,
+    MergeLinearGnocchiModels)
 
   private def printCommands() {
     println("\n")
