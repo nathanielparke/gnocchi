@@ -99,4 +99,6 @@ class CalledVariantSuite extends GnocchiFunSuite {
     val calledVariant = createSampleCalledVariant(samples = Option(genosStates))
     assert(calledVariant.numSemiValidSamples == 9, "Number of valid samples miscounted.")
   }
+
+  sparkTest("CalledVariant construction works.")
 }

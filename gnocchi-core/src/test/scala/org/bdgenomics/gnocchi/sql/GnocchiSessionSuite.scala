@@ -61,8 +61,13 @@ class GnocchiSessionSuite extends GnocchiFunSuite {
     }
   }
 
-  ignore("sc.loadGenotypes should be able to take in ADAM formatted parquet files with genotype states.") {
-
+  sparkTest("sc.loadGenotypes should be able to take in ADAM formatted parquet VariantContextRDDs.") {
+    val adamFile = testFile("adamFormatted.parquet")
+    try{
+      sc.loadGenotypes(adamFile, "adam_formatted", "ADDITIVE", adamFormat = true)
+    } catch {
+      case e: Throwable => fail(s"Failed with ${e}")
+    }
   }
 
   // load phenotypes tests
