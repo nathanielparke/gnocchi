@@ -146,7 +146,7 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
 
     // the ordering of calls below is important
     val rawGenotypes = sc.loadGenotypes(args.genotypes, args.datasetName, args.associationType.split("_").head, adamFormat = args.adamFormat)
-    val sampleFiltered = sc.filterSamples(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
+    val sampleFiltered = sc.filterSamplesRDD(rawGenotypes, mind = args.mind, ploidy = args.ploidy)
     val recoded = sc.recodeMajorAllele(sampleFiltered)
     val filteredGeno = sc.filterVariants(recoded, geno = args.geno, maf = args.maf)
     //    filteredGeno.genotypes.count()

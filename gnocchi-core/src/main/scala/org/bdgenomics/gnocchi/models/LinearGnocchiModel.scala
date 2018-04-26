@@ -57,6 +57,8 @@ case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantMod
    *                                phenotype or the covariates. Allows for collaborators with
    *                                similar phenotypes that are named differently to collaboratively
    *                                build models
+   * @param maf
+   * @param geno
    * @return A merged [[LinearGnocchiModel]] which is equivalent to a model built on the union of
    *         the two seperate datasets
    */
@@ -94,7 +96,8 @@ case class LinearGnocchiModel(@transient variantModels: Dataset[LinearVariantMod
    * @return the dataset of merged [[LinearVariantModel]]
    */
   def mergeVariantModels(newVariantModels: Dataset[LinearVariantModel]): Dataset[LinearVariantModel] = {
-    variantModels.joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID"))
+    variantModels
+      .joinWith(newVariantModels, variantModels("uniqueID") === newVariantModels("uniqueID"))
       .map(x => x._1.mergeWith(x._2))
   }
 }

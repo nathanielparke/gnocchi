@@ -120,6 +120,53 @@ class GnocchiSession(@transient val sc: SparkContext)
     GenotypeDataset(filtered, genotypes.datasetUID, genotypes.allelicAssumption, keepers.toSet)
   }
 
+  def filterSamplesRDD(genotypes: GenotypeDataset,
+                       mind: Double,
+                       ploidy: Double): GenotypeDataset = FilterSamples.time {
+
+    require(mind >= 0.0 && mind <= 1.0,
+      "`mind` value must be between 0.0 to 1.0 inclusive.")
+
+    val genoDS = genotypes.genotypes
+
+    val x = genoDS.rdd.flatMap(
+      f => {
+        f.samples.map(
+          g => { (g._1, g._2.misses.toInt) })
+      })
+    val summed = x.reduceByKey(_ + _).collect()
+
+    val count = genoDS.count()
+    val samplesWithMissingness = summed.map { case (a, b) => (a, b / (ploidy * count)) }
+
+    val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
+
+    val newDS = createCalledVariant(genoDS, f => f.filter(g => keepers.contains(g._1)))
+    genotypes.copy(genotypes = newDS, sampleUIDs = keepers.toSet)
+  }
+
+  /**
+   * Construct a [[CalledVariant]] [[Dataset]] from another [[CalledVariant]]
+   * [[Dataset]] through transforming sample data with a supplied function.
+   *
+   * @param genotypes the original [[CalledVariant]] [[Dataset]] that will be
+   *                  transformed
+   * @param samplesFn the transform function for the [[List]] of [[GenotypeState]] objects stored in
+   *                  a [[CalledVariant]] object
+   * @return a transformed [[Dataset]] of [[CalledVariant]] objects
+   */
+  def createCalledVariant(genotypes: Dataset[CalledVariant],
+                          samplesFn: Map[String, GenotypeState] => Map[String, GenotypeState]): Dataset[CalledVariant] = {
+    genotypes.map(f => {
+      CalledVariant(f.uniqueID,
+        f.chromosome,
+        f.position,
+        f.referenceAllele,
+        f.alternateAllele,
+        samplesFn(f.samples))
+    })
+  }
+
   /**
    * Returns a filtered [[Dataset]] of [[CalledVariant]] objects, where all
    * variants with values less than the specified geno or maf threshold are

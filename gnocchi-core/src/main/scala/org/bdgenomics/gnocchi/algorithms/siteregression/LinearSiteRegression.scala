@@ -247,8 +247,4 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   }
 }
 
-object LinearSiteRegression extends LinearSiteRegression {
-  def hello() = {
-    println("hello")
-  }
-}
+object LinearSiteRegression extends LinearSiteRegression
