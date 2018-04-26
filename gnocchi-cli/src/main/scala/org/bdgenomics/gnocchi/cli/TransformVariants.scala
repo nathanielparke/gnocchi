@@ -54,6 +54,9 @@ class TransformVariantsArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-variantContextParquet", usage = "Is the input ADAM Formatted VariantContextRDD?")
   var variantContextParquet = false
+
+  @Args4jOption(required = false, name = "-numPartitions", usage = "the number of partitions to use for the output data.")
+  var numPartitions = 0
 }
 
 class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSparkCommand[TransformVariantsArgs] {
@@ -73,10 +76,16 @@ class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSp
       sc.loadGenotypes(args.inputPath, args.datasetUID, args.allelicAssumption, adamFormat = true)
     }
 
-    if (args.saveAdamParquet) {
-      rawGenotypes.save(args.outputPath + "/gnocchi")
+    val partitioned = if (args.numPartitions != 0) {
+      rawGenotypes.copy(genotypes = rawGenotypes.genotypes.repartition(args.numPartitions))
     } else {
-      rawGenotypes.save(args.outputPath)
+      rawGenotypes
+    }
+
+    if (args.saveAdamParquet) {
+      partitioned.save(args.outputPath + "/gnocchi")
+    } else {
+      partitioned.save(args.outputPath)
     }
   }
 }
