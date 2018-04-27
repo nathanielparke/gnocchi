@@ -142,8 +142,8 @@ class GnocchiSession(@transient val sc: SparkContext)
     val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
 
     val newDS = createCalledVariant(genoDS, f => f.filter(g => keepers.contains(g._1)))
-    genoDS.unpersist()
-    newDS.cache().count()
+//    genoDS.unpersist()
+//    newDS.cache().count()
     genotypes.copy(genotypes = newDS, sampleUIDs = keepers.toSet)
   }
 
