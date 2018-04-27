@@ -127,7 +127,7 @@ class GnocchiSession(@transient val sc: SparkContext)
     require(mind >= 0.0 && mind <= 1.0,
       "`mind` value must be between 0.0 to 1.0 inclusive.")
 
-    val genoDS = genotypes.genotypes
+    val genoDS = genotypes.genotypes.cache()
 
     val x = genoDS.rdd.flatMap(
       f => {
@@ -142,6 +142,7 @@ class GnocchiSession(@transient val sc: SparkContext)
     val keepers = samplesWithMissingness.filter(x => x._2 <= mind).map(x => x._1)
 
     val newDS = createCalledVariant(genoDS, f => f.filter(g => keepers.contains(g._1)))
+    genoDS.unpersist()
     newDS.cache().count()
     genotypes.copy(genotypes = newDS, sampleUIDs = keepers.toSet)
   }
