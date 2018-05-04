@@ -5,16 +5,16 @@ import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.bdgenomics.utils.cli.{ Args4j, Args4jBase, BDGCommandCompanion, BDGSparkCommand }
 import org.kohsuke.args4j.Argument
 
-object MergeLinearGnocchiModels extends BDGCommandCompanion {
+object MergeLinearModels extends BDGCommandCompanion {
   val commandName = "mergeLinearGnocchiModels"
   val commandDescription = "Merge two LinearGnocchiModels and save the result."
 
   def apply(cmdLine: Array[String]) = {
-    new MergeLinearGnocchiModels(Args4j[MergeLinearGnocchiModelsArgs](cmdLine))
+    new MergeLinearModels(Args4j[MergeLinearModelsArgs](cmdLine))
   }
 }
 
-class MergeLinearGnocchiModelsArgs extends Args4jBase {
+class MergeLinearModelsArgs extends Args4jBase {
   @Argument(required = true, metaVar = "MODEL_1", usage = "The path to the first model to be merged.", index = 0)
   var model1: String = _
 
@@ -26,8 +26,8 @@ class MergeLinearGnocchiModelsArgs extends Args4jBase {
 
 }
 
-class MergeLinearGnocchiModels(protected val args: MergeLinearGnocchiModelsArgs) extends BDGSparkCommand[MergeLinearGnocchiModelsArgs] {
-  val companion = MergeLinearGnocchiModels
+class MergeLinearModels(protected val args: MergeLinearModelsArgs) extends BDGSparkCommand[MergeLinearModelsArgs] {
+  val companion = MergeLinearModels
 
   def run(sc: SparkContext) {
     val model1 = sc.loadLinearGnocchiModel(args.model1)

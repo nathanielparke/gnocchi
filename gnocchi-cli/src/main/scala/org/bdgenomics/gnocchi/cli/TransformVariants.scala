@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.gnocchi.cli
 
+import org.apache.parquet.hadoop.metadata.CompressionCodecName
 import org.apache.spark.SparkContext
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.bdgenomics.adam.rdd.ADAMContext
@@ -57,6 +58,9 @@ class TransformVariantsArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-numPartitions", usage = "the number of partitions to use for the output data.")
   var numPartitions = 0
+
+  @Args4jOption(required = false, name = "-compressionCodec", usage = "Compression to use for output.")
+  var compressionCodec = CompressionCodecName.GZIP
 }
 
 class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSparkCommand[TransformVariantsArgs] {
@@ -83,9 +87,9 @@ class TransformVariants(protected val args: TransformVariantsArgs) extends BDGSp
     }
 
     if (args.saveAdamParquet) {
-      partitioned.save(args.outputPath + "/gnocchi")
+      partitioned.save(args.outputPath + "/gnocchi", args.compressionCodec)
     } else {
-      partitioned.save(args.outputPath)
+      partitioned.save(args.outputPath, args.compressionCodec)
     }
   }
 }

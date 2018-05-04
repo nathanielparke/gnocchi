@@ -23,7 +23,7 @@ object GnocchiMain {
     RegressPhenotypes,
     TransformVariants,
     BuildGnocchiModel,
-    MergeLinearGnocchiModels)
+    MergeLinearModels)
 
   private def printCommands() {
     println("\n")

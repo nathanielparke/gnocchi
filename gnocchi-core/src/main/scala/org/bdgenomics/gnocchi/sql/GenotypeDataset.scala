@@ -22,6 +22,7 @@ import java.io.ObjectOutputStream
 import org.apache.spark.sql.Dataset
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import org.apache.hadoop.fs.Path
+import org.apache.parquet.hadoop.metadata.CompressionCodecName
 
 /**
  * Use this object as a container for genomic data stored in [[CalledVariant]] objects. This object
@@ -52,7 +53,8 @@ case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
    *
    * @param saveTo the path to save this object to
    */
-  def save(saveTo: String): Unit = {
+  def save(saveTo: String,
+           compressionCodec: CompressionCodecName = CompressionCodecName.GZIP): Unit = {
     val metadataPath = new Path(saveTo + "/metaData")
 
     val metadata_fs = metadataPath.getFileSystem(genotypes.sparkSession.sparkContext.hadoopConfiguration)
@@ -61,6 +63,9 @@ case class GenotypeDataset(@transient genotypes: Dataset[CalledVariant],
     metadata_oos.writeObject(this)
     metadata_oos.close()
 
-    genotypes.write.parquet(saveTo + "/genotypes")
+    genotypes
+      .write
+      .option("spark.sql.parquet.compression.codec", compressionCodec.toString.toLowerCase())
+      .parquet(saveTo + "/genotypes")
   }
 }
