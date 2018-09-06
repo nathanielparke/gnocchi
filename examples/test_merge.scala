@@ -1,28 +1,33 @@
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
+import org.bdgenomics.gnocchi.sql.LinearAssociationsDatasetBuilder
 
-val genotypesPath1 = "examples/testData/time_genos_1.vcf"
-val phenotypesPath1 = "examples/testData/time_phenos_1.txt"
 
-val geno1 = sc.loadGenotypes(genotypesPath1)
-val pheno1 = sc.loadPhenotypes(phenotypesPath1, "IID", "pheno_1", ",")
+val genos1 = sc.loadGenotypes("./testData/merge/time_genos_1.vcf", "time_genos_1", "ADDITIVE")
+val phenos1 = sc.loadPhenotypes("./testData/merge/time_phenos_1.txt", "IID", "pheno_1", "\t", Option("examples/testData/merge/time_phenos_1.txt"), Option(List("pheno_2", "pheno_3")), "\t")
+val linearResults1 = LinearSiteRegression(genos1, phenos1)
 
-// val sampleFiltered1 = sc.filterSamples(geno1, mind = 0.1, ploidy = 2)
-// val fullFiltered1 = sc.filterVariants(sampleFiltered1, geno = 0.1, maf = 0.1)
+val genos2 = sc.loadGenotypes("./testData/merge/time_genos_2.vcf", "time_genos_2", "ADDITIVE")
+val phenos2 = sc.loadPhenotypes("./testData/merge/time_phenos_2.txt", "IID", "pheno_1", "\t", Option("examples/testData/merge/time_phenos_2.txt"), Option(List("pheno_2", "pheno_3")), "\t")
+val linearResults2 = LinearSiteRegression(genos2, phenos2)
 
-val broadPheno1 = sc.broadcast(pheno1)
+val model1 = linearResults1.gnocchiModel
+val model2 = linearResults2.gnocchiModel
 
-val gm_1 = LinearGnocchiModelFactory(geno1, broadPheno1, Option(List("pheno_1")))
+val merged = model1.mergeGnocchiModel(model2)
 
-val genotypesPath2 = "examples/testData/time_genos_2.vcf"
-val phenotypesPath2 = "examples/testData/time_phenos_2.txt"
-val geno2 = sc.loadGenotypes(genotypesPath2)
-val pheno2 = sc.loadPhenotypes(phenotypesPath2, "IID", "pheno_1", ",")
+val builder = LinearAssociationsDatasetBuilder(merged, genos1, phenos1)
 
-// val sampleFiltered2 = sc.filterSamples(geno2, mind = 0.1, ploidy = 2)
-// val fullFiltered2 = sc.filterVariants(sampleFiltered2, geno = 0.1, maf = 0.1)
+val updatedBuilder = builder.addNewData(genos2, phenos2)
 
-val broadPheno2 = sc.broadcast(pheno2)
+val outPath = "../mergedAssociations/"
 
-val gm_2 = LinearGnocchiModelFactory(geno2, broadPheno2, Option(List("pheno_1")))
+updatedBuilder.saveAssociations(outPath)
+
+val mergedGenos = sc.loadGenotypes("./testData/merge/merged.vcf", "merged_vcf", "ADDITIVE")
+val mergedPhenos = sc.loadPhenotypes("./testData/merge/merged_phenos.txt", "IID", "pheno_1", "\t", Option("examples/testData/merge/merged_phenos.txt"), Option(List("pheno_2", "pheno_3")), "\t")
+val mergedAssociations = LinearSiteRegression(mergedGenos, mergedPhenos)
+
+val sortedManualMergeAssociations = updatedBuilder.linearAssociationBuilders.map(_.association).sort($"pValue".asc)
+val sortedMergeAssociations = mergedAssociations.associations.sort($"pValue".asc)
 
