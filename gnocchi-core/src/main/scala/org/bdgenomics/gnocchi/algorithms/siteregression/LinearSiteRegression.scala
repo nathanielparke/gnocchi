@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.gnocchi.algorithms.siteregression
 
-import org.bdgenomics.gnocchi.primitives.association.{ LinearAssociation, LinearAssociationBuilder }
+import org.bdgenomics.gnocchi.primitives.association.LinearAssociation
 import org.bdgenomics.gnocchi.primitives.phenotype.Phenotype
 import org.bdgenomics.gnocchi.primitives.variants.CalledVariant
 import breeze.linalg._
@@ -103,7 +103,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   }
 
   /**
-   * Solve the Logistic Regression problem for a single variant site.
+   * Solve the Linear Regression problem for a single variant site.
    *
    * @param genotypes a single [[CalledVariant]] object to solve Logistic Regression for
    * @param phenotypes Phenotypes corresponding to the genotype data
@@ -133,7 +133,7 @@ trait LinearSiteRegression extends SiteRegression[LinearVariantModel, LinearAsso
   }
 
   /**
-   * Solve the Logistic Regression problem for a single variant site.
+   * Solve the Linear Regression problem for a single variant site.
    *
    * @param genotypes a single [[CalledVariant]] object to solve Logistic Regression for
    * @param phenotypes Phenotypes corresponding to the genotype data

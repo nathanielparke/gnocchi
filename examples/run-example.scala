@@ -1,13 +1,8 @@
 import org.bdgenomics.gnocchi.sql.GnocchiSession._
 import org.bdgenomics.gnocchi.algorithms.siteregression.LinearSiteRegression
-val genotypesPath = "examples/testData/time_genos_1.vcf"
-val phenotypesPath = "examples/testData/tab_time_phenos_1.txt"
-val geno = sc.loadGenotypes(genotypesPath)
-val pheno = sc.loadPhenotypes(phenotypesPath, "IID", "pheno_1", "\t", Option(phenotypesPath), Option(List("pheno_4", "pheno_5")))
 
-val filteredGeno = sc.filterSamples(geno, mind = 0.1, ploidy = 2)
-val filteredGenoVariants = sc.filterVariants(filteredGeno, geno = 0.1, maf = 0.1)
+val genos = sc.loadGenotypes("./testData/test_genos.vcf", "merged_vcf", "ADDITIVE")
+val phenos = sc.loadPhenotypes("./testData/test_phenos.txt", "IID", "pheno_1", "\t", Option("./testData/merge/test_phenos.txt"), Option(List("pheno_2", "pheno_3")), "\t")
+val associations = LinearSiteRegression(mergedGenos, mergedPhenos).associations
 
-val broadPheno = sc.broadcast(pheno)
-
-val assoications = LinearRegression(geno, broadPheno)
+val sortedAssociations = associations.sort($"pValue".asc)

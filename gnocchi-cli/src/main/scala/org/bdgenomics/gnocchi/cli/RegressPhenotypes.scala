@@ -103,6 +103,9 @@ class RegressPhenotypesArgs extends Args4jBase {
 
   @Args4jOption(required = false, name = "-datasetName", usage = "Unique ID name of the genotype dataset being loaded.")
   var datasetName: String = ""
+
+  @Args4jOption(required = false, name = "-coalesceOnSave", usage = "Coalesce the dataset to a single partition on save.")
+  var coalesceOnSave: Boolean = false
 }
 
 class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSparkCommand[RegressPhenotypesArgs] {
@@ -153,16 +156,16 @@ class RegressPhenotypes(protected val args: RegressPhenotypesArgs) extends BDGSp
     args.associationType match {
       case "ADDITIVE_LINEAR" =>
         val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
+        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText, args.coalesceOnSave)
       case "DOMINANT_LINEAR" =>
         val associations = LinearSiteRegression.createAssociationsDataset(filteredGeno, phenotypesContainer)
-        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText)
+        sc.saveAssociations[LinearAssociation](associations, args.output, args.saveAsText, args.coalesceOnSave)
       case "ADDITIVE_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
+        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText, args.coalesceOnSave)
       case "DOMINANT_LOGISTIC" =>
         val associations = LogisticSiteRegression(filteredGeno, phenotypesContainer).associations
-        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText)
+        sc.saveAssociations[LogisticAssociation](associations, args.output, args.saveAsText, args.coalesceOnSave)
     }
   }
 }

@@ -22,14 +22,6 @@ import org.bdgenomics.gnocchi.models.LinearGnocchiModel
 import org.bdgenomics.gnocchi.models.variant.LinearVariantModel
 
 class JavaLinearGnocchiModel(val lgm: LinearGnocchiModel) {
-  def mergeGnocchiModel(otherModel: JavaLinearGnocchiModel): JavaLinearGnocchiModel = {
-    val newModel = lgm.mergeGnocchiModel(otherModel.lgm).asInstanceOf[LinearGnocchiModel]
-    new JavaLinearGnocchiModel(newModel)
-  }
-
-  def mergeVariantModels(newVariantModels: Dataset[LinearVariantModel]): Dataset[LinearVariantModel] = {
-    lgm.mergeVariantModels(newVariantModels)
-  }
 
   def getVariantModels(): Dataset[LinearVariantModel] = {
     lgm.variantModels

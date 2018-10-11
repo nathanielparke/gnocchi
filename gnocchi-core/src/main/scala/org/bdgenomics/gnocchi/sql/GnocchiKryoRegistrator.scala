@@ -55,7 +55,6 @@ class GnocchiKryoRegistrator extends ADAMKryoRegistrator with Logging {
     kryo.register(classOf[org.bdgenomics.gnocchi.primitives.association.LogisticAssociation])
     kryo.register(classOf[org.bdgenomics.gnocchi.primitives.genotype.GenotypeState])
     kryo.register(classOf[org.bdgenomics.gnocchi.primitives.phenotype.Phenotype])
-    kryo.register(classOf[org.bdgenomics.gnocchi.primitives.association.LinearAssociationBuilder])
 
     kryo.register(classOf[org.bdgenomics.gnocchi.models.variant.LogisticVariantModel])
     kryo.register(classOf[org.bdgenomics.gnocchi.models.variant.LinearVariantModel])

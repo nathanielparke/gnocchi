@@ -610,11 +610,13 @@ class GnocchiSession(@transient val sc: SparkContext)
    */
   def saveAssociations[A <: Association](associations: Dataset[A],
                                          outPath: String,
-                                         saveAsText: Boolean = false): Unit = SaveAssociations.time {
+                                         saveAsText: Boolean = false,
+                                         coalesceOnSave: Boolean = false): Unit = SaveAssociations.time {
     if (saveAsText) {
       val necessaryFields = List("uniqueID", "chromosome", "position", "pValue", "genotypeStandardError").map(col)
       val assoc = associations.select(necessaryFields: _*).sort($"pValue".asc)
-      assoc.write
+      val coalesce = (df: Dataset[_]) => if (coalesceOnSave) df.coalesce(1) else df
+      coalesce(assoc).write
         .format("com.databricks.spark.csv")
         .option("header", "true")
         .option("delimiter", "\t")
